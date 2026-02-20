@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+*.egg
+
+# Environment
+.env
+backend/.env
+backend/local_data/
+
+# Node
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars

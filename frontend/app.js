@@ -1,0 +1,496 @@
+/**
+ * Mindful Life AI — Frontend Application
+ * POC: Tracker forms + AI-powered journaling prompts + review dashboard
+ */
+
+const API = '';  // same origin
+
+// ─── Navigation ────────────────────────────────────────────────
+
+document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const page = btn.dataset.page;
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`page-${page}`).classList.add('active');
+
+        // Load data for each page on switch
+        if (page === 'review') loadReviewData();
+        if (page === 'reading') loadReadingStats();
+        if (page === 'journal') loadJournalPrompt();
+        if (page === 'checkin') loadCheckinHistory();
+        if (page === 'running') loadRunHistory();
+    });
+});
+
+// ─── Helpers ───────────────────────────────────────────────────
+
+function today() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+async function apiPost(endpoint, data) {
+    const res = await fetch(`${API}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+}
+
+async function apiGet(endpoint) {
+    const res = await fetch(`${API}${endpoint}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+}
+
+// ─── Initialize ────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+    // Set default dates to today
+    document.getElementById('checkin-date').value = today();
+    document.getElementById('run-date').value = today();
+    document.getElementById('journal-date').value = today();
+
+    // Range slider displays
+    document.getElementById('checkin-energy').addEventListener('input', e => {
+        document.getElementById('energy-val').textContent = e.target.value;
+    });
+    document.getElementById('checkin-alignment').addEventListener('input', e => {
+        document.getElementById('alignment-val').textContent = e.target.value;
+    });
+
+    // Journal word count
+    document.getElementById('journal-content').addEventListener('input', e => {
+        const wc = e.target.value.trim().split(/\s+/).filter(w => w).length;
+        document.getElementById('journal-wc').textContent = `${wc} words`;
+    });
+
+    // Load initial data
+    loadCheckinHistory();
+});
+
+
+// ─── Check-In ──────────────────────────────────────────────────
+
+document.getElementById('checkin-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+        date: document.getElementById('checkin-date').value,
+        sleep_hours: parseFloat(document.getElementById('checkin-sleep').value) || null,
+        steps: parseInt(document.getElementById('checkin-steps').value) || null,
+        deep_work_hours: parseFloat(document.getElementById('checkin-deepwork').value) || null,
+        journal_words: parseInt(document.getElementById('checkin-journal-words').value) || null,
+        energy: parseInt(document.getElementById('checkin-energy').value),
+        alignment: parseInt(document.getElementById('checkin-alignment').value),
+        meditation: document.getElementById('checkin-meditation').checked,
+        notes: document.getElementById('checkin-notes').value || null,
+    };
+
+    try {
+        const result = await apiPost('/api/checkin', data);
+        showToast(result.message || 'Check-in saved!');
+        document.getElementById('checkin-form').reset();
+        document.getElementById('checkin-date').value = today();
+        loadCheckinHistory();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
+async function loadCheckinHistory() {
+    try {
+        const data = await apiGet('/api/checkins?limit=7');
+        const container = document.getElementById('checkin-history');
+        if (!data.length) {
+            container.innerHTML = '<div class="loading-text">No check-ins yet. Start tracking!</div>';
+            return;
+        }
+        container.innerHTML = data.map(c => `
+            <div class="history-item">
+                <div>
+                    <div class="history-date">${c.date || 'N/A'}</div>
+                    <div style="font-size:12px;color:var(--text-secondary)">
+                        ${c.meditation ? '🧘' : ''} 
+                        ${c.sleep_hours ? `😴${c.sleep_hours}h` : ''} 
+                        ${c.steps ? `👟${c.steps.toLocaleString()}` : ''}
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <div class="history-value">⚡${c.energy || '-'}/10</div>
+                    <div style="font-size:11px;color:var(--text-secondary)">🎯${c.alignment || '-'}/10</div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        document.getElementById('checkin-history').innerHTML =
+            '<div class="loading-text">Could not load history</div>';
+    }
+}
+
+
+// ─── Running ───────────────────────────────────────────────────
+
+document.getElementById('run-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+        date: document.getElementById('run-date').value,
+        distance_km: parseFloat(document.getElementById('run-distance').value),
+        duration_minutes: parseFloat(document.getElementById('run-duration').value) || null,
+        run_type: document.getElementById('run-type').value,
+        notes: document.getElementById('run-notes').value || null,
+    };
+
+    try {
+        const result = await apiPost('/api/runs', data);
+        showToast(result.message || 'Run logged!');
+        document.getElementById('run-form').reset();
+        document.getElementById('run-date').value = today();
+        loadRunHistory();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
+async function loadRunHistory() {
+    try {
+        const data = await apiGet('/api/runs?limit=10');
+        const container = document.getElementById('run-history');
+        if (!data.length) {
+            container.innerHTML = '<div class="loading-text">No runs logged yet. Lace up! 🏃</div>';
+            return;
+        }
+        container.innerHTML = data.map(r => `
+            <div class="history-item">
+                <div>
+                    <div class="history-date">${r.date || 'N/A'}</div>
+                    <div style="font-size:12px;color:var(--text-secondary)">${r.run_type || 'easy'}</div>
+                </div>
+                <div style="text-align:right">
+                    <div class="history-value">${r.distance_km} km</div>
+                    ${r.duration_minutes ? `<div style="font-size:11px;color:var(--text-secondary)">${r.duration_minutes} min</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        document.getElementById('run-history').innerHTML =
+            '<div class="loading-text">Could not load runs</div>';
+    }
+}
+
+
+// ─── Reading ───────────────────────────────────────────────────
+
+document.getElementById('book-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+        title: document.getElementById('book-title').value,
+        author: document.getElementById('book-author').value,
+        genre: document.getElementById('book-genre').value,
+        rating: parseInt(document.getElementById('book-rating').value) || null,
+        is_finished: document.getElementById('book-finished').checked,
+        reaction: document.getElementById('book-reaction').value || null,
+    };
+
+    try {
+        const result = await apiPost('/api/books', data);
+        showToast(result.message || 'Book saved!');
+
+        // Show reflection prompts if available
+        if (result.reflection_prompts && result.reflection_prompts.length) {
+            const container = document.getElementById('reflection-prompts');
+            container.innerHTML = result.reflection_prompts.map(p => `
+                <div class="prompt-card" style="margin-bottom:10px">
+                    <p class="prompt-text">${p.prompt}</p>
+                    <div class="prompt-source">${p.tradition} · ${p.connection || ''}</div>
+                </div>
+            `).join('');
+            document.getElementById('reflection-prompts-container').style.display = 'block';
+        }
+
+        document.getElementById('book-form').reset();
+        loadReadingStats();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
+async function loadReadingStats() {
+    try {
+        const stats = await apiGet('/api/books/stats');
+        const container = document.getElementById('reading-stats');
+        const pct = stats.pace_pct || 0;
+        const barColor = stats.on_track ? 'var(--accent)' : 'var(--accent-amber)';
+
+        container.innerHTML = `
+            <div style="margin-bottom:16px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                    <span style="font-size:14px;font-weight:600">${stats.books_finished} / ${stats.yearly_goal} books</span>
+                    <span style="font-size:13px;color:${stats.on_track ? 'var(--accent)' : 'var(--accent-amber)'}">
+                        ${stats.on_track ? '✓ On track' : '⚠ Behind pace'}
+                    </span>
+                </div>
+                <div class="progress-bar-wrap" style="height:6px">
+                    <div class="progress-bar" style="width:${Math.min(pct, 100)}%;background:${barColor}"></div>
+                </div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">
+                    Expected by now: ${stats.expected_by_now} books
+                </div>
+            </div>
+            ${Object.keys(stats.genres || {}).length ? `
+                <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">
+                    <strong>Genres:</strong> ${Object.entries(stats.genres).map(([g, c]) => `${g} (${c})`).join(' · ')}
+                </div>
+            ` : ''}
+        `;
+    } catch (err) {
+        document.getElementById('reading-stats').innerHTML =
+            '<div class="loading-text">Add your first book to see stats!</div>';
+    }
+}
+
+
+// ─── Journaling ────────────────────────────────────────────────
+
+let currentTradition = 'blended';
+
+document.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+        document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        currentTradition = pill.dataset.tradition;
+        loadJournalPrompt();
+    });
+});
+
+document.getElementById('new-prompt-btn').addEventListener('click', () => {
+    loadJournalPrompt();
+});
+
+async function loadJournalPrompt() {
+    const area = document.getElementById('journal-prompt-area');
+    area.innerHTML = '<div class="spinner"></div> Generating your prompt...';
+
+    try {
+        const prompt = await apiGet(`/api/journal/prompt?tradition=${currentTradition}`);
+        area.innerHTML = `
+            <div class="prompt-card">
+                <p class="prompt-text">"${prompt.prompt}"</p>
+                ${prompt.related_quote ? `
+                    <div class="prompt-quote">
+                        "${prompt.related_quote}"
+                        <div class="prompt-source">— ${prompt.quote_source || 'Unknown'}</div>
+                    </div>
+                ` : ''}
+                <div class="prompt-context">${prompt.context_reason || ''}</div>
+            </div>
+        `;
+    } catch (err) {
+        area.innerHTML = `
+            <div class="prompt-card">
+                <p class="prompt-text">"Take three conscious breaths. With each exhale, release one thing you're holding onto. What remains when you let go?"</p>
+                <div class="prompt-quote">
+                    "Feelings come and go like clouds in a windy sky. Conscious breathing is my anchor."
+                    <div class="prompt-source">— Thich Nhat Hanh</div>
+                </div>
+                <div class="prompt-context">Fallback prompt — set up your GOOGLE_API_KEY for AI-generated prompts</div>
+            </div>
+        `;
+    }
+}
+
+document.getElementById('journal-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const content = document.getElementById('journal-content').value;
+    const data = {
+        date: document.getElementById('journal-date').value,
+        content: content,
+        word_count: content.trim().split(/\s+/).filter(w => w).length,
+        tradition: currentTradition,
+    };
+
+    try {
+        const result = await apiPost('/api/journal', data);
+        showToast(`Journal saved! (${result.word_count} words) 📝`);
+        document.getElementById('journal-form').reset();
+        document.getElementById('journal-date').value = today();
+        document.getElementById('journal-wc').textContent = '0 words';
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
+
+// ─── Reviews ───────────────────────────────────────────────────
+
+let currentPeriod = 'weekly';
+
+// Period tab switching
+document.querySelectorAll('.period-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentPeriod = tab.dataset.period;
+        loadReviewData();
+    });
+});
+
+// Generate review button
+document.getElementById('generate-review-btn').addEventListener('click', () => {
+    loadReview(currentPeriod);
+});
+
+async function loadReviewData() {
+    try {
+        const review = await apiGet(`/api/review/${currentPeriod}`);
+        const m = review.metrics || {};
+
+        // Top metrics
+        document.getElementById('m-km').textContent = m.total_km || 0;
+        document.getElementById('m-meditation').textContent = `${m.meditation_pct || 0}%`;
+        document.getElementById('m-energy').textContent = m.avg_energy || '--';
+        document.getElementById('m-books').textContent = m.books_finished || 0;
+
+        // Body category
+        document.getElementById('cat-run-km').textContent = `${m.total_km || 0} km`;
+        const runGoalKm = currentPeriod === 'weekly' ? 40 : currentPeriod === 'monthly' ? 160 : 480;
+        setProgressBar('cat-run-bar', m.total_km || 0, runGoalKm);
+        document.getElementById('cat-sleep-avg').textContent = `${m.avg_sleep || '--'} hrs`;
+        document.getElementById('cat-steps-pct').textContent = `${m.steps_pct || 0}%`;
+
+        // Mind category
+        document.getElementById('cat-deepwork').textContent = `${m.deep_work_hours || 0} hrs`;
+        document.getElementById('cat-books').textContent = m.books_finished || 0;
+
+        // Reading pace
+        try {
+            const stats = await apiGet('/api/books/stats');
+            document.getElementById('cat-books-pace').textContent =
+                `${stats.books_finished}/${stats.yearly_goal}`;
+            setProgressBar('cat-books-bar', stats.books_finished, stats.yearly_goal);
+        } catch (e) {
+            document.getElementById('cat-books-pace').textContent = '--';
+        }
+
+        // Spirit category
+        document.getElementById('cat-meditation-pct').textContent = `${m.meditation_pct || 0}%`;
+        setProgressBar('cat-meditation-bar', m.meditation_pct || 0, 100);
+        document.getElementById('cat-journal-count').textContent = m.journal_entries || 0;
+        document.getElementById('cat-alignment').textContent = `${m.avg_alignment || '--'}/10`;
+
+        // Five Non-Negotiables with bars
+        setNNWithBar('nn-sleep', 'nn-sleep-bar', m.sleep_consistency_pct, '%');
+        setNNWithBar('nn-meditation', 'nn-meditation-bar', m.meditation_pct, '%');
+        setNNWithBar('nn-steps', 'nn-steps-bar', m.steps_pct, '%');
+        setNNWithBar('nn-deepwork', 'nn-deepwork-bar', m.deep_work_pct || 0, '%');
+        setNNWithBar('nn-therapy', 'nn-therapy-bar', m.therapy_checkin ? 100 : 0, '%');
+
+    } catch (err) {
+        console.log('Could not load review data:', err);
+    }
+}
+
+function setProgressBar(barId, value, max) {
+    const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+    const bar = document.getElementById(barId);
+    if (bar) bar.style.width = `${pct}%`;
+}
+
+function setNNWithBar(valueId, barId, value, suffix = '') {
+    const el = document.getElementById(valueId);
+    const bar = document.getElementById(barId);
+    const v = value || 0;
+    el.textContent = `${v}${suffix}`;
+    el.className = `nn-value ${v >= 70 ? 'good' : v >= 40 ? 'warn' : 'bad'}`;
+    if (bar) {
+        bar.style.width = `${Math.min(v, 100)}%`;
+        bar.style.background = v >= 70 ? 'var(--accent)' : v >= 40 ? 'var(--accent-amber)' : 'var(--accent-rose)';
+    }
+}
+
+async function loadReview(period) {
+    const contentDiv = document.getElementById('review-content');
+    const bodyDiv = document.getElementById('review-body');
+    const titleEl = document.getElementById('review-title');
+
+    contentDiv.style.display = 'block';
+    const labels = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' };
+    titleEl.textContent = `${labels[period] || 'Weekly'} Review`;
+    bodyDiv.innerHTML = '<div class="loading-text"><div class="spinner"></div> Generating AI review...</div>';
+
+    try {
+        const review = await apiGet(`/api/review/${period}`);
+        const ai = review.ai_review || {};
+
+        bodyDiv.innerHTML = `
+            <div class="review-narrative">${ai.narrative_summary || 'No data available for this period yet. Start tracking to see your review!'}</div>
+            
+            ${ai.wins && ai.wins.length ? `
+                <div class="review-section">
+                    <h4>🏆 Wins</h4>
+                    <ul class="review-list">
+                        ${ai.wins.map(w => `<li>${w}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+
+            ${ai.patterns && ai.patterns.length ? `
+                <div class="review-section">
+                    <h4>🔍 Patterns</h4>
+                    <ul class="review-list">
+                        ${ai.patterns.map(p => `<li>${p}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+
+            ${ai.course_correction ? `
+                <div class="review-section">
+                    <h4>🔧 Course Correction</h4>
+                    <p style="color:var(--text-secondary);font-size:14px;line-height:1.6">${ai.course_correction}</p>
+                </div>
+            ` : ''}
+
+            ${ai.integration_question ? `
+                <div class="prompt-card" style="margin-top:16px">
+                    <p class="prompt-text">${ai.integration_question}</p>
+                    <div class="prompt-source">Reflection Question</div>
+                </div>
+            ` : ''}
+
+            ${ai.theme_of_month ? `
+                <div class="review-section">
+                    <h4>🌟 Theme</h4>
+                    <p style="color:var(--text-secondary);font-size:14px;line-height:1.6">${ai.theme_of_month}</p>
+                </div>
+            ` : ''}
+
+            ${ai.becoming_reflection ? `
+                <div class="review-section">
+                    <h4>🦋 Who Am I Becoming?</h4>
+                    <p style="color:var(--text-secondary);font-size:14px;line-height:1.6">${ai.becoming_reflection}</p>
+                </div>
+            ` : ''}
+
+            ${ai.next_month_intention || ai.next_quarter_theme ? `
+                <div class="review-section">
+                    <h4>➡️ Next Intention</h4>
+                    <p style="color:var(--text-secondary);font-size:14px;line-height:1.6">${ai.next_month_intention || ai.next_quarter_theme}</p>
+                </div>
+            ` : ''}
+        `;
+    } catch (err) {
+        bodyDiv.innerHTML = `<div class="loading-text">Could not generate review. Make sure GOOGLE_API_KEY is set.</div>`;
+    }
+}
+
+// Make loadReview available globally
+window.loadReview = loadReview;

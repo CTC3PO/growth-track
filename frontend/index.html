@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mindful Life AI — Personal Life Integration</title>
+    <meta name="description" content="Track your running, reading, journaling, and life goals with AI-powered insights">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>🧘 Mindful Life AI</h1>
+        <p class="subtitle">Track · Reflect · Grow</p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- ═══ CHECK-IN PAGE ═══ -->
+        <div id="page-checkin" class="page active">
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📋</span>
+                    <h3>Daily Check-In</h3>
+                </div>
+                <form id="checkin-form">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="checkin-date" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sleep (hours)</label>
+                            <input type="number" id="checkin-sleep" step="0.5" min="0" max="24" placeholder="7.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Steps</label>
+                            <input type="number" id="checkin-steps" min="0" placeholder="9000">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Deep Work (hrs)</label>
+                            <input type="number" id="checkin-deepwork" step="0.5" min="0" placeholder="3">
+                        </div>
+                        <div class="form-group">
+                            <label>Journal Words</label>
+                            <input type="number" id="checkin-journal-words" min="0" placeholder="500">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Energy (1-10)</label>
+                            <input type="range" id="checkin-energy" min="1" max="10" value="5">
+                            <span id="energy-val" style="font-size:12px;color:var(--text-secondary)">5</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Alignment (1-10)</label>
+                            <input type="range" id="checkin-alignment" min="1" max="10" value="5">
+                            <span id="alignment-val" style="font-size:12px;color:var(--text-secondary)">5</span>
+                        </div>
+                    </div>
+                    <div class="form-group toggle-group">
+                        <input type="checkbox" id="checkin-meditation" class="toggle">
+                        <label for="checkin-meditation"
+                            style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
+                            🧘 Meditated today
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="checkin-notes" rows="2" placeholder="How was your day?"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Check-In ✓</button>
+                </form>
+            </div>
+
+            <!-- Recent check-ins -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    <h3>Recent Check-Ins</h3>
+                </div>
+                <div id="checkin-history"></div>
+            </div>
+        </div>
+
+        <!-- ═══ RUNNING PAGE ═══ -->
+        <div id="page-running" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🏃</span>
+                    <h3>Log Run</h3>
+                </div>
+                <form id="run-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="run-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Distance (km)</label>
+                            <input type="number" id="run-distance" step="0.1" min="0" required placeholder="10.5">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Duration (min)</label>
+                            <input type="number" id="run-duration" step="1" min="0" placeholder="55">
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="run-type">
+                                <option value="easy">Easy</option>
+                                <option value="tempo">Tempo</option>
+                                <option value="interval">Interval</option>
+                                <option value="long">Long Run</option>
+                                <option value="recovery">Recovery</option>
+                                <option value="race">Race</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>How did it feel?</label>
+                        <textarea id="run-notes" rows="2" placeholder="Post-run thoughts, pain, mood..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log Run 🏃</button>
+                </form>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📈</span>
+                    <h3>Recent Runs</h3>
+                </div>
+                <div id="run-history"></div>
+            </div>
+        </div>
+
+        <!-- ═══ READING PAGE ═══ -->
+        <div id="page-reading" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📚</span>
+                    <h3>Log Book</h3>
+                </div>
+                <form id="book-form">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="book-title" required placeholder="The Heart of the Buddha's Teaching">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Author</label>
+                            <input type="text" id="book-author" required placeholder="Thich Nhat Hanh">
+                        </div>
+                        <div class="form-group">
+                            <label>Genre</label>
+                            <select id="book-genre">
+                                <option value="mindfulness">Mindfulness</option>
+                                <option value="stoicism">Stoicism</option>
+                                <option value="philosophy">Philosophy</option>
+                                <option value="fiction">Fiction</option>
+                                <option value="science">Science</option>
+                                <option value="biography">Biography</option>
+                                <option value="self_development">Self Development</option>
+                                <option value="history">History</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Rating (1-10)</label>
+                            <input type="number" id="book-rating" min="1" max="10" placeholder="8">
+                        </div>
+                        <div class="form-group toggle-group" style="padding-top:22px">
+                            <input type="checkbox" id="book-finished" class="toggle">
+                            <label for="book-finished"
+                                style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
+                                Finished
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Your reaction (2-3 sentences)</label>
+                        <textarea id="book-reaction" rows="2" placeholder="What stood out to you?"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Book 📚</button>
+                </form>
+            </div>
+
+            <!-- Reading stats -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🎯</span>
+                    <h3>2026 Reading Goal</h3>
+                </div>
+                <div id="reading-stats" class="loading-text">Loading...</div>
+            </div>
+
+            <!-- Reflection prompts (when a book is finished) -->
+            <div id="reflection-prompts-container" style="display:none">
+                <div class="prompt-card">
+                    <div class="card-header">
+                        <span class="icon">💭</span>
+                        <h3>Reflection Prompts</h3>
+                    </div>
+                    <div id="reflection-prompts"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ JOURNALING PAGE ═══ -->
+        <div id="page-journal" class="page">
+            <!-- AI Prompt -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">✨</span>
+                    <h3>Today's Prompt</h3>
+                </div>
+                <div class="tradition-pills">
+                    <button class="pill active" data-tradition="blended">🕊️ Blended</button>
+                    <button class="pill" data-tradition="thich_nhat_hanh">🪷 Thich Nhat Hanh</button>
+                    <button class="pill" data-tradition="stoicism">🏛️ Stoicism</button>
+                </div>
+                <div id="journal-prompt-area" class="loading-text">
+                    <div class="spinner"></div> Generating your prompt...
+                </div>
+                <button id="new-prompt-btn" class="btn btn-secondary" style="margin-top:12px">🔄 New Prompt</button>
+            </div>
+
+            <!-- Journal Entry -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📝</span>
+                    <h3>Write Entry</h3>
+                </div>
+                <form id="journal-form">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="journal-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Your thoughts</label>
+                        <textarea id="journal-content" rows="8" placeholder="Begin writing..."></textarea>
+                        <span id="journal-wc" style="font-size:11px;color:var(--text-secondary)">0 words</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Entry 📝</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ═══ REVIEW PAGE ═══ -->
+        <div id="page-review" class="page">
+
+            <!-- Period selector -->
+            <div class="review-period-tabs">
+                <button class="period-tab active" data-period="weekly">This Week</button>
+                <button class="period-tab" data-period="monthly">This Month</button>
+                <button class="period-tab" data-period="quarterly">Quarter</button>
+            </div>
+
+            <!-- Quick metrics row -->
+            <div id="review-metrics" class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="m-km">--</div>
+                    <div class="metric-label">KM Run</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="m-meditation">--</div>
+                    <div class="metric-label">Meditation</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="m-energy">--</div>
+                    <div class="metric-label">Energy</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="m-books">--</div>
+                    <div class="metric-label">Books</div>
+                </div>
+            </div>
+
+            <!-- Category progress cards -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🏃</span>
+                    <h3>Body</h3>
+                </div>
+                <div class="category-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">Distance</span>
+                        <span class="stat-value" id="cat-run-km">0 km</span>
+                    </div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar" id="cat-run-bar" style="width:0%"></div>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Sleep avg</span>
+                        <span class="stat-value" id="cat-sleep-avg">-- hrs</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Steps consistency</span>
+                        <span class="stat-value" id="cat-steps-pct">--%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🧠</span>
+                    <h3>Mind</h3>
+                </div>
+                <div class="category-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">Deep work</span>
+                        <span class="stat-value" id="cat-deepwork">0 hrs</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Books this period</span>
+                        <span class="stat-value" id="cat-books">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Yearly reading pace</span>
+                        <span class="stat-value" id="cat-books-pace">--</span>
+                    </div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar accent-blue" id="cat-books-bar" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🧘</span>
+                    <h3>Spirit</h3>
+                </div>
+                <div class="category-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">Meditation consistency</span>
+                        <span class="stat-value" id="cat-meditation-pct">--%</span>
+                    </div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar accent-teal" id="cat-meditation-bar" style="width:0%"></div>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Journal entries</span>
+                        <span class="stat-value" id="cat-journal-count">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg alignment</span>
+                        <span class="stat-value" id="cat-alignment">--/10</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Five Non-Negotiables -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">⚡</span>
+                    <h3>Non-Negotiables</h3>
+                </div>
+                <div id="non-negotiables">
+                    <div class="non-negotiable">
+                        <span class="nn-icon">😴</span>
+                        <span class="nn-label">Sleep 7+ hrs</span>
+                        <div class="nn-bar-wrap">
+                            <div class="nn-bar" id="nn-sleep-bar" style="width:0%"></div>
+                        </div>
+                        <span class="nn-value" id="nn-sleep">--%</span>
+                    </div>
+                    <div class="non-negotiable">
+                        <span class="nn-icon">🧘</span>
+                        <span class="nn-label">Meditation</span>
+                        <div class="nn-bar-wrap">
+                            <div class="nn-bar" id="nn-meditation-bar" style="width:0%"></div>
+                        </div>
+                        <span class="nn-value" id="nn-meditation">--%</span>
+                    </div>
+                    <div class="non-negotiable">
+                        <span class="nn-icon">👟</span>
+                        <span class="nn-label">9k Steps</span>
+                        <div class="nn-bar-wrap">
+                            <div class="nn-bar" id="nn-steps-bar" style="width:0%"></div>
+                        </div>
+                        <span class="nn-value" id="nn-steps">--%</span>
+                    </div>
+                    <div class="non-negotiable">
+                        <span class="nn-icon">💻</span>
+                        <span class="nn-label">Deep Work 3h</span>
+                        <div class="nn-bar-wrap">
+                            <div class="nn-bar" id="nn-deepwork-bar" style="width:0%"></div>
+                        </div>
+                        <span class="nn-value" id="nn-deepwork">--</span>
+                    </div>
+                    <div class="non-negotiable">
+                        <span class="nn-icon">💬</span>
+                        <span class="nn-label">Therapy</span>
+                        <div class="nn-bar-wrap">
+                            <div class="nn-bar" id="nn-therapy-bar" style="width:0%"></div>
+                        </div>
+                        <span class="nn-value" id="nn-therapy">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Review generate + content -->
+            <div class="card">
+                <button class="btn btn-primary" id="generate-review-btn">Generate AI Review</button>
+            </div>
+
+            <div id="review-content" style="display:none">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="icon">✨</span>
+                        <h3 id="review-title">Review</h3>
+                    </div>
+                    <div id="review-body"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <button class="nav-item active" data-page="checkin">
+            <span class="icon">📋</span>
+            Check-In
+        </button>
+        <button class="nav-item" data-page="running">
+            <span class="icon">🏃</span>
+            Running
+        </button>
+        <button class="nav-item" data-page="reading">
+            <span class="icon">📚</span>
+            Reading
+        </button>
+        <button class="nav-item" data-page="journal">
+            <span class="icon">📝</span>
+            Journal
+        </button>
+        <button class="nav-item" data-page="review">
+            <span class="icon">📊</span>
+            Review
+        </button>
+    </nav>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
