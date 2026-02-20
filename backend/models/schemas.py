@@ -143,12 +143,22 @@ class JournalPrompt(BaseModel):
 
 # ─── Travel ──────────────────────────────────────────────────────────
 
+class ExpenseCategory(str, Enum):
+    FOOD = "food"
+    TRANSPORT = "transport"
+    ACCOMMODATION = "accommodation"
+    ACTIVITIES = "activities"
+    SHOPPING = "shopping"
+    COFFEE = "coffee"
+    OTHER = "other"
+
+
 class TravelPlan(BaseModel):
     """Complete travel plan requiring user approval."""
     destination: str
     start_date: date
     end_date: date
-    status: str = "draft"  # draft | approved | completed
+    status: str = "draft"
     daily_itinerary: list[dict] = Field(default_factory=list)
     packing_list: list[str] = Field(default_factory=list)
     running_routes: list[dict] = Field(default_factory=list)
@@ -156,6 +166,41 @@ class TravelPlan(BaseModel):
     currency: Optional[str] = None
     training_adjustments: Optional[str] = None
     journal_prompts: list[str] = Field(default_factory=list)
+
+
+class TravelExpense(BaseModel):
+    """Single travel expense entry."""
+    date: date
+    amount: float = Field(ge=0)
+    currency: str = Field(default="VND", description="ISO currency code")
+    category: ExpenseCategory = ExpenseCategory.OTHER
+    description: Optional[str] = None
+    trip: Optional[str] = Field(None, description="Trip name for grouping")
+    amount_usd: Optional[float] = Field(None, description="Auto-converted USD amount")
+
+
+# ─── Social ──────────────────────────────────────────────────────────
+
+class SocialRelationship(str, Enum):
+    FRIEND = "friend"
+    ACQUAINTANCE = "acquaintance"
+    PROFESSIONAL = "professional"
+    COLLEAGUE = "colleague"
+    FAMILY = "family"
+    SOCIAL_EVENT = "social_event"
+    TRAVEL_BUDDY = "travel_buddy"
+    MENTOR = "mentor"
+
+
+class SocialConnection(BaseModel):
+    """Track a social interaction or meeting."""
+    date: date
+    name: str
+    category: SocialRelationship = SocialRelationship.FRIEND
+    context: Optional[str] = Field(None, description="Where/how you met or reconnected")
+    location: Optional[str] = None
+    notes: Optional[str] = None
+    follow_up: Optional[str] = Field(None, description="Any follow-up planned")
 
 
 # ─── Reviews ─────────────────────────────────────────────────────────

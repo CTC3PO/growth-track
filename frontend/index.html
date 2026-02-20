@@ -362,6 +362,28 @@
                 </div>
             </div>
 
+            <!-- Social -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🤝</span>
+                    <h3>Social</h3>
+                </div>
+                <div class="category-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">Interactions</span>
+                        <span class="stat-value" id="cat-social-interactions">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Unique people</span>
+                        <span class="stat-value" id="cat-social-people">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Top category</span>
+                        <span class="stat-value" id="cat-social-top">--</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Five Non-Negotiables -->
             <div class="card">
                 <div class="card-header">
@@ -428,6 +450,172 @@
             </div>
         </div>
 
+        <!-- ═══ TRAVEL PAGE ═══ -->
+        <div id="page-travel" class="page">
+            <!-- Currency converter -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">💱</span>
+                    <h3>Currency Converter</h3>
+                </div>
+                <div class="converter-row">
+                    <div class="converter-input">
+                        <input type="number" id="convert-amount" placeholder="100000" step="any">
+                        <select id="convert-from"></select>
+                    </div>
+                    <span class="converter-arrow">→</span>
+                    <div class="converter-input">
+                        <input type="text" id="convert-result" readonly placeholder="--">
+                        <select id="convert-to"></select>
+                    </div>
+                </div>
+                <div id="convert-rate" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:6px">
+                </div>
+            </div>
+
+            <!-- Log expense -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🧳</span>
+                    <h3>Log Expense</h3>
+                </div>
+                <form id="expense-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Amount</label>
+                            <input type="number" id="expense-amount" step="any" min="0" required placeholder="85000">
+                        </div>
+                        <div class="form-group">
+                            <label>Currency</label>
+                            <select id="expense-currency"></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="expense-category">
+                                <option value="food">🍜 Food</option>
+                                <option value="coffee">☕ Coffee</option>
+                                <option value="transport">🚕 Transport</option>
+                                <option value="accommodation">🏨 Accommodation</option>
+                                <option value="activities">🎟️ Activities</option>
+                                <option value="shopping">🛍️ Shopping</option>
+                                <option value="other">📦 Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="expense-date" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" id="expense-desc" placeholder="Bún bò, Grab to airport...">
+                    </div>
+                    <div class="form-group">
+                        <label>Trip name</label>
+                        <input type="text" id="expense-trip" placeholder="Vietnam Feb 2026">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log Expense 🧳</button>
+                </form>
+            </div>
+
+            <!-- Spending summary -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    <h3>Spending Summary</h3>
+                </div>
+                <div id="expense-summary" class="category-stats">
+                    <div class="loading-text">Log your first expense to see a summary</div>
+                </div>
+            </div>
+
+            <!-- Expense history -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📋</span>
+                    <h3>Recent Expenses</h3>
+                </div>
+                <div id="expense-history"></div>
+            </div>
+        </div>
+
+        <!-- ═══ SOCIAL PAGE ═══ -->
+        <div id="page-social" class="page">
+            <!-- Log connection -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🤝</span>
+                    <h3>Log Connection</h3>
+                </div>
+                <form id="social-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="social-name" required placeholder="John Doe">
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="social-category">
+                                <option value="friend">👫 Friend</option>
+                                <option value="acquaintance">👋 Acquaintance</option>
+                                <option value="professional">💼 Professional</option>
+                                <option value="colleague">🏢 Colleague</option>
+                                <option value="family">👨‍👩‍👧 Family</option>
+                                <option value="social_event">🎉 Social Event</option>
+                                <option value="travel_buddy">✈️ Travel Buddy</option>
+                                <option value="mentor">🎓 Mentor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Context</label>
+                            <input type="text" id="social-context" placeholder="Coffee catch-up, networking event...">
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="social-date" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Location</label>
+                        <input type="text" id="social-location" placeholder="Dalat, Zoom, WeWork...">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <input type="text" id="social-notes" placeholder="Key takeaways, topics discussed...">
+                    </div>
+                    <div class="form-group">
+                        <label>Follow-up</label>
+                        <input type="text" id="social-followup" placeholder="Send article, schedule next meet...">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log Connection 🤝</button>
+                </form>
+            </div>
+
+            <!-- Social stats -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    <h3>Social Stats (30 days)</h3>
+                </div>
+                <div id="social-stats" class="category-stats">
+                    <div class="loading-text">Log your first connection to see stats</div>
+                </div>
+            </div>
+
+            <!-- Recent connections -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📋</span>
+                    <h3>Recent Connections</h3>
+                </div>
+                <div id="social-history"></div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Navigation -->
@@ -447,6 +635,14 @@
         <button class="nav-item" data-page="journal">
             <span class="icon">📝</span>
             Journal
+        </button>
+        <button class="nav-item" data-page="travel">
+            <span class="icon">✈️</span>
+            Travel
+        </button>
+        <button class="nav-item" data-page="social">
+            <span class="icon">🤝</span>
+            Social
         </button>
         <button class="nav-item" data-page="review">
             <span class="icon">📊</span>

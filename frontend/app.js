@@ -21,6 +21,8 @@ document.querySelectorAll('.nav-item').forEach(btn => {
         if (page === 'journal') loadJournalPrompt();
         if (page === 'checkin') loadCheckinHistory();
         if (page === 'running') loadRunHistory();
+        if (page === 'travel') { initCurrencySelectors(); loadExpenses(); }
+        if (page === 'social') loadSocialData();
     });
 });
 
@@ -60,6 +62,8 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('checkin-date').value = today();
     document.getElementById('run-date').value = today();
     document.getElementById('journal-date').value = today();
+    document.getElementById('expense-date').value = today();
+    document.getElementById('social-date').value = today();
 
     // Range slider displays
     document.getElementById('checkin-energy').addEventListener('input', e => {
@@ -74,6 +78,11 @@ window.addEventListener('DOMContentLoaded', () => {
         const wc = e.target.value.trim().split(/\s+/).filter(w => w).length;
         document.getElementById('journal-wc').textContent = `${wc} words`;
     });
+
+    // Currency converter live update
+    document.getElementById('convert-amount').addEventListener('input', runConversion);
+    document.getElementById('convert-from').addEventListener('change', runConversion);
+    document.getElementById('convert-to').addEventListener('change', runConversion);
 
     // Load initial data
     loadCheckinHistory();
@@ -387,6 +396,15 @@ async function loadReviewData() {
         document.getElementById('cat-journal-count').textContent = m.journal_entries || 0;
         document.getElementById('cat-alignment').textContent = `${m.avg_alignment || '--'}/10`;
 
+        // Social category in review
+        try {
+            const socialStats = await apiGet('/api/social/stats');
+            document.getElementById('cat-social-interactions').textContent = socialStats.total_interactions || 0;
+            document.getElementById('cat-social-people').textContent = socialStats.unique_people || 0;
+            const topCat = Object.entries(socialStats.by_category || {}).sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('cat-social-top').textContent = topCat ? topCat[0].replace('_', ' ') : '--';
+        } catch (e) { /* no social data yet */ }
+
         // Five Non-Negotiables with bars
         setNNWithBar('nn-sleep', 'nn-sleep-bar', m.sleep_consistency_pct, '%');
         setNNWithBar('nn-meditation', 'nn-meditation-bar', m.meditation_pct, '%');
@@ -494,3 +512,202 @@ async function loadReview(period) {
 
 // Make loadReview available globally
 window.loadReview = loadReview;
+
+
+// ─── Travel / Expenses ─────────────────────────────────────────
+
+let currenciesLoaded = false;
+
+async function initCurrencySelectors() {
+    if (currenciesLoaded) return;
+    try {
+        const data = await apiGet('/api/travel/currencies');
+        const currencies = data.currencies || [];
+        const fromSel = document.getElementById('convert-from');
+        const toSel = document.getElementById('convert-to');
+        const expSel = document.getElementById('expense-currency');
+
+        currencies.forEach(c => {
+            fromSel.add(new Option(c, c));
+            toSel.add(new Option(c, c));
+            expSel.add(new Option(c, c));
+        });
+
+        // Defaults: VND → USD
+        fromSel.value = 'VND';
+        toSel.value = 'USD';
+        expSel.value = 'VND';
+        currenciesLoaded = true;
+    } catch (e) {
+        console.log('Could not load currencies');
+    }
+}
+
+async function runConversion() {
+    const amount = parseFloat(document.getElementById('convert-amount').value);
+    if (!amount || amount <= 0) {
+        document.getElementById('convert-result').value = '--';
+        document.getElementById('convert-rate').textContent = '';
+        return;
+    }
+    const from = document.getElementById('convert-from').value;
+    const to = document.getElementById('convert-to').value;
+
+    try {
+        const data = await apiGet(`/api/travel/convert?amount=${amount}&from_curr=${from}&to_curr=${to}`);
+        document.getElementById('convert-result').value = data.to_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('convert-rate').textContent = `1 ${from} = ${data.rate} ${to}`;
+    } catch (e) {
+        document.getElementById('convert-result').value = 'Error';
+    }
+}
+
+document.getElementById('expense-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+        date: document.getElementById('expense-date').value,
+        amount: parseFloat(document.getElementById('expense-amount').value),
+        currency: document.getElementById('expense-currency').value,
+        category: document.getElementById('expense-category').value,
+        description: document.getElementById('expense-desc').value || null,
+        trip: document.getElementById('expense-trip').value || null,
+    };
+
+    try {
+        const result = await apiPost('/api/travel/expenses', data);
+        const usdStr = result.amount_usd ? ` (~$${result.amount_usd})` : '';
+        showToast(`${result.message}${usdStr}`);
+        document.getElementById('expense-form').reset();
+        document.getElementById('expense-date').value = today();
+        if (currenciesLoaded) document.getElementById('expense-currency').value = 'VND';
+        loadExpenses();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
+async function loadExpenses() {
+    try {
+        const data = await apiGet('/api/travel/expenses');
+        const expenses = data.expenses || [];
+
+        // Spending summary
+        const summaryDiv = document.getElementById('expense-summary');
+        if (expenses.length === 0) {
+            summaryDiv.innerHTML = '<div class="loading-text">Log your first expense to see a summary</div>';
+        } else {
+            const cats = data.by_category || {};
+            const catIcons = { food: '🍜', coffee: '☕', transport: '🚕', accommodation: '🏨', activities: '🎟️', shopping: '🛍️', other: '📦' };
+            summaryDiv.innerHTML = `
+                <div class="summary-total">$${data.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2 })} USD</div>
+                ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => `
+                    <div class="stat-row">
+                        <span class="stat-label">${catIcons[cat] || '📦'} ${cat}</span>
+                        <span class="stat-value">$${amt.toFixed(2)}</span>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Expense history
+        const historyDiv = document.getElementById('expense-history');
+        if (expenses.length === 0) {
+            historyDiv.innerHTML = '<div class="loading-text">No expenses yet</div>';
+        } else {
+            historyDiv.innerHTML = expenses.slice(0, 20).map(e => `
+                <div class="history-item">
+                    <div class="history-item-left">
+                        <strong>${e.description || e.category}</strong>
+                        <div class="item-meta">${e.date} · ${e.trip || ''}</div>
+                        <span class="category-badge">${e.category}</span>
+                    </div>
+                    <div class="history-item-right">
+                        <div class="amount">${Number(e.amount).toLocaleString()} ${e.currency}</div>
+                        ${e.amount_usd ? `<div class="amount-usd">~$${e.amount_usd}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        document.getElementById('expense-history').innerHTML =
+            '<div class="loading-text">Could not load expenses</div>';
+    }
+}
+
+
+// ─── Social ────────────────────────────────────────────────────
+
+document.getElementById('social-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+        date: document.getElementById('social-date').value,
+        name: document.getElementById('social-name').value,
+        category: document.getElementById('social-category').value,
+        context: document.getElementById('social-context').value || null,
+        location: document.getElementById('social-location').value || null,
+        notes: document.getElementById('social-notes').value || null,
+        follow_up: document.getElementById('social-followup').value || null,
+    };
+
+    try {
+        const result = await apiPost('/api/social', data);
+        showToast(result.message || 'Connection logged!');
+        document.getElementById('social-form').reset();
+        document.getElementById('social-date').value = today();
+        loadSocialData();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
+async function loadSocialData() {
+    try {
+        const stats = await apiGet('/api/social/stats');
+        const connections = stats.connections || [];
+
+        // Social stats
+        const statsDiv = document.getElementById('social-stats');
+        if (stats.total_interactions === 0) {
+            statsDiv.innerHTML = '<div class="loading-text">Log your first connection to see stats</div>';
+        } else {
+            const cats = stats.by_category || {};
+            const catIcons = { friend: '👫', acquaintance: '👋', professional: '💼', colleague: '🏢', family: '👨‍👩‍👧', social_event: '🎉', travel_buddy: '✈️', mentor: '🎓' };
+            statsDiv.innerHTML = `
+                <div class="stat-row">
+                    <span class="stat-label">Total interactions</span>
+                    <span class="stat-value">${stats.total_interactions}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Unique people</span>
+                    <span class="stat-value">${stats.unique_people}</span>
+                </div>
+                ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([cat, count]) => `
+                    <div class="stat-row">
+                        <span class="stat-label">${catIcons[cat] || '👤'} ${cat.replace('_', ' ')}</span>
+                        <span class="stat-value">${count}</span>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Recent connections
+        const historyDiv = document.getElementById('social-history');
+        if (connections.length === 0) {
+            historyDiv.innerHTML = '<div class="loading-text">No connections logged yet</div>';
+        } else {
+            historyDiv.innerHTML = connections.slice(0, 20).map(c => `
+                <div class="history-item">
+                    <div class="history-item-left">
+                        <strong>${c.name}</strong>
+                        <div class="item-meta">${c.date}${c.location ? ' · ' + c.location : ''}${c.context ? ' · ' + c.context : ''}</div>
+                        <span class="category-badge">${(c.category || 'friend').replace('_', ' ')}</span>
+                        ${c.follow_up ? `<div class="item-meta" style="margin-top:4px;color:var(--accent)">↳ ${c.follow_up}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        document.getElementById('social-history').innerHTML =
+            '<div class="loading-text">Could not load social data</div>';
+    }
+}

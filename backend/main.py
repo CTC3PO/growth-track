@@ -20,7 +20,7 @@ load_dotenv()
 
 from models.schemas import (
     DailyCheckIn, RunLog, BookEntry, JournalEntry,
-    ChatMessage, ChatResponse, ReviewRequest,
+    ChatMessage, ChatResponse, ReviewRequest, TravelExpense, SocialConnection,
 )
 from services.firestore_service import save_document, get_documents, get_documents_by_date_range
 from agents.journaling_agent import generate_journal_prompt, generate_reflection_prompts_for_book
@@ -240,6 +240,136 @@ async def get_quarterly_review(year: int = None, quarter: int = None):
     year = year or today.year
     quarter = quarter or ((today.month - 1) // 3 + 1)
     return generate_quarterly_review(year, quarter)
+
+
+# ─── Travel / Expenses ──────────────────────────────────────────────
+
+# Static exchange rates (updated periodically, avoids external API dependency)
+EXCHANGE_RATES_TO_USD = {
+    "USD": 1.0,
+    "VND": 0.000039,
+    "EUR": 1.08,
+    "GBP": 1.26,
+    "JPY": 0.0067,
+    "THB": 0.028,
+    "KRW": 0.00074,
+    "SGD": 0.74,
+    "AUD": 0.65,
+    "CAD": 0.74,
+    "CHF": 1.11,
+    "CNY": 0.14,
+    "INR": 0.012,
+    "MYR": 0.22,
+    "PHP": 0.018,
+    "TWD": 0.031,
+    "IDR": 0.000063,
+    "LAK": 0.000046,
+    "KHR": 0.00024,
+    "MMK": 0.00048,
+}
+
+
+@app.post("/api/travel/expenses")
+async def add_expense(expense: TravelExpense):
+    """Log a travel expense."""
+    data = expense.model_dump()
+    # Auto-convert to USD
+    rate = EXCHANGE_RATES_TO_USD.get(expense.currency.upper(), None)
+    if rate:
+        data["amount_usd"] = round(expense.amount * rate, 2)
+    doc_id = save_document("travel_expenses", data)
+    return {
+        "status": "saved",
+        "id": doc_id,
+        "amount_usd": data.get("amount_usd"),
+        "message": f"Expense logged: {expense.amount} {expense.currency} 🧳",
+    }
+
+
+@app.get("/api/travel/expenses")
+async def get_expenses(trip: str = None, limit: int = 50):
+    """Get travel expenses, optionally filtered by trip name."""
+    expenses = get_documents("travel_expenses", limit=limit)
+    if trip:
+        expenses = [e for e in expenses if e.get("trip", "").lower() == trip.lower()]
+
+    total_usd = sum(e.get("amount_usd", 0) for e in expenses)
+    by_category = {}
+    for e in expenses:
+        cat = e.get("category", "other")
+        by_category[cat] = round(by_category.get(cat, 0) + e.get("amount_usd", 0), 2)
+
+    return {
+        "expenses": expenses,
+        "total_usd": round(total_usd, 2),
+        "by_category": by_category,
+        "count": len(expenses),
+    }
+
+
+@app.get("/api/travel/convert")
+async def convert_currency(amount: float, from_curr: str = "VND", to_curr: str = "USD"):
+    """Convert between currencies using static rates."""
+    from_rate = EXCHANGE_RATES_TO_USD.get(from_curr.upper())
+    to_rate = EXCHANGE_RATES_TO_USD.get(to_curr.upper())
+    if not from_rate or not to_rate:
+        supported = list(EXCHANGE_RATES_TO_USD.keys())
+        raise HTTPException(400, f"Unsupported currency. Supported: {supported}")
+
+    usd_amount = amount * from_rate
+    converted = round(usd_amount / to_rate, 2)
+    return {
+        "from_amount": amount,
+        "from_currency": from_curr.upper(),
+        "to_amount": converted,
+        "to_currency": to_curr.upper(),
+        "rate": round(from_rate / to_rate, 8),
+    }
+
+
+@app.get("/api/travel/currencies")
+async def list_currencies():
+    """List supported currencies."""
+    return {"currencies": list(EXCHANGE_RATES_TO_USD.keys())}
+
+
+# ─── Social ─────────────────────────────────────────────────────────
+
+@app.post("/api/social")
+async def log_social(connection: SocialConnection):
+    """Log a social interaction."""
+    doc_id = save_document("social", connection.model_dump())
+    return {"status": "saved", "id": doc_id, "message": f"Connection logged: {connection.name} 🤝"}
+
+
+@app.get("/api/social")
+async def get_social(limit: int = 50):
+    """Get social connections."""
+    return get_documents("social", limit=limit)
+
+
+@app.get("/api/social/stats")
+async def get_social_stats(start_date: str = None, end_date: str = None):
+    """Get social stats for a date range."""
+    if not start_date:
+        today_d = date.today()
+        start_date = (today_d - timedelta(days=30)).isoformat()
+        end_date = today_d.isoformat()
+
+    connections = get_documents_by_date_range("social", start_date, end_date)
+    by_category = {}
+    unique_people = set()
+    for c in connections:
+        cat = c.get("category", "friend")
+        by_category[cat] = by_category.get(cat, 0) + 1
+        unique_people.add(c.get("name", "").lower().strip())
+
+    return {
+        "total_interactions": len(connections),
+        "unique_people": len(unique_people),
+        "by_category": by_category,
+        "connections": connections,
+    }
 
 
 # ─── Chat (general AI interaction) ──────────────────────────────────
