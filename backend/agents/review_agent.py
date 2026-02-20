@@ -6,7 +6,7 @@ Based on the user's monthly checklist.pdf life integration system.
 
 from datetime import date, timedelta
 from services.gemini_service import generate_json
-from services.firestore_service import get_documents_by_date_range
+from services.firestore_service import get_documents_by_date_range, get_documents
 
 
 def _compute_metrics(checkins: list[dict], runs: list[dict], journals: list[dict], books: list[dict]) -> dict:
@@ -41,6 +41,56 @@ def _compute_metrics(checkins: list[dict], runs: list[dict], journals: list[dict
     total_journal_entries = len(journals)
     journal_total_words = sum(j.get("word_count", 0) for j in journals)
 
+    # Calculate Streaks using the most recent 60 checkins
+    all_recent_checkins = sorted(get_documents("checkins", limit=60), key=lambda x: x.get("date", ""), reverse=True)
+    
+    current_meditation_streak = 0
+    current_checkin_streak = 0
+    current_steps_streak = 0
+    
+    # Calculate consecutive days
+    if all_recent_checkins:
+        for c in all_recent_checkins:
+            # Basic checkin streak
+            current_checkin_streak += 1
+            
+            # Meditation streak
+            if c.get("meditation"):
+                current_meditation_streak += 1
+            else:
+                break # We only care about current active streak, simple approach
+                
+    # Recalculate robustly for consecutive dates
+    if all_recent_checkins:
+        current_checkin_streak = 1
+        current_meditation_streak = 1 if all_recent_checkins[0].get("meditation") else 0
+        current_steps_streak = 1 if (all_recent_checkins[0].get("steps") or 0) >= 9000 else 0
+        
+        last_date = date.fromisoformat(all_recent_checkins[0].get("date")) if all_recent_checkins[0].get("date") else None
+        
+        if last_date:
+            for i in range(1, len(all_recent_checkins)):
+                c = all_recent_checkins[i]
+                if not c.get("date"): continue
+                
+                curr_date = date.fromisoformat(c.get("date"))
+                expected_date = last_date - timedelta(days=1)
+                
+                if curr_date == expected_date:
+                    current_checkin_streak += 1
+                    
+                    if current_meditation_streak == i and c.get("meditation"):
+                        current_meditation_streak += 1
+                    
+                    if current_steps_streak == i and (c.get("steps") or 0) >= 9000:
+                        current_steps_streak += 1
+                        
+                    last_date = curr_date
+                elif curr_date == last_date:
+                    continue # Ignore duplicates for same day
+                else:
+                    break # Gap in days, streak broken
+
     return {
         "period_days": total_days,
         "checkins_logged": len(checkins),
@@ -50,14 +100,14 @@ def _compute_metrics(checkins: list[dict], runs: list[dict], journals: list[dict
         "avg_sleep_hours": round(sum(sleep_hours) / len(sleep_hours), 1) if sleep_hours else 0,
         "avg_sleep": round(sum(sleep_hours) / len(sleep_hours), 1) if sleep_hours else 0,
         # Five Non-Negotiables
-        "sleep_consistency_pct": round(sum(1 for s in sleep_hours if s >= 7) / total_days * 100),
+        "sleep_consistency_pct": round(sum(1 for s in sleep_hours if s >= 7) / total_days * 100) if total_days else 0,
         "meditation_days": meditation_days,
-        "meditation_pct": round(meditation_days / total_days * 100),
+        "meditation_pct": round(meditation_days / total_days * 100) if total_days else 0,
         "steps_9k_days": steps_days,
-        "steps_pct": round(steps_days / total_days * 100),
+        "steps_pct": round(steps_days / total_days * 100) if total_days else 0,
         "deep_work_hours": round(deep_work, 1),
-        "deep_work_daily_avg": round(deep_work / total_days, 1),
-        "deep_work_pct": round(sum(1 for c in checkins if (c.get("deep_work_hours") or 0) >= 3) / total_days * 100),
+        "deep_work_daily_avg": round(deep_work / total_days, 1) if total_days else 0,
+        "deep_work_pct": round(sum(1 for c in checkins if (c.get("deep_work_hours") or 0) >= 3) / total_days * 100) if total_days else 0,
         # Running
         "total_km": round(total_km, 1),
         "total_runs": total_runs,
@@ -68,6 +118,10 @@ def _compute_metrics(checkins: list[dict], runs: list[dict], journals: list[dict
         # Journaling
         "journal_entries": total_journal_entries,
         "journal_total_words": journal_total_words,
+        # Streaks
+        "current_checkin_streak": current_checkin_streak,
+        "current_meditation_streak": current_meditation_streak,
+        "current_steps_streak": current_steps_streak,
     }
 
 
@@ -112,6 +166,7 @@ METRICS:
 - Running: {metrics['total_km']}km across {metrics['total_runs']} runs
 - Books finished: {metrics['books_finished']}
 - Journal entries: {metrics['journal_entries']} ({metrics['journal_total_words']} words)
+- STREAKS (Active): Check-ins: {metrics['current_checkin_streak']} days, Meditation: {metrics['current_meditation_streak']} days, 9k Steps: {metrics['current_steps_streak']} days.
 
 Generate an honest, warm weekly review."""
 
@@ -276,4 +331,5 @@ def _format_metrics(metrics: dict) -> str:
 - Deep work: {metrics['deep_work_hours']} hrs
 - Running: {metrics['total_km']}km across {metrics['total_runs']} runs
 - Books finished: {metrics['books_finished']}
-- Journal: {metrics['journal_entries']} entries ({metrics['journal_total_words']} words)"""
+- Journal: {metrics['journal_entries']} entries ({metrics['journal_total_words']} words)
+- Active Streaks: Check-ins {metrics['current_checkin_streak']}d, Meditation {metrics['current_meditation_streak']}d, Steps {metrics['current_steps_streak']}d"""

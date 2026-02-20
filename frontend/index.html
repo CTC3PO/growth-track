@@ -3,9 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
     <title>Mindful Life AI — Personal Life Integration</title>
     <meta name="description" content="Track your running, reading, journaling, and life goals with AI-powered insights">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2a9d6e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/static/icon-512.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
@@ -16,10 +24,10 @@
     <!-- Toast notification -->
     <div id="toast" class="toast"></div>
 
-    <!-- Header -->
+    <!-- Header greeting -->
     <div class="header">
-        <h1>🧘 Mindful Life AI</h1>
-        <p class="subtitle">Track · Reflect · Grow</p>
+        <div class="greeting" id="greeting">Hello, Chau 👋</div>
+        <div class="subtitle" id="greeting-sub">Ready to log your day</div>
     </div>
 
     <!-- Main Content -->
@@ -48,9 +56,19 @@
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Deep Work (hrs)</label>
-                            <input type="number" id="checkin-deepwork" step="0.5" min="0" placeholder="3">
+                        <div class="form-group" style="flex: 2;">
+                            <label>Deep Work (Goal: 5hrs)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="number" id="checkin-deepwork" step="0.5" min="0" placeholder="3"
+                                    style="width: 70px;">
+                                <select id="checkin-deepwork-category" style="flex: 1;">
+                                    <option value="school">School</option>
+                                    <option value="dsa">DSA</option>
+                                    <option value="courses">Courses</option>
+                                    <option value="job">Job</option>
+                                    <option value="others">Others</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Journal Words</label>
@@ -143,6 +161,74 @@
                 </div>
                 <div id="run-history"></div>
             </div>
+
+            <!-- Strava Integration POC -->
+            <div class="card"
+                style="background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7)); border-left: 4px solid #fc4c02;">
+                <div class="card-header" style="border-bottom:none; padding-bottom:0;">
+                    <span class="icon">🟧</span>
+                    <h3 style="color:#fc4c02;">Strava Sync</h3>
+                </div>
+                <div style="padding: 10px 0;">
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Connect your Strava
+                        account to automatically sync your running data and generate AI-powered training plans.</p>
+                    <button class="btn btn-strava"
+                        onclick="alert('In a real app, this redirects to Strava OAuth:\\nhttps://www.strava.com/oauth/authorize?client_id=YOUR_ID&redirect_uri=YOUR_URL&response_type=code&scope=activity:read_all')">Connect
+                        with Strava</button>
+                    <!-- Proof of concept embed iframe -->
+                    <div style="margin-top: 20px; text-align: center;">
+                        <iframe height="160" width="300" frameborder="0" allowtransparency="true" scrolling="no"
+                            src="https://www.strava.com/athletes/12345/latest-rides/ab12cd34ef56"></iframe>
+                        <p style="font-size: 11px; color: var(--text-muted);">(Mock Embed Profile via iframe)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mock AI Plan -->
+            <div class="card" style="border-left: 4px solid var(--accent-amber);">
+                <div class="card-header" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="icon">✨</span>
+                        <h3>AI Training Plan</h3>
+                    </div>
+                </div>
+                <div style="padding: 10px 0;">
+                    <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks
+                        (Sub 2:00)</p>
+
+                    <!-- Week Progress Bar -->
+                    <div style="margin-bottom: 12px;">
+                        <div
+                            style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                            <span>Week 2</span>
+                            <span>5 weeks to go</span>
+                        </div>
+                        <div
+                            style="width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+                            <div style="width: 33%; height: 100%; background: var(--accent); border-radius: 3px;"></div>
+                        </div>
+                    </div>
+
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Based on your recent
+                        Strava pace (avg 6:15/km), you have the endurance but need to sharpen speed.</p>
+
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; font-size: 13px;">
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px;">
+                            <li><strong style="color: var(--text-muted);">Mon:</strong> Rest 🧘</li>
+                            <li><strong style="color: var(--accent-blue);">Tue:</strong> 6km Tempo (Pace: 5:40/km) ⏱️
+                            </li>
+                            <li><strong style="color: var(--accent-amber);">Wed:</strong> Lower Body Strength (Legs)
+                                🏋️‍♂️</li>
+                            <li><strong style="color: var(--accent);">Thu:</strong> 8km Easy (Pace: 6:30/km) 👟</li>
+                            <li><strong style="color: var(--accent-rose);">Fri:</strong> 6x400m Intervals (Speed work)
+                                💨</li>
+                            <li><strong style="color: var(--text-muted);">Sat:</strong> Rest</li>
+                            <li><strong style="color: var(--accent-dark);">Sun:</strong> 16km Long Run (Pace: 6:45/km)
+                                🏃‍♂️</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ═══ READING PAGE ═══ -->
@@ -198,6 +284,21 @@
                 </form>
             </div>
 
+            <!-- Goodreads Integration POC -->
+            <div class="card" style="border-left: 4px solid #cc9966;">
+                <div class="card-header" style="border-bottom:none; padding-bottom:0;">
+                    <span class="icon">📖</span>
+                    <h3 style="color:#cc9966;">Goodreads Sync</h3>
+                </div>
+                <div style="padding: 10px 0;">
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Link your Goodreads
+                        account to automatically sync your reading list and reviews.</p>
+                    <button type="button" class="btn btn-secondary"
+                        onclick="alert('In a real app, this connects to the Goodreads API.')">Connect with
+                        Goodreads</button>
+                </div>
+            </div>
+
             <!-- Reading stats -->
             <div class="card">
                 <div class="card-header">
@@ -222,20 +323,22 @@
         <!-- ═══ JOURNALING PAGE ═══ -->
         <div id="page-journal" class="page">
             <!-- AI Prompt -->
-            <div class="card">
+            <!-- Gratitude Bucket -->
+            <div class="card" style="border-left: 4px solid var(--accent);">
                 <div class="card-header">
-                    <span class="icon">✨</span>
-                    <h3>Today's Prompt</h3>
+                    <span class="icon">🙏</span>
+                    <h3>Gratitude Bucket</h3>
                 </div>
-                <div class="tradition-pills">
-                    <button class="pill active" data-tradition="blended">🕊️ Blended</button>
-                    <button class="pill" data-tradition="thich_nhat_hanh">🪷 Thich Nhat Hanh</button>
-                    <button class="pill" data-tradition="stoicism">🏛️ Stoicism</button>
-                </div>
-                <div id="journal-prompt-area" class="loading-text">
-                    <div class="spinner"></div> Generating your prompt...
-                </div>
-                <button id="new-prompt-btn" class="btn btn-secondary" style="margin-top:12px">🔄 New Prompt</button>
+                <form id="gratitude-form" style="padding-top: 10px;">
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">List 3-10 things you
+                        are grateful for today. These will be compiled into a word cloud in your weekly report.</p>
+                    <div class="form-group">
+                        <textarea id="gratitude-list" rows="4"
+                            placeholder="1. Having a quiet morning...&#10;2. A good cup of coffee..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="background: var(--accent);">Save Gratitude
+                        ✨</button>
+                </form>
             </div>
 
             <!-- Journal Entry -->
@@ -267,6 +370,16 @@
                 <button class="period-tab active" data-period="weekly">This Week</button>
                 <button class="period-tab" data-period="monthly">This Month</button>
                 <button class="period-tab" data-period="quarterly">Quarter</button>
+            </div>
+
+            <!-- Global Streaks -->
+            <div
+                style="background: var(--bg-card); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
+                <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">🔥</span> Daily Check-In Streak
+                </div>
+                <div style="color: var(--accent); font-weight: 700; font-size: 18px;" id="global-checkin-streak">-- days
+                </div>
             </div>
 
             <!-- Quick metrics row -->
@@ -311,6 +424,12 @@
                         <span class="stat-label">Steps consistency</span>
                         <span class="stat-value" id="cat-steps-pct">--%</span>
                     </div>
+                    <div class="stat-row" style="margin-top: -6px;">
+                        <span class="stat-label" style="font-size: 12px; color: var(--accent-amber);">Current
+                            streak</span>
+                        <span class="stat-value" id="cat-steps-streak"
+                            style="font-size: 12px; font-weight: 600; color: var(--accent-amber);">-- 🔥</span>
+                    </div>
                 </div>
             </div>
 
@@ -350,6 +469,12 @@
                     </div>
                     <div class="progress-bar-wrap">
                         <div class="progress-bar accent-teal" id="cat-meditation-bar" style="width:0%"></div>
+                    </div>
+                    <div class="stat-row" style="margin-top: -6px;">
+                        <span class="stat-label" style="font-size: 12px; color: var(--accent-teal);">Current
+                            streak</span>
+                        <span class="stat-value" id="cat-meditation-streak"
+                            style="font-size: 12px; font-weight: 600; color: var(--accent-teal);">-- 🔥</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">Journal entries</span>
@@ -620,33 +745,67 @@
 
     <!-- Navigation -->
     <nav class="nav">
-        <button class="nav-item active" data-page="checkin">
-            <span class="icon">📋</span>
-            Check-In
+        <!-- Check-in -->
+        <button class="nav-item active" data-page="checkin" aria-label="Check-In">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
         </button>
-        <button class="nav-item" data-page="running">
-            <span class="icon">🏃</span>
-            Running
+        <!-- Running -->
+        <button class="nav-item" data-page="running" aria-label="Running">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
         </button>
-        <button class="nav-item" data-page="reading">
-            <span class="icon">📚</span>
-            Reading
+        <!-- Reading -->
+        <button class="nav-item" data-page="reading" aria-label="Reading">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
         </button>
-        <button class="nav-item" data-page="journal">
-            <span class="icon">📝</span>
-            Journal
+        <!-- Journal -->
+        <button class="nav-item" data-page="journal" aria-label="Journal">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
         </button>
-        <button class="nav-item" data-page="travel">
-            <span class="icon">✈️</span>
-            Travel
+        <!-- Travel -->
+        <button class="nav-item" data-page="travel" aria-label="Travel">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.7l-1 2.5L9 11l-4 4-3-1-1 1 4 4 1-1-1-3 4-4 1.6 6.3c.5-.2.8-.6.7-1.1z">
+                </path>
+            </svg>
         </button>
-        <button class="nav-item" data-page="social">
-            <span class="icon">🤝</span>
-            Social
+        <!-- Social -->
+        <button class="nav-item" data-page="social" aria-label="Social">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
         </button>
-        <button class="nav-item" data-page="review">
-            <span class="icon">📊</span>
-            Review
+        <!-- Review -->
+        <button class="nav-item" data-page="review" aria-label="Review">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
         </button>
     </nav>
 

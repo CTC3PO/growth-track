@@ -53,6 +53,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include the new Strava router
+app.include_router(strava_router, prefix="/api/strava")
+
 
 # ─── Health Check ────────────────────────────────────────────────────
 
@@ -398,6 +401,17 @@ Be warm, honest, and insightful. Keep responses concise."""
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.exists(frontend_dir):
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+
+    @app.get("/manifest.json")
+    async def serve_manifest():
+        return FileResponse(os.path.join(frontend_dir, "manifest.json"))
+
+    @app.get("/sw.js")
+    async def serve_sw():
+        return FileResponse(
+            os.path.join(frontend_dir, "sw.js"),
+            media_type="application/javascript",
+        )
 
     @app.get("/")
     async def serve_frontend():

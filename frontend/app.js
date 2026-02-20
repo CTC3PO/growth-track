@@ -270,6 +270,74 @@ async function loadReadingStats() {
 
 // ─── Journaling ────────────────────────────────────────────────
 
+const templatePrompts = [
+    // Original Prompts
+    "What is something you need to let go of?",
+    "What are you most grateful for today?",
+    "How have you grown in the last year?",
+    "What would you do if you knew you couldn't fail?",
+    "What boundary do you need to set or enforce?",
+    "Describe your ideal day from morning to night.",
+    "What is a belief you hold that is no longer serving you?",
+    "What are three things you love about yourself?",
+    "Write a letter to your younger self.",
+    "Write a letter to your future self.",
+    "What is your biggest fear, and why?",
+    "What brings you the most joy right now?",
+    "What is a challenge you recently overcame?",
+    "How can you be kinder to yourself?",
+    "What does success look like to you?",
+    "What is a habit you want to start or stop?",
+    "Describe a moment when you felt truly alive.",
+    "What are you avoiding right now?",
+    "Who is someone you admire, and what qualities do they have?",
+    "What would make today great?",
+    "What did you learn today?",
+    "How are you feeling physically, emotionally, and mentally?",
+    "What is a goal you have for this month?",
+    "What is a memory that makes you smile?",
+    "What do you need more of in your life?",
+    "What do you need less of in your life?",
+
+    // Prompts from Reddit (/r/Journaling)
+    "Are you taking enough risks in your life? Would you like to change your relationship to risk?",
+    "At what point in your life have you had the highest self-esteem?",
+    "Consider and reflect on what might be your 'favorite failure.'",
+    "How can you reframe one of your biggest regrets in life?",
+    "How did you bond with one of the best friends you've ever had?",
+    "How do the opinions of others affect you?",
+    "How do you feel about asking for help?",
+    "How much do your current goals reflect your desires vs someone else's?",
+    "In what ways are you currently self-sabotaging or holding yourself back?",
+    "Take a task that you've been dreading and break it up into the smallest possible steps.",
+    "Think about the last time you cried. If those tears could talk, what would they have said?",
+    "What are some small things that other people have done that really make your day?",
+    "What are some things that frustrate you? Can you find any values that explain why they bug you so much?",
+    "What biases do you need to work on?",
+    "What could you do to make your life more meaningful?",
+    "What did you learn from your last relationship? If you haven't had one, what could you learn from a relationship that you've observed?",
+    "What do you need to give yourself more credit for?",
+    "What does 'ready' feel like to you? How did you know you were ready for a major step that you have taken in your life?",
+    "What happens when you are angry?",
+    "What is a boundary that you need to draw in your life?",
+    "What is a positive habit that you would really like to cultivate? Why and how could you get started?",
+    "What is a view about the world that has changed for you as you've gotten older?",
+    "What is holding you back from being more productive at the moment? What can you do about that?",
+    "What is something that you grew out of that meant a lot to you at the time?",
+    "What is something that you have a hard time being honest about, even to those you trust the most? Why?",
+    "What pet peeves do you have? Any idea why they drive you so crazy?",
+    "What was a seemingly inconsequential decision that made a big impact in your life?",
+    "When was the last time you had to hold your tongue? What would you have said if you didn't have to?",
+    "Which emotions in others do you have a difficult time being around? Why?",
+    "Who is somebody that you miss? Why?",
+    "Who is the most difficult person in your life and why?",
+    "Write a letter to your own body, thanking it for something amazing it has done.",
+    "Write about a mistake that taught you something about yourself.",
+    "Write about an aspect of your personality that you appreciate in other people as well.",
+    "Write about something (or someone) that is currently tempting you.",
+    "Write an apology to yourself for a time you treated yourself poorly."
+];
+
 let currentTradition = 'blended';
 
 document.querySelectorAll('.pill').forEach(pill => {
@@ -283,6 +351,21 @@ document.querySelectorAll('.pill').forEach(pill => {
 
 document.getElementById('new-prompt-btn').addEventListener('click', () => {
     loadJournalPrompt();
+});
+
+document.getElementById('shuffle-local-prompt-btn')?.addEventListener('click', () => {
+    const area = document.getElementById('journal-prompt-area');
+    const randomPrompt = templatePrompts[Math.floor(Math.random() * templatePrompts.length)];
+    area.innerHTML = `
+        <div class="prompt-card">
+            <p class="prompt-text">"${randomPrompt}"</p>
+            <div class="prompt-quote">
+                100 Journaling Prompts for Reflection
+                <div class="prompt-source">— decideyourlegacy.com</div>
+            </div>
+            <div class="prompt-context">Template Suggestion</div>
+        </div>
+    `;
 });
 
 async function loadJournalPrompt() {
@@ -375,6 +458,9 @@ async function loadReviewData() {
         setProgressBar('cat-run-bar', m.total_km || 0, runGoalKm);
         document.getElementById('cat-sleep-avg').textContent = `${m.avg_sleep || '--'} hrs`;
         document.getElementById('cat-steps-pct').textContent = `${m.steps_pct || 0}%`;
+        if (document.getElementById('cat-steps-streak')) {
+            document.getElementById('cat-steps-streak').textContent = `${m.current_steps_streak || 0} 🔥`;
+        }
 
         // Mind category
         document.getElementById('cat-deepwork').textContent = `${m.deep_work_hours || 0} hrs`;
@@ -393,8 +479,16 @@ async function loadReviewData() {
         // Spirit category
         document.getElementById('cat-meditation-pct').textContent = `${m.meditation_pct || 0}%`;
         setProgressBar('cat-meditation-bar', m.meditation_pct || 0, 100);
+        if (document.getElementById('cat-meditation-streak')) {
+            document.getElementById('cat-meditation-streak').textContent = `${m.current_meditation_streak || 0} 🔥`;
+        }
         document.getElementById('cat-journal-count').textContent = m.journal_entries || 0;
         document.getElementById('cat-alignment').textContent = `${m.avg_alignment || '--'}/10`;
+
+        // Tracking Streak (Global)
+        if (document.getElementById('global-checkin-streak')) {
+            document.getElementById('global-checkin-streak').textContent = `${m.current_checkin_streak || 0} days`;
+        }
 
         // Social category in review
         try {
