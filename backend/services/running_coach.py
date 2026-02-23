@@ -37,7 +37,7 @@ async def generate_adjusted_plan(access_token: str) -> dict:
     """
 
     # 3. Format recent runs for the prompt
-    runs_text = "\\n".join([
+    runs_text = "\n".join([
         f"- {r['date']}: {r['name']} | {r['distance_km']}km in {r['moving_time_str']} (Pace: {r['pace']} min/km)"
         for r in recent_runs
     ])

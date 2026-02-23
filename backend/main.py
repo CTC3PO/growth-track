@@ -23,8 +23,9 @@ from models.schemas import (
     ChatMessage, ChatResponse, ReviewRequest, TravelExpense, SocialConnection,
 )
 from services.firestore_service import save_document, get_documents, get_documents_by_date_range
-from services.journal_agent import generate_journal_prompt, generate_reflection_prompts_for_book
-from agents.review_agent import generate_weekly_review, generate_monthly_review, generate_quarterly_review
+from services.journal_agent import generate_journal_prompt
+from services.reading_agent import generate_reflection_prompts_for_book
+from services.review_agent import generate_weekly_review, generate_monthly_review, generate_quarterly_review
 from services.strava_service import router as strava_router
 
 
@@ -131,6 +132,26 @@ async def add_book(book: BookEntry):
             pass
 
     return result
+
+
+@app.get("/api/books/search")
+async def search_books(q: str):
+    """Search for books via OpenLibrary API."""
+    import httpx
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"https://openlibrary.org/search.json?q={q}&limit=5")
+            data = response.json()
+            results = []
+            for doc in data.get("docs", []):
+                results.append({
+                    "title": doc.get("title", ""),
+                    "author": doc.get("author_name", [""])[0] if doc.get("author_name") else "",
+                    "cover_i": doc.get("cover_i")
+                })
+            return {"status": "success", "results": results}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to search books: {str(e)}"}
 
 
 @app.get("/api/books")
@@ -245,7 +266,7 @@ async def get_journal_prompt(tradition: str = "blended"):
 # ─── Reviews ─────────────────────────────────────────────────────────
 
 @app.get("/api/review/weekly")
-async def get_weekly_review(start_date: str = None):
+async def get_weekly_review(start_date: str = None, generate: bool = False):
     """Generate a weekly review. Defaults to current week."""
     if not start_date:
         today = date.today()
@@ -253,25 +274,25 @@ async def get_weekly_review(start_date: str = None):
         start_date = start.isoformat()
     end_date = (date.fromisoformat(start_date) + timedelta(days=6)).isoformat()
 
-    return generate_weekly_review(start_date, end_date)
+    return generate_weekly_review(start_date, end_date, generate_ai=generate)
 
 
 @app.get("/api/review/monthly")
-async def get_monthly_review(year: int = None, month: int = None):
+async def get_monthly_review(year: int = None, month: int = None, generate: bool = False):
     """Generate a monthly review."""
     today = date.today()
     year = year or today.year
     month = month or today.month
-    return generate_monthly_review(year, month)
+    return generate_monthly_review(year, month, generate_ai=generate)
 
 
 @app.get("/api/review/quarterly")
-async def get_quarterly_review(year: int = None, quarter: int = None):
+async def get_quarterly_review(year: int = None, quarter: int = None, generate: bool = False):
     """Generate a quarterly review."""
     today = date.today()
     year = year or today.year
     quarter = quarter or ((today.month - 1) // 3 + 1)
-    return generate_quarterly_review(year, quarter)
+    return generate_quarterly_review(year, quarter, generate_ai=generate)
 
 
 # ─── Travel / Expenses ──────────────────────────────────────────────

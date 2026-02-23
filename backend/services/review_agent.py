@@ -18,12 +18,12 @@ def _compute_metrics(checkins: list[dict], runs: list[dict], journals: list[dict
     alignments = [c.get("alignment", 0) for c in checkins if c.get("alignment")]
     sleep_hours = [c.get("sleep_hours", 0) for c in checkins if c.get("sleep_hours")]
     meditation_days = sum(1 for c in checkins if c.get("meditation"))
-    deep_work = sum(c.get("deep_work_hours", 0) for c in checkins)
-    journal_words = sum(c.get("journal_words", 0) for c in checkins)
+    deep_work = sum(float(c.get("deep_work_hours") or 0) for c in checkins)
+    journal_words = sum(int(c.get("journal_words") or 0) for c in checkins)
     steps_days = sum(1 for c in checkins if (c.get("steps") or 0) >= 9000)
 
     # Running metrics
-    total_km = sum(r.get("distance_km", 0) for r in runs)
+    total_km = sum(float(r.get("distance_km") or 0) for r in runs)
     total_runs = len(runs)
     run_types = {}
     for r in runs:
@@ -39,7 +39,7 @@ def _compute_metrics(checkins: list[dict], runs: list[dict], journals: list[dict
 
     # Journal metrics
     total_journal_entries = len(journals)
-    journal_total_words = sum(j.get("word_count", 0) for j in journals)
+    journal_total_words = sum(int(j.get("word_count") or 0) for j in journals)
 
     # Calculate Streaks using the most recent 60 checkins
     all_recent_checkins = sorted(get_documents("checkins", limit=60), key=lambda x: x.get("date", ""), reverse=True)
@@ -125,10 +125,10 @@ def _compute_metrics(checkins: list[dict], runs: list[dict], journals: list[dict
     }
 
 
-def generate_weekly_review(start_date: str, end_date: str) -> dict:
+def generate_weekly_review(start_date: str, end_date: str, generate_ai: bool = False) -> dict:
     """
     Generate a weekly review from check-in data.
-    Returns metrics + AI-generated narrative.
+    Returns metrics + optionally AI-generated narrative.
     """
     checkins = get_documents_by_date_range("checkins", start_date, end_date)
     runs = get_documents_by_date_range("runs", start_date, end_date)
@@ -170,17 +170,26 @@ METRICS:
 
 Generate an honest, warm weekly review."""
 
-    try:
-        ai_review = generate_json(user_prompt, system_instruction=system_prompt)
-    except Exception as e:
+    if not generate_ai:
         ai_review = {
-            "narrative_summary": "Review data collected. AI summary unavailable.",
+            "narrative_summary": "Click 'Generate AI Review' to get personalized insights from your data.",
             "wins": [],
             "patterns": [],
-            "course_correction": "Keep logging daily check-ins for better insights.",
-            "integration_question": "Where did I feel most myself this week?",
-            "error": str(e),
+            "course_correction": "",
+            "integration_question": ""
         }
+    else:
+        try:
+            ai_review = generate_json(user_prompt, system_instruction=system_prompt)
+        except Exception as e:
+            ai_review = {
+                "narrative_summary": "Review data collected. AI summary unavailable.",
+                "wins": [],
+                "patterns": [],
+                "course_correction": "Keep logging daily check-ins for better insights.",
+                "integration_question": "Where did I feel most myself this week?",
+                "error": str(e),
+            }
 
     return {
         "period": "weekly",
@@ -191,7 +200,7 @@ Generate an honest, warm weekly review."""
     }
 
 
-def generate_monthly_review(year: int, month: int) -> dict:
+def generate_monthly_review(year: int, month: int, generate_ai: bool = False) -> dict:
     """Generate a monthly review with progress toward yearly goals."""
     start = date(year, month, 1)
     if month == 12:
@@ -240,10 +249,15 @@ YEAR-TO-DATE PROGRESS:
 
 Generate a thoughtful monthly review."""
 
-    try:
-        ai_review = generate_json(user_prompt, system_instruction=system_prompt)
-    except Exception as e:
-        ai_review = {"narrative_summary": "Monthly data collected.", "error": str(e)}
+    if not generate_ai:
+        ai_review = {
+            "narrative_summary": "Click 'Generate AI Review' to get your monthly summary.",
+        }
+    else:
+        try:
+            ai_review = generate_json(user_prompt, system_instruction=system_prompt)
+        except Exception as e:
+            ai_review = {"narrative_summary": "Monthly data collected.", "error": str(e)}
 
     return {
         "period": "monthly",
@@ -256,7 +270,7 @@ Generate a thoughtful monthly review."""
     }
 
 
-def generate_quarterly_review(year: int, quarter: int) -> dict:
+def generate_quarterly_review(year: int, quarter: int, generate_ai: bool = False) -> dict:
     """
     Generate a quarterly review aligned with the user's life tracker.
     Covers Physical, Intellectual, Spiritual, Social, Career dimensions.
@@ -306,10 +320,15 @@ Respond in JSON with:
 
 Generate a deep quarterly integration review."""
 
-    try:
-        ai_review = generate_json(user_prompt, system_instruction=system_prompt)
-    except Exception as e:
-        ai_review = {"narrative_summary": "Quarterly data collected.", "error": str(e)}
+    if not generate_ai:
+        ai_review = {
+            "narrative_summary": "Click 'Generate AI Review' to get your quarterly summary.",
+        }
+    else:
+        try:
+            ai_review = generate_json(user_prompt, system_instruction=system_prompt)
+        except Exception as e:
+            ai_review = {"narrative_summary": "Quarterly data collected.", "error": str(e)}
 
     return {
         "period": "quarterly",

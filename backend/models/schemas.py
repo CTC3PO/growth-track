@@ -130,6 +130,7 @@ class JournalEntry(BaseModel):
     tradition: Optional[PromptTradition] = None
     mood: Optional[int] = Field(None, ge=1, le=10)
     tags: list[str] = Field(default_factory=list)
+    themes: list[str] = Field(default_factory=list)
 
 
 class JournalPrompt(BaseModel):

@@ -1,31 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f0f4f8;
-    /* Soft blue-grey tint */
-    --bg-card: rgba(255, 255, 255, 0.85);
-    /* Glass effect */
-    --bg-input: #f8fafc;
-    --accent: #2a9d6e;
-    /* Green */
-    --accent-light: #e6f5ee;
-    --accent-dark: #1e7a55;
-    --accent-amber: #f59e0b;
-    /* Warmer amber */
-    --accent-rose: #ef4444;
-    /* Vibrant rose */
+    --bg-primary: #f9fafb;
+    /* Off-white for fresh feel */
+    --bg-secondary: #f3f4f6;
+    --bg-card: #ffffff;
+    /* Solid white */
+    --bg-input: #f3f4f6;
+    /* Softer gray for inputs */
+    --accent: #d4f826;
+    /* Vibrant Ramp-like Yellow-Green */
+    --accent-light: #f5fceb;
+    --accent-dark: #b8cc12;
+    /* Darker variant for hover */
+    --accent-amber: #fca5a5;
+    /* Softer, friendly red-orange */
+    --accent-rose: #f43f5e;
     --accent-blue: #3b82f6;
-    /* Strava blue */
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --border: rgba(226, 232, 240, 0.8);
-    --radius: 16px;
-    --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
-    --shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-    --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.08);
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --text-primary: #111827;
+    /* Rich near-black for high contrast */
+    --text-secondary: #4b5563;
+    /* Medium gray */
+    --text-muted: #9ca3af;
+    --border: #e5e7eb;
+    /* Soft border */
+    --radius: 20px;
+    /* Slightly rounder, friendlier corners */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -37,24 +41,10 @@
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--text-primary);
+    background-color: var(--bg-primary);
     min-height: 100vh;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-    background-attachment: fixed;
-}
-
-/* Base animated background for desktop */
-@media (min-width: 768px) {
-    body {
-        background: radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 0) 0, transparent 50%),
-            radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 0) 0, transparent 50%),
-            radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 0) 0, transparent 50%);
-        background-color: #f8fafc;
-        background-image: radial-gradient(at 8% 18%, hsla(149, 58%, 89%, 1) 0px, transparent 50%),
-            radial-gradient(at 85% 90%, hsla(210, 100%, 93%, 1) 0px, transparent 50%),
-            radial-gradient(at 90% 12%, hsla(43, 100%, 91%, 1) 0px, transparent 50%);
-    }
 }
 
 /* ─── Navigation ─────────────────────────────────────────────── */
@@ -90,20 +80,69 @@ body {
 }
 
 .icon-svg {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     transition: var(--transition);
-    opacity: 0.7;
+    opacity: 0.6;
+    stroke: var(--text-secondary);
+    /* Default greyish */
 }
 
+/* Base icon colors */
+.color-run {
+    stroke: #f43f5e;
+}
+
+/* Rose/Red */
+.color-journal {
+    stroke: #8b5cf6;
+}
+
+/* Purple */
+.color-social {
+    stroke: #3b82f6;
+}
+
+/* Blue */
+.color-checkin {
+    stroke: #10b981;
+}
+
+/* Emerald Green */
+.color-reading {
+    stroke: #f59e0b;
+}
+
+/* Amber */
+.color-travel {
+    stroke: #ec4899;
+}
+
+/* Pink */
+.color-review {
+    stroke: #0ea5e9;
+}
+
+/* Cyan/Sky */
+
+/* Nav item active state matching Ramp's high contrast */
 .nav-item.active {
-    color: var(--text-primary);
+    background: var(--text-primary);
+    /* Black background */
+    color: var(--accent);
+    /* Neon green text/icon */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .nav-item.active .icon-svg {
-    stroke: var(--text-primary);
+    stroke: var(--accent);
+    /* Neon green icon */
     opacity: 1;
     transform: scale(1.1);
+}
+
+.nav-item:hover:not(.active) {
+    background: var(--bg-secondary);
 }
 
 .nav-item:hover .icon-svg {
@@ -121,13 +160,18 @@ body {
 
 .header h1,
 .header .greeting {
-    font-size: 26px;
-    /* Bolder size */
-    font-weight: 800;
+    font-size: 38px;
+    font-weight: 900;
     /* Extra bold */
-    color: var(--text-primary);
-    letter-spacing: -0.04em;
-    /* Tighter spacing for modern look */
+    letter-spacing: -0.06em;
+    /* Ramp/Eventbrite very tight tracking */
+    line-height: 1.1;
+    margin-bottom: 6px;
+    background: linear-gradient(135deg, #f43f5e 0%, #3b82f6 50%, #10b981 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
 }
 
 .header .subtitle {
@@ -171,12 +215,11 @@ body {
 
 .card {
     background: var(--bg-card);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 16px;
+    padding: 32px 24px;
+    /* More padding for a softer feel */
+    margin-bottom: 24px;
     box-shadow: var(--shadow);
     transition: var(--transition);
 }
@@ -189,18 +232,21 @@ body {
 .card-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 24px;
 }
 
 .card-header .icon {
-    font-size: 22px;
+    font-size: 28px;
+    /* Larger icons */
 }
 
 .card-header h3 {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 22px;
+    /* Graphic bolder headers */
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--text-primary);
 }
 
 /* ─── Forms ──────────────────────────────────────────────────── */
@@ -221,12 +267,15 @@ body {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 10px 14px;
+    padding: 14px 16px;
+    /* Chunky inputs */
     background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    border: 2px solid transparent;
+    /* No border until active */
+    border-radius: 12px;
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 500;
     font-family: inherit;
     transition: var(--transition);
 }
@@ -235,9 +284,10 @@ body {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: var(--accent);
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(42, 157, 110, 0.1);
+    border-color: var(--text-primary);
+    /* Bold black border for focus */
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .form-group input::placeholder,
@@ -349,14 +399,19 @@ input[type="range"]::-webkit-slider-thumb {
 
 .btn-primary {
     background: var(--accent);
-    color: white;
-    box-shadow: 0 4px 14px rgba(42, 157, 110, 0.3);
+    color: var(--text-primary);
+    /* Black text on neon green */
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    /* Subtle dark border */
+    font-size: 16px;
+    /* Larger */
 }
 
 .btn-primary:hover {
     background: var(--accent-dark);
-    box-shadow: 0 6px 20px rgba(42, 157, 110, 0.4);
-    transform: translateY(-1px);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .btn-secondary {
@@ -400,6 +455,8 @@ input[type="range"]::-webkit-slider-thumb {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
     margin-bottom: 12px;
+    column-span: all;
+    /* Span desktop columns */
 }
 
 .metric-card {
@@ -430,28 +487,29 @@ input[type="range"]::-webkit-slider-thumb {
 /* ─── Prompt Card ────────────────────────────────────────────── */
 
 .prompt-card {
-    background: var(--accent-light);
-    border: 1px solid rgba(42, 157, 110, 0.15);
+    background: #f9fafb;
+    /* Soft gray instead of accent-light */
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 12px;
+    padding: 24px;
 }
 
 .prompt-text {
-    font-size: 16px;
-    font-weight: 500;
-    line-height: 1.7;
-    margin-bottom: 12px;
+    font-size: 20px;
+    /* Big graphic text */
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.02em;
     color: var(--text-primary);
-    font-style: italic;
+    margin-bottom: 12px;
 }
 
 .prompt-quote {
-    font-size: 13px;
-    color: var(--accent-dark);
-    border-left: 3px solid var(--accent);
-    padding-left: 12px;
-    margin-top: 12px;
+    font-size: 15px;
+    color: var(--text-secondary);
+    border-left: 4px solid var(--accent);
+    padding-left: 16px;
+    margin-top: 16px;
     line-height: 1.6;
 }
 
@@ -563,6 +621,8 @@ input[type="range"]::-webkit-slider-thumb {
     padding: 4px;
     margin-bottom: 12px;
     box-shadow: var(--shadow-sm);
+    column-span: all;
+    /* Span desktop columns */
 }
 
 .period-tab {
@@ -580,12 +640,13 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .period-tab.active {
-    background: var(--accent-light);
-    color: var(--accent-dark);
+    background: var(--text-primary);
+    color: var(--bg-card);
     font-weight: 600;
 }
 
 .period-tab:hover:not(.active) {
+    background: var(--bg-input);
     color: var(--text-primary);
 }
 
@@ -765,13 +826,31 @@ input[type="range"]::-webkit-slider-thumb {
 /* ─── Responsive ─────────────────────────────────────────────── */
 
 @media (min-width: 768px) {
+    .main {
+        max-width: 900px;
+        /* Wider for 2 columns */
+    }
+
+    .page.active {
+        display: block;
+        column-count: 2;
+        /* Masonry layout for cards */
+        column-gap: 24px;
+    }
+
+    .card {
+        break-inside: avoid;
+        /* Don't split cards across columns */
+        margin-bottom: 24px;
+    }
+
     .nav {
         top: 20px;
         bottom: auto;
         border-top: none;
         border-bottom: none;
         width: 100%;
-        max-width: 560px;
+        max-width: 600px;
         margin: 0 auto;
         left: 50%;
         transform: translateX(-50%);
@@ -781,7 +860,6 @@ input[type="range"]::-webkit-slider-thumb {
         gap: 12px;
         box-shadow: var(--shadow-sm);
         background: var(--bg-card);
-        /* Glass effect matching cards */
     }
 
     .nav .nav-item {

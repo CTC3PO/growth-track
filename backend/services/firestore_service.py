@@ -7,6 +7,7 @@ import os
 import json
 from datetime import date, datetime
 from pathlib import Path
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,18 +15,42 @@ load_dotenv()
 # In-memory fallback store for local development
 _local_store: dict[str, list[dict]] = {}
 _LOCAL_DATA_DIR = Path(__file__).parent.parent / "local_data"
-
+_FIRESTORE_CLIENT = None
+_LOGGER = logging.getLogger(__name__)
 
 def _get_firestore_client():
-    """Try to get Firestore client, return None if not available."""
+    """Try to get Firestore client initialized via firebase-admin, return None if not available."""
+    global _FIRESTORE_CLIENT
+    
+    if _FIRESTORE_CLIENT is not None:
+        return _FIRESTORE_CLIENT
+
     try:
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
-        if not project_id:
-            return None
-        from google.cloud import firestore
-        return firestore.Client(project=project_id)
+        import firebase_admin
+        from firebase_admin import credentials
+        from firebase_admin import firestore
+        
+        # Check if already initialized
+        if not firebase_admin._apps:
+            service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+            if service_account_path and Path(service_account_path).exists():
+                cred = credentials.Certificate(service_account_path)
+                firebase_admin.initialize_app(cred)
+                _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
+            else:
+                project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
+                if project_id:
+                    # Application Default Credentials fallback
+                    firebase_admin.initialize_app(options={'projectId': project_id})
+                    _LOGGER.info(f"🔥 Firebase Admin initialized using ADC for project {project_id}")
+                else:
+                    _LOGGER.warning("⚠️ No FIREBASE_SERVICE_ACCOUNT or GOOGLE_CLOUD_PROJECT_ID found. Falling back to local JSON.")
+                    return None
+                    
+        _FIRESTORE_CLIENT = firestore.client()
+        return _FIRESTORE_CLIENT
     except Exception as e:
-        print(f"🔥 Firestore Connection Error: {e}")
+        _LOGGER.error(f"❌ Firestore Connection Error: {e}")
         return None
 
 
@@ -126,3 +151,44 @@ def get_documents_by_date_range(collection: str, start_date: str, end_date: str)
             d for d in all_docs
             if start_date <= d.get("date", "") <= end_date
         ]
+
+def migrate_local_to_firestore():
+    """Reads all local JSON files and pushes them to Firestore."""
+    db = _get_firestore_client()
+    if not db:
+        print("❌ Cannot migrate: Firestore client not initialized.")
+        return
+        
+    if not _LOCAL_DATA_DIR.exists():
+        print("ℹ️ No local_data directory found to migrate.")
+        return
+
+    prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
+    
+    for file_path in _LOCAL_DATA_DIR.glob("*.json"):
+        collection = file_path.stem
+        full_collection = f"{prefix}_{collection}"
+        
+        try:
+            data_list = json.loads(file_path.read_text())
+            print(f"📦 Migrating {len(data_list)} records to {full_collection}...")
+            
+            for doc_data in data_list:
+                doc_id = doc_data.get("id")
+                
+                # Exclude internal "id" from the document body if present
+                clean_data = {k: v for k, v in doc_data.items() if k != "id"}
+                clean_data = _serialize_dates(clean_data)
+                
+                # Keep created_at if it exists, otherwise generate
+                if "created_at" not in clean_data:
+                    clean_data["created_at"] = datetime.now().isoformat()
+                    
+                if doc_id:
+                    db.collection(full_collection).document(doc_id).set(clean_data)
+                else:
+                    db.collection(full_collection).add(clean_data)
+                    
+            print(f"✅ Successfully migrated {collection}")
+        except Exception as e:
+            print(f"❌ Error migrating {collection}: {e}")

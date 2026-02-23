@@ -291,6 +291,44 @@ document.getElementById('get-coach-plan-btn')?.addEventListener('click', async (
 
 // ─── Reading ───────────────────────────────────────────────────
 
+document.getElementById('search-book-btn')?.addEventListener('click', async () => {
+    const query = document.getElementById('book-search-query').value.trim();
+    if (!query) return;
+
+    const resultsContainer = document.getElementById('book-search-results');
+    resultsContainer.innerHTML = '<div class="loading-text">Searching...</div>';
+
+    try {
+        const res = await apiGet(`/api/books/search?q=${encodeURIComponent(query)}`);
+        if (res.status === 'success' && res.results.length > 0) {
+            resultsContainer.innerHTML = res.results.map((book, idx) => `
+                <div class="book-result-item" style="padding: 8px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px;" data-title="${book.title.replace(/"/g, '&quot;')}"  data-author="${book.author.replace(/"/g, '&quot;')}">
+                    ${book.cover_i ? `<img src="https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg" style="width: 30px; height: 45px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 30px; height: 45px; background: var(--border); border-radius: 4px;"></div>'}
+                    <div>
+                        <div style="font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.2;">${book.title}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${book.author}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click listeners to autofill
+            resultsContainer.querySelectorAll('.book-result-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.getElementById('book-title').value = item.dataset.title;
+                    document.getElementById('book-author').value = item.dataset.author;
+                    resultsContainer.innerHTML = '';
+                    document.getElementById('book-search-query').value = '';
+                    showToast(`Selected: ${item.dataset.title}`);
+                });
+            });
+        } else {
+            resultsContainer.innerHTML = '<div class="loading-text">No results found.</div>';
+        }
+    } catch (err) {
+        resultsContainer.innerHTML = `<div class="loading-text" style="color: var(--accent-rose);">Search failed.</div>`;
+    }
+});
+
 document.getElementById('book-form').addEventListener('submit', async e => {
     e.preventDefault();
     const data = {
@@ -427,7 +465,21 @@ const templatePrompts = [
     "Write about a mistake that taught you something about yourself.",
     "Write about an aspect of your personality that you appreciate in other people as well.",
     "Write about something (or someone) that is currently tempting you.",
-    "Write an apology to yourself for a time you treated yourself poorly."
+    "Write an apology to yourself for a time you treated yourself poorly.",
+
+    // Stoicism Prompts
+    "What is outside of your control right now, and how can you accept it?",
+    "If today were your last day, how would you change what you are doing?",
+    "What obstacle is currently in your way, and how can it become the way?",
+    "How did you practice virtue (wisdom, courage, justice, temperance) today?",
+    "What event today did you judge as bad, but can choose to view as an opportunity?",
+
+    // Thich Nhat Hanh Prompts
+    "As you breathe in and out right now, what sensations do you notice?",
+    "Where did you find a moment of true peace and stillness today?",
+    "How can you look deeply into the suffering of a person you encountered today to cultivate compassion?",
+    "What is a beautiful, simple thing in the present moment that you might be overlooking?",
+    "How can you apply mindful awareness to a task you usually rush through?"
 ];
 
 let currentTradition = 'blended';
@@ -549,6 +601,25 @@ async function loadJournalPrompt() {
     }
 }
 
+// Journal Themes Selection
+let selectedThemes = [];
+document.querySelectorAll('.theme-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+        const theme = pill.dataset.theme;
+        if (selectedThemes.includes(theme)) {
+            selectedThemes = selectedThemes.filter(t => t !== theme);
+            pill.classList.remove('active');
+        } else {
+            if (selectedThemes.length >= 3) {
+                showToast('You can only select up to 3 themes.');
+                return;
+            }
+            selectedThemes.push(theme);
+            pill.classList.add('active');
+        }
+    });
+});
+
 document.getElementById('journal-form').addEventListener('submit', async e => {
     e.preventDefault();
     const content = document.getElementById('journal-content').value;
@@ -557,6 +628,7 @@ document.getElementById('journal-form').addEventListener('submit', async e => {
         content: content,
         word_count: content.trim().split(/\s+/).filter(w => w).length,
         tradition: currentTradition,
+        themes: selectedThemes
     };
 
     try {
@@ -565,6 +637,10 @@ document.getElementById('journal-form').addEventListener('submit', async e => {
         document.getElementById('journal-form').reset();
         document.getElementById('journal-date').value = today();
         document.getElementById('journal-wc').textContent = '0 words';
+
+        // Reset themes
+        selectedThemes = [];
+        document.querySelectorAll('.theme-pill').forEach(p => p.classList.remove('active'));
     } catch (err) {
         showToast('Error: ' + err.message);
     }
@@ -592,7 +668,7 @@ document.getElementById('generate-review-btn').addEventListener('click', () => {
 
 async function loadReviewData() {
     try {
-        const review = await apiGet(`/api/review/${currentPeriod}`);
+        const review = await apiGet(`/api/review/${currentPeriod}?generate=false`);
         const m = review.metrics || {};
 
         // Top metrics
@@ -689,7 +765,7 @@ async function loadReview(period) {
     bodyDiv.innerHTML = '<div class="loading-text"><div class="spinner"></div> Generating AI review...</div>';
 
     try {
-        const review = await apiGet(`/api/review/${period}`);
+        const review = await apiGet(`/api/review/${period}?generate=true`);
         const ai = review.ai_review || {};
 
         bodyDiv.innerHTML = `

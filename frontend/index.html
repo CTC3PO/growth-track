@@ -37,7 +37,6 @@
         <div id="page-checkin" class="page active">
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">📋</span>
                     <h3>Daily Check-In</h3>
                 </div>
                 <form id="checkin-form">
@@ -105,7 +104,6 @@
             <!-- Recent check-ins -->
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">📊</span>
                     <h3>Recent Check-Ins</h3>
                 </div>
                 <div id="checkin-history"></div>
@@ -116,7 +114,6 @@
         <div id="page-running" class="page">
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">🏃</span>
                     <h3>Log Run</h3>
                 </div>
                 <form id="run-form">
@@ -156,7 +153,6 @@
             </div>
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">📈</span>
                     <h3>Recent Runs</h3>
                 </div>
                 <div id="run-history"></div>
@@ -205,7 +201,6 @@
         <div id="page-reading" class="page">
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">📚</span>
                     <h3>Log Book</h3>
                 </div>
                 <form id="book-form">
@@ -254,25 +249,30 @@
                 </form>
             </div>
 
-            <!-- Goodreads Integration POC -->
+            <!-- Book Search Integration -->
             <div class="card" style="border-left: 4px solid #cc9966;">
                 <div class="card-header" style="border-bottom:none; padding-bottom:0;">
-                    <span class="icon">📖</span>
-                    <h3 style="color:#cc9966;">Goodreads Sync</h3>
+                    <span class="icon">🔍</span>
+                    <h3 style="color:#cc9966;">Book Search</h3>
                 </div>
                 <div style="padding: 10px 0;">
-                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Link your Goodreads
-                        account to automatically sync your reading list and reviews.</p>
-                    <button type="button" class="btn btn-secondary"
-                        onclick="alert('In a real app, this connects to the Goodreads API.')">Connect with
-                        Goodreads</button>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Search for a book to
+                        autofill the log form.</p>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="book-search-query" placeholder="Search by title or author..."
+                            style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px;">
+                        <button type="button" class="btn btn-secondary" id="search-book-btn"
+                            style="padding: 6px 12px;">Search</button>
+                    </div>
+                    <div id="book-search-results"
+                        style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
+                    </div>
                 </div>
             </div>
 
             <!-- Reading stats -->
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">🎯</span>
                     <h3>2026 Reading Goal</h3>
                 </div>
                 <div id="reading-stats" class="loading-text">Loading...</div>
@@ -388,13 +388,26 @@
             <!-- Journal Entry -->
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">📝</span>
                     <h3>Write Entry</h3>
                 </div>
                 <form id="journal-form">
                     <div class="form-group">
                         <label>Date</label>
                         <input type="date" id="journal-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Themes (Select up to 3)</label>
+                        <div id="journal-themes-container"
+                            style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                            <span class="pill theme-pill" data-theme="Mindfulness">Mindfulness</span>
+                            <span class="pill theme-pill" data-theme="Professional">Professional</span>
+                            <span class="pill theme-pill" data-theme="Family">Family</span>
+                            <span class="pill theme-pill" data-theme="Relationships">Relationships</span>
+                            <span class="pill theme-pill" data-theme="Health">Health</span>
+                            <span class="pill theme-pill" data-theme="Creative">Creative</span>
+                            <span class="pill theme-pill" data-theme="Gratitude">Gratitude</span>
+                            <span class="pill theme-pill" data-theme="Stress">Stress</span>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Your thoughts</label>
@@ -449,7 +462,6 @@
             <!-- Category progress cards -->
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">🏃</span>
                     <h3>Body</h3>
                 </div>
                 <div class="category-stats">
@@ -479,7 +491,6 @@
 
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">🧠</span>
                     <h3>Mind</h3>
                 </div>
                 <div class="category-stats">
@@ -503,7 +514,6 @@
 
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">🧘</span>
                     <h3>Spirit</h3>
                 </div>
                 <div class="category-stats">
@@ -789,9 +799,34 @@
 
     <!-- Navigation -->
     <nav class="nav">
-        <!-- Check-in -->
+        <!-- Running -->
+        <button class="nav-item" data-page="running" aria-label="Running">
+            <svg class="icon-svg color-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+        </button>
+        <!-- Journal (Write) -->
+        <button class="nav-item" data-page="journal" aria-label="Journal">
+            <svg class="icon-svg color-journal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+        </button>
+        <!-- Social (Connection) -->
+        <button class="nav-item" data-page="social" aria-label="Social">
+            <svg class="icon-svg color-social" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+        </button>
+        <!-- Check-in (Daily Log) - CENTER -->
         <button class="nav-item active" data-page="checkin" aria-label="Check-In">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            <svg class="icon-svg color-checkin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
@@ -800,51 +835,26 @@
                 <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
         </button>
-        <!-- Running -->
-        <button class="nav-item" data-page="running" aria-label="Running">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-            </svg>
-        </button>
         <!-- Reading -->
         <button class="nav-item" data-page="reading" aria-label="Reading">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            <svg class="icon-svg color-reading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
         </button>
-        <!-- Journal -->
-        <button class="nav-item" data-page="journal" aria-label="Journal">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-        </button>
         <!-- Travel -->
         <button class="nav-item" data-page="travel" aria-label="Travel">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            <svg class="icon-svg color-travel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path
                     d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.7l-1 2.5L9 11l-4 4-3-1-1 1 4 4 1-1-1-3 4-4 1.6 6.3c.5-.2.8-.6.7-1.1z">
                 </path>
             </svg>
         </button>
-        <!-- Social -->
-        <button class="nav-item" data-page="social" aria-label="Social">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-        </button>
         <!-- Review -->
         <button class="nav-item" data-page="review" aria-label="Review">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            <svg class="icon-svg color-review" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
                 stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"></line>
                 <line x1="12" y1="20" x2="12" y2="4"></line>
