@@ -33,21 +33,25 @@ def _get_firestore_client():
     
     _FIRESTORE_INIT_ATTEMPTED = True
 
-    # Only attempt Firestore if an explicit service account key file is provided
-    service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-    if not service_account_path or not Path(service_account_path).exists():
-        _LOGGER.info("ℹ️ FIREBASE_SERVICE_ACCOUNT not set or file not found. Using local JSON storage.")
-        return None
-
     try:
         import firebase_admin
         from firebase_admin import credentials
         from firebase_admin import firestore
-        
+
         if not firebase_admin._apps:
-            cred = credentials.Certificate(service_account_path)
-            firebase_admin.initialize_app(cred)
-            _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
+            # Option 1: Explicit service account key file
+            service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+            if service_account_path and Path(service_account_path).exists():
+                cred = credentials.Certificate(service_account_path)
+                firebase_admin.initialize_app(cred)
+                _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
+            # Option 2: Application Default Credentials (Cloud Run, GCE, etc.)
+            elif os.getenv("APP_ENV") == "production" or os.getenv("K_SERVICE"):
+                firebase_admin.initialize_app()
+                _LOGGER.info("🔥 Firebase Admin initialized using Application Default Credentials")
+            else:
+                _LOGGER.info("ℹ️ No Firebase credentials found. Using local JSON storage.")
+                return None
                     
         _FIRESTORE_CLIENT = firestore.client()
         return _FIRESTORE_CLIENT

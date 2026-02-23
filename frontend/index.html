@@ -330,10 +330,15 @@
                             <div id="journal-prompt-area" style="min-height: 80px;">
                                 <div class="loading-text">Loading prompt...</div>
                             </div>
-                            <div style="margin-top: 12px; text-align: right;">
+                            <div
+                                style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
                                 <button id="shuffle-local-prompt-btn"
                                     style="background: none; border: none; font-size: 12px; color: var(--text-muted); cursor: pointer; padding: 4px;">Shuffle
                                     offline templates</button>
+                                <button id="speak-prompt-btn" title="Read prompt aloud"
+                                    style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.2s;"
+                                    onmouseover="this.style.background='rgba(0,0,0,0.05)'"
+                                    onmouseout="this.style.background='none'">🔊</button>
                             </div>
                         </div>
                     </div>
@@ -424,8 +429,14 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>Your thoughts</label>
-                                <textarea id="journal-content" rows="8" placeholder="Begin writing..."></textarea>
+                                <label style="display: flex; justify-content: space-between; align-items: center;">Your
+                                    thoughts
+                                    <button type="button" id="voice-journal-btn"
+                                        title="Voice journaling — click to speak"
+                                        style="background: none; border: 2px solid var(--accent-teal); border-radius: 50%; width: 32px; height: 32px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">🎤</button>
+                                </label>
+                                <textarea id="journal-content" rows="8"
+                                    placeholder="Begin writing or click 🎤 to speak..."></textarea>
                                 <span id="journal-wc" style="font-size:11px;color:var(--text-secondary)">0 words</span>
                             </div>
                             <button type="submit" class="btn btn-primary">Save Entry 📝</button>
@@ -627,6 +638,36 @@
                         </div>
                         <span class="nn-value" id="nn-therapy">--</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- AI Summary -->
+            <div class="card" style="border-left: 4px solid var(--accent-teal);">
+                <div class="card-header" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="icon">📋</span>
+                        <h3>AI Summary</h3>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select id="summary-days"
+                            style="padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; background: var(--bg-card);">
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="30">30 days</option>
+                        </select>
+                        <select id="summary-type"
+                            style="padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; background: var(--bg-card);">
+                            <option value="all">All Data</option>
+                            <option value="journals">Journals Only</option>
+                            <option value="activities">Activities Only</option>
+                        </select>
+                        <button class="btn btn-primary" id="generate-summary-btn"
+                            style="padding: 4px 12px; font-size: 12px; height: auto;">Summarize ✨</button>
+                    </div>
+                </div>
+                <div id="summary-content" style="padding: 4px 0;">
+                    <p style="font-size: 13px; color: var(--text-secondary);">Click <strong>Summarize</strong> to
+                        generate an AI-powered summary of your recent journals and activities.</p>
                 </div>
             </div>
 

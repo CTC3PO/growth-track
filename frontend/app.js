@@ -1082,3 +1082,194 @@ async function loadSocialData() {
             '<div class="loading-text">Could not load social data</div>';
     }
 }
+
+
+// ─── AI Summary ────────────────────────────────────────────────
+
+document.getElementById('generate-summary-btn')?.addEventListener('click', async () => {
+    const days = document.getElementById('summary-days').value;
+    const type = document.getElementById('summary-type').value;
+    const container = document.getElementById('summary-content');
+    const btn = document.getElementById('generate-summary-btn');
+
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your data and generating AI summary...</div>';
+
+    try {
+        const result = await apiGet(`/api/summary?days=${days}&type=${type}`);
+
+        if (result.error) {
+            container.innerHTML = `<div class="loading-text" style="color: var(--accent-rose);">${result.summary}</div>`;
+        } else {
+            // Convert basic markdown to HTML
+            let html = result.summary || 'No summary available.';
+            html = html
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^### (.*$)/gm, '<h4 style="margin-top:16px;color:var(--text-primary)">$1</h4>')
+                .replace(/^## (.*$)/gm, '<h3 style="margin-top:16px;color:var(--text-primary)">$1</h3>')
+                .replace(/^# (.*$)/gm, '<h3 style="margin-top:16px;color:var(--text-primary)">$1</h3>')
+                .replace(/^- (.*$)/gm, '<li style="margin-left:16px;margin-bottom:4px">$1</li>')
+                .replace(/^(\d+)\. (.*$)/gm, '<li style="margin-left:16px;margin-bottom:4px">$2</li>')
+                .replace(/\n{2,}/g, '<br><br>')
+                .replace(/\n/g, '<br>');
+
+            const meta = result.metadata || {};
+            const metaParts = [];
+            if (meta.journal_count !== undefined) metaParts.push(`📝 ${meta.journal_count} journal entries`);
+            if (meta.checkin_count !== undefined) metaParts.push(`✓ ${meta.checkin_count} check-ins`);
+            if (meta.run_count !== undefined) metaParts.push(`🏃 ${meta.run_count} runs`);
+            if (meta.total_km !== undefined) metaParts.push(`${meta.total_km} km`);
+            if (meta.book_count !== undefined) metaParts.push(`📚 ${meta.book_count} books`);
+
+            container.innerHTML = `
+                <div style="font-size: 14px; line-height: 1.7; color: var(--text-secondary);">
+                    ${html}
+                </div>
+                ${metaParts.length ? `
+                    <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--text-muted);">
+                        ${metaParts.join(' · ')}
+                        <span>· ${meta.start_date} to ${meta.end_date}</span>
+                    </div>
+                ` : ''}
+            `;
+        }
+    } catch (err) {
+        container.innerHTML = `<div class="loading-text" style="color: var(--accent-rose);">Could not generate summary. Ensure GOOGLE_API_KEY is configured.</div>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Summarize ✨';
+});
+
+
+// ─── Voice Journaling (Speech-to-Text) ─────────────────────────
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+
+const voiceBtn = document.getElementById('voice-journal-btn');
+
+if (SpeechRecognition && voiceBtn) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+        const textarea = document.getElementById('journal-content');
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            }
+        }
+
+        if (finalTranscript) {
+            const existing = textarea.value;
+            textarea.value = existing + (existing && !existing.endsWith(' ') ? ' ' : '') + finalTranscript.trim() + ' ';
+            const wc = textarea.value.trim().split(/\s+/).filter(w => w).length;
+            document.getElementById('journal-wc').textContent = `${wc} words`;
+        }
+    };
+
+    recognition.onerror = (event) => {
+        console.log('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+            showToast('Microphone access denied. Please allow mic permission.', 'error');
+        }
+        stopRecording();
+    };
+
+    recognition.onend = () => {
+        if (isRecording) {
+            try { recognition.start(); } catch (e) { stopRecording(); }
+        }
+    };
+
+    voiceBtn.addEventListener('click', () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    });
+} else if (voiceBtn) {
+    voiceBtn.style.opacity = '0.4';
+    voiceBtn.style.cursor = 'not-allowed';
+    voiceBtn.title = 'Speech recognition not supported in this browser';
+}
+
+function startRecording() {
+    if (!recognition) return;
+    isRecording = true;
+    recognition.start();
+    voiceBtn.textContent = '⏹';
+    voiceBtn.style.background = 'var(--accent-rose)';
+    voiceBtn.style.borderColor = 'var(--accent-rose)';
+    voiceBtn.style.color = '#fff';
+    voiceBtn.style.animation = 'pulse-recording 1.5s infinite';
+    voiceBtn.title = 'Click to stop recording';
+    showToast('🎤 Listening... Speak now');
+}
+
+function stopRecording() {
+    if (!recognition) return;
+    isRecording = false;
+    try { recognition.stop(); } catch (e) { }
+    voiceBtn.textContent = '🎤';
+    voiceBtn.style.background = 'none';
+    voiceBtn.style.borderColor = 'var(--accent-teal)';
+    voiceBtn.style.color = '';
+    voiceBtn.style.animation = '';
+    voiceBtn.title = 'Voice journaling — click to speak';
+    showToast('Recording stopped');
+}
+
+
+// ─── Text-to-Speech (Read Prompts Aloud) ───────────────────────
+
+document.getElementById('speak-prompt-btn')?.addEventListener('click', () => {
+    const promptArea = document.getElementById('journal-prompt-area');
+    const promptText = promptArea?.querySelector('.prompt-text');
+    if (!promptText) {
+        showToast('No prompt to read aloud', 'error');
+        return;
+    }
+
+    const text = promptText.textContent.replace(/^"|"$/g, '').trim();
+    if (!text) return;
+
+    if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        showToast('Stopped reading');
+        return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google') || v.name.includes('Natural'));
+    if (preferred) utterance.voice = preferred;
+
+    utterance.onend = () => {
+        document.getElementById('speak-prompt-btn').textContent = '🔊';
+    };
+
+    document.getElementById('speak-prompt-btn').textContent = '⏸';
+    window.speechSynthesis.speak(utterance);
+    showToast('🔊 Reading prompt aloud...');
+});
+
+// Pre-load voices
+if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}

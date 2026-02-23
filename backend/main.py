@@ -26,6 +26,7 @@ from services.firestore_service import save_document, get_documents, get_documen
 from services.journal_agent import generate_journal_prompt
 from services.reading_agent import generate_reflection_prompts_for_book
 from services.review_agent import generate_weekly_review, generate_monthly_review, generate_quarterly_review
+from services.summary_agent import generate_summary
 from services.strava_service import router as strava_router
 
 
@@ -293,6 +294,21 @@ async def get_quarterly_review(year: int = None, quarter: int = None, generate: 
     year = year or today.year
     quarter = quarter or ((today.month - 1) // 3 + 1)
     return generate_quarterly_review(year, quarter, generate_ai=generate)
+
+
+# ─── AI Summary ──────────────────────────────────────────────────────
+
+@app.get("/api/summary")
+async def get_summary(days: int = 7, type: str = "all"):
+    """Generate an AI-powered summary of recent journals and activities."""
+    if days < 1 or days > 90:
+        raise HTTPException(400, "days must be between 1 and 90")
+    if type not in ("journals", "activities", "all"):
+        raise HTTPException(400, "type must be 'journals', 'activities', or 'all'")
+    try:
+        return generate_summary(days=days, summary_type=type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ─── Travel / Expenses ──────────────────────────────────────────────
