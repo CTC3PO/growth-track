@@ -32,6 +32,30 @@
     --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body.dark-mode {
+    --bg-primary: #111827;
+    /* Dark slate */
+    --bg-secondary: #1f2937;
+    /* Slightly lighter dark */
+    --bg-card: #1f2937;
+    --bg-input: #374151;
+    --accent: #d4f826;
+    /* Keep neon green accent */
+    --accent-light: #3f4a15;
+    /* Darkened accent background */
+    --accent-dark: #b8cc12;
+    --text-primary: #f9fafb;
+    /* White text */
+    --text-secondary: #9ca3af;
+    /* Light gray text */
+    --text-muted: #6b7280;
+    --border: #374151;
+    /* Dark border */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -432,7 +456,7 @@ input[type="range"]::-webkit-slider-thumb {
 .metric-value {
     font-size: 28px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--text-primary);
     letter-spacing: -0.02em;
 }
 
@@ -549,7 +573,7 @@ input[type="range"]::-webkit-slider-thumb {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--accent);
+    color: var(--text-primary);
     margin-bottom: 8px;
 }
 
@@ -571,7 +595,7 @@ input[type="range"]::-webkit-slider-thumb {
     content: '→';
     position: absolute;
     left: 0;
-    color: var(--accent);
+    color: var(--text-primary);
     font-weight: 600;
 }
 
@@ -603,7 +627,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .nn-value.good {
-    color: var(--accent);
+    color: var(--text-primary);
 }
 
 .nn-value.warn {
@@ -627,6 +651,13 @@ input[type="range"]::-webkit-slider-thumb {
     box-shadow: var(--shadow-sm);
     column-span: all;
     /* Span desktop columns */
+    overflow-x: auto;
+}
+
+@media (min-width: 768px) {
+    .review-period-tabs {
+        overflow-x: visible;
+    }
 }
 
 .period-tab {
@@ -641,6 +672,7 @@ input[type="range"]::-webkit-slider-thumb {
     color: var(--text-secondary);
     cursor: pointer;
     transition: var(--transition);
+    white-space: nowrap;
 }
 
 .period-tab.active {
@@ -762,7 +794,7 @@ input[type="range"]::-webkit-slider-thumb {
     left: 50%;
     transform: translateX(-50%) translateY(-80px);
     background: var(--accent);
-    color: white;
+    color: var(--text-primary);
     padding: 12px 24px;
     border-radius: 10px;
     font-weight: 600;
@@ -778,6 +810,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .toast-error {
     background: var(--accent-rose);
+    color: white;
 }
 
 /* ─── Spinner ────────────────────────────────────────────────── */
@@ -828,14 +861,14 @@ input[type="range"]::-webkit-slider-thumb {
 .history-value {
     font-size: 15px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--text-primary);
 }
 
 /* ─── Responsive ─────────────────────────────────────────────── */
 
 @media (min-width: 768px) {
     .main {
-        max-width: 900px;
+        max-width: 1100px;
         /* Wider for 2 columns */
     }
 
@@ -907,7 +940,7 @@ input[type="range"]::-webkit-slider-thumb {
     }
 
     .main {
-        max-width: 900px;
+        max-width: 1100px;
         padding-top: 10px;
         padding-bottom: 60px;
     }
@@ -946,7 +979,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .converter-arrow {
     font-size: 20px;
-    color: var(--accent);
+    color: var(--text-primary);
     font-weight: bold;
     padding-top: 10px;
 }
@@ -1013,7 +1046,7 @@ input[type="range"]::-webkit-slider-thumb {
 .summary-total {
     font-size: 24px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--text-primary);
     text-align: center;
     padding: 10px 0 14px;
     border-bottom: 1px solid var(--border);
@@ -1033,4 +1066,21 @@ input[type="range"]::-webkit-slider-thumb {
     font-size: 10px;
     padding: 6px 2px;
     min-width: 0;
+}
+
+@keyframes pulse-recording {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7);
+    }
+
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 10px rgba(244, 63, 94, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
+    }
 }

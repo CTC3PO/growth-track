@@ -60,6 +60,33 @@ async function apiGet(endpoint) {
 // ─── Initialize ────────────────────────────────────────────────
 
 window.addEventListener('DOMContentLoaded', () => {
+    // Theme initialization
+    const themeToggle = document.getElementById('theme-toggle');
+    const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+
+    // Check localStorage or system preference
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme == 'dark') {
+        document.body.classList.toggle('dark-mode');
+        themeToggle.checked = true;
+    } else if (currentTheme == 'light') {
+        document.body.classList.remove('dark-mode');
+    } else if (prefersDarkScheme.matches) {
+        document.body.classList.toggle('dark-mode');
+        themeToggle.checked = true;
+    }
+
+    // Listen for toggle switch
+    themeToggle.addEventListener('change', function () {
+        if (this.checked) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+        }
+    });
+
     // Set default dates to today
     document.getElementById('checkin-date').value = today();
     document.getElementById('run-date').value = today();
@@ -118,7 +145,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const stravaStatus = document.getElementById('strava-status');
             if (stravaStatus) {
                 stravaStatus.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--accent)">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--text-primary)">
                         <span style="font-size:18px">✅</span>
                         <span style="font-size:13px;font-weight:500">Your Strava account is connected. Click <strong>Adjust Plan</strong> below to generate your AI coaching plan.</span>
                     </div>
@@ -299,7 +326,7 @@ document.getElementById('get-coach-plan-btn')?.addEventListener('click', async (
                                     <div style="color: var(--text-muted); font-size: 11px;">${r.date}</div>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div style="font-weight: 600; color: var(--accent);">${r.distance_km} km</div>
+                                    <div style="font-weight: 600; color: var(--text-primary);">${r.distance_km} km</div>
                                     <div style="color: var(--text-muted); font-size: 11px;">${r.pace} min/km · ${r.moving_time_str}</div>
                                 </div>
                             </div>
@@ -309,7 +336,7 @@ document.getElementById('get-coach-plan-btn')?.addEventListener('click', async (
             ` : ''}
 
             <div style="background: linear-gradient(135deg, rgba(42,157,110,0.08), rgba(42,157,110,0.02)); padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--accent);">
-                <div style="font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 4px;">🤖 AI Coach Assessment</div>
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🤖 AI Coach Assessment</div>
                 <p style="font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5;">${response.assessment || "Taking your recent runs into account..."}</p>
             </div>
             
@@ -328,7 +355,7 @@ document.getElementById('get-coach-plan-btn')?.addEventListener('click', async (
                     <li><strong style="color: var(--text-muted);">Mon:</strong> Rest 🧘</li>
                     <li><strong style="color: var(--accent-blue);">Tue:</strong> ${plan.tuesday || 'Easy Run'}</li>
                     <li><strong style="color: var(--accent-amber);">Wed:</strong> Lower Body Strength (Legs) 🏋️‍♂️</li>
-                    <li><strong style="color: var(--accent);">Thu:</strong> ${plan.thursday || 'Speed Work'}</li>
+                    <li><strong style="color: var(--text-primary);">Thu:</strong> ${plan.thursday || 'Speed Work'}</li>
                     <li><strong style="color: var(--accent-rose);">Fri:</strong> Rest</li>
                     <li><strong style="color: var(--text-muted);">Sat:</strong> ${plan.saturday || 'Long Run'}</li>
                     <li><strong style="color: var(--accent-dark);">Sun:</strong> ${plan.sunday || 'Active Recovery'}</li>
@@ -426,7 +453,7 @@ async function loadReadingStats() {
             <div style="margin-bottom:16px">
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px">
                     <span style="font-size:14px;font-weight:600">${stats.books_finished} / ${stats.yearly_goal} books</span>
-                    <span style="font-size:13px;color:${stats.on_track ? 'var(--accent)' : 'var(--accent-amber)'}">
+                    <span style="font-size:13px;color:${stats.on_track ? 'var(--text-primary)' : 'var(--accent-amber)'}">
                         ${stats.on_track ? '✓ On track' : '⚠ Behind pace'}
                     </span>
                 </div>
@@ -1072,7 +1099,7 @@ async function loadSocialData() {
                         <strong>${c.name}</strong>
                         <div class="item-meta">${c.date}${c.location ? ' · ' + c.location : ''}${c.context ? ' · ' + c.context : ''}</div>
                         <span class="category-badge">${(c.category || 'friend').replace('_', ' ')}</span>
-                        ${c.follow_up ? `<div class="item-meta" style="margin-top:4px;color:var(--accent)">↳ ${c.follow_up}</div>` : ''}
+                        ${c.follow_up ? `<div class="item-meta" style="margin-top:4px;color:var(--text-primary)">↳ ${c.follow_up}</div>` : ''}
                     </div>
                 </div>
             `).join('');

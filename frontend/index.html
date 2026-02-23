@@ -33,6 +33,16 @@
     <!-- Main Content -->
     <div class="main">
 
+        <!-- Theme Toggle -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px; padding: 0 4px;">
+            <div class="toggle-group"
+                style="background: var(--bg-card); padding: 4px 12px; border-radius: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);">
+                <span style="font-size: 14px;">☀️</span>
+                <input type="checkbox" id="theme-toggle" class="toggle" style="width: 36px; height: 20px;">
+                <span style="font-size: 14px;">🌙</span>
+            </div>
+        </div>
+
         <!-- ═══ CHECK-IN PAGE ═══ -->
         <div id="page-checkin" class="page active">
             <div class="card">
@@ -293,8 +303,7 @@
         <div id="page-journal" class="page">
 
             <!-- Journal Tool Tabs -->
-            <div class="review-period-tabs"
-                style="margin-bottom: 16px; justify-content: flex-start; overflow-x: auto; white-space: nowrap;">
+            <div class="review-period-tabs" style="margin-bottom: 16px;">
                 <button class="period-tab j-tab active" data-jtab="ai-prompt">✨ Daily AI</button>
                 <button class="period-tab j-tab" data-jtab="gratitude">🙏 Gratitude</button>
                 <button class="period-tab j-tab" data-jtab="random-prompt">🎲 Random</button>
