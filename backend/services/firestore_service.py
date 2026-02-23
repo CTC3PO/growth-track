@@ -24,7 +24,8 @@ def _get_firestore_client():
             return None
         from google.cloud import firestore
         return firestore.Client(project=project_id)
-    except Exception:
+    except Exception as e:
+        print(f"🔥 Firestore Connection Error: {e}")
         return None
 
 

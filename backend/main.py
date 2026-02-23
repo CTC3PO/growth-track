@@ -23,8 +23,9 @@ from models.schemas import (
     ChatMessage, ChatResponse, ReviewRequest, TravelExpense, SocialConnection,
 )
 from services.firestore_service import save_document, get_documents, get_documents_by_date_range
-from agents.journaling_agent import generate_journal_prompt, generate_reflection_prompts_for_book
+from services.journal_agent import generate_journal_prompt, generate_reflection_prompts_for_book
 from agents.review_agent import generate_weekly_review, generate_monthly_review, generate_quarterly_review
+from services.strava_service import router as strava_router
 
 
 @asynccontextmanager
@@ -97,6 +98,17 @@ async def log_run(run: RunLog):
 async def get_runs(limit: int = 30):
     """Get recent runs."""
     return get_documents("runs", limit=limit)
+
+
+@app.get("/api/running_coach/plan")
+async def get_running_plan(access_token: str):
+    """Get a dynamically adjusted running plan based on Strava data."""
+    from services.running_coach import generate_adjusted_plan
+    try:
+        plan = await generate_adjusted_plan(access_token)
+        return plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ─── Reading ─────────────────────────────────────────────────────────
@@ -203,6 +215,23 @@ async def get_journal_prompt(tradition: str = "blended"):
                         context["journal_gap_days"] = gap
                 except Exception:
                     pass
+
+        recent_books = get_documents("books", limit=5)
+        if recent_books:
+            # find the latest book being read or finished
+            book_title = recent_books[0].get("title")
+            if book_title:
+                context["books_reading"] = book_title
+
+        recent_travel = get_documents("travel_expenses", limit=5)
+        if recent_travel:
+            # check if there's a recent trip expense
+            for expense in recent_travel:
+                trip_name = expense.get("trip")
+                if trip_name:
+                    context["is_traveling"] = True
+                    context["city"] = trip_name
+                    break
 
         import calendar
         context["day_of_week"] = calendar.day_name[date.today().weekday()]

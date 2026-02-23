@@ -21,7 +21,7 @@ def get_client():
 
 
 def generate_text(prompt: str, system_instruction: str = None, temperature: float = 0.8) -> str:
-    """Generate text using Gemini 2.5 Flash."""
+    """Generate text using Gemini 2.0 Flash."""
     client = get_client()
     config = types.GenerateContentConfig(
         temperature=temperature,
@@ -31,7 +31,7 @@ def generate_text(prompt: str, system_instruction: str = None, temperature: floa
         config.system_instruction = system_instruction
 
     response = client.models.generate_content(
-        model="gemini-2.5-pro-preview-05-06",
+        model="gemini-2.0-flash",
         contents=prompt,
         config=config,
     )
@@ -50,7 +50,7 @@ def generate_json(prompt: str, system_instruction: str = None) -> dict:
         config.system_instruction = system_instruction
 
     response = client.models.generate_content(
-        model="gemini-2.5-pro-preview-05-06",
+        model="gemini-2.0-flash",
         contents=prompt,
         config=config,
     )

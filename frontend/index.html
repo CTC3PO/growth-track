@@ -172,14 +172,13 @@
                 <div style="padding: 10px 0;">
                     <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Connect your Strava
                         account to automatically sync your running data and generate AI-powered training plans.</p>
-                    <button class="btn btn-strava"
-                        onclick="alert('In a real app, this redirects to Strava OAuth:\\nhttps://www.strava.com/oauth/authorize?client_id=YOUR_ID&redirect_uri=YOUR_URL&response_type=code&scope=activity:read_all')">Connect
-                        with Strava</button>
-                    <!-- Proof of concept embed iframe -->
+                    <button class="btn btn-strava" id="connect-strava-btn">Connect with Strava</button>
                     <div style="margin-top: 20px; text-align: center;">
                         <iframe height="160" width="300" frameborder="0" allowtransparency="true" scrolling="no"
-                            src="https://www.strava.com/athletes/12345/latest-rides/ab12cd34ef56"></iframe>
-                        <p style="font-size: 11px; color: var(--text-muted);">(Mock Embed Profile via iframe)</p>
+                            src="https://www.strava.com/athletes/131814970/latest-rides/ab12cd34ef56"></iframe>
+                        <p style="font-size: 11px; color: var(--text-muted);">(Mock Embed Profile via iframe — <a
+                                href="https://www.strava.com/athletes/131814970" target="_blank"
+                                style="color:var(--accent);">View Athlete 131814970</a>)</p>
                     </div>
                 </div>
             </div>
@@ -191,42 +190,13 @@
                         <span class="icon">✨</span>
                         <h3>AI Training Plan</h3>
                     </div>
+                    <button class="btn btn-primary" id="get-coach-plan-btn"
+                        style="padding: 4px 8px; font-size: 12px; height: auto;">Adjust Plan</button>
                 </div>
-                <div style="padding: 10px 0;">
-                    <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks
-                        (Sub 2:00)</p>
-
-                    <!-- Week Progress Bar -->
-                    <div style="margin-bottom: 12px;">
-                        <div
-                            style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
-                            <span>Week 2</span>
-                            <span>5 weeks to go</span>
-                        </div>
-                        <div
-                            style="width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
-                            <div style="width: 33%; height: 100%; background: var(--accent); border-radius: 3px;"></div>
-                        </div>
-                    </div>
-
-                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Based on your recent
-                        Strava pace (avg 6:15/km), you have the endurance but need to sharpen speed.</p>
-
-                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; font-size: 13px;">
-                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px;">
-                            <li><strong style="color: var(--text-muted);">Mon:</strong> Rest 🧘</li>
-                            <li><strong style="color: var(--accent-blue);">Tue:</strong> 6km Tempo (Pace: 5:40/km) ⏱️
-                            </li>
-                            <li><strong style="color: var(--accent-amber);">Wed:</strong> Lower Body Strength (Legs)
-                                🏋️‍♂️</li>
-                            <li><strong style="color: var(--accent);">Thu:</strong> 8km Easy (Pace: 6:30/km) 👟</li>
-                            <li><strong style="color: var(--accent-rose);">Fri:</strong> 6x400m Intervals (Speed work)
-                                💨</li>
-                            <li><strong style="color: var(--text-muted);">Sat:</strong> Rest</li>
-                            <li><strong style="color: var(--accent-dark);">Sun:</strong> 16km Long Run (Pace: 6:45/km)
-                                🏃‍♂️</li>
-                        </ul>
-                    </div>
+                <div id="ai-plan-container" style="padding: 10px 0;">
+                    <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks</p>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Connect Strava and
+                        click Adjust Plan to generate your AI coaching plan based on your recent runs.</p>
                 </div>
             </div>
         </div>
@@ -322,23 +292,97 @@
 
         <!-- ═══ JOURNALING PAGE ═══ -->
         <div id="page-journal" class="page">
+
+            <!-- Journal Tool Tabs -->
+            <div class="review-period-tabs"
+                style="margin-bottom: 16px; justify-content: flex-start; overflow-x: auto; white-space: nowrap;">
+                <button class="period-tab j-tab active" data-jtab="ai-prompt">✨ Daily AI</button>
+                <button class="period-tab j-tab" data-jtab="gratitude">🙏 Gratitude</button>
+                <button class="period-tab j-tab" data-jtab="random-prompt">🎲 Random</button>
+                <button class="period-tab j-tab" data-jtab="prompt-list">📜 All Prompts</button>
+            </div>
+
             <!-- AI Prompt -->
-            <!-- Gratitude Bucket -->
-            <div class="card" style="border-left: 4px solid var(--accent);">
-                <div class="card-header">
-                    <span class="icon">🙏</span>
-                    <h3>Gratitude Bucket</h3>
-                </div>
-                <form id="gratitude-form" style="padding-top: 10px;">
-                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">List 3-10 things you
-                        are grateful for today. These will be compiled into a word cloud in your weekly report.</p>
-                    <div class="form-group">
-                        <textarea id="gratitude-list" rows="4"
-                            placeholder="1. Having a quiet morning...&#10;2. A good cup of coffee..."></textarea>
+            <div id="j-sec-ai-prompt" class="j-section" style="display: block;">
+                <div class="card" style="border-left: 4px solid var(--accent-teal);">
+                    <div class="card-header" style="justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="icon">✨</span>
+                            <h3>Daily AI Prompt</h3>
+                        </div>
+                        <button class="btn btn-secondary" id="new-prompt-btn"
+                            style="padding: 4px 8px; font-size: 12px; height: auto;">Refresh</button>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="background: var(--accent);">Save Gratitude
-                        ✨</button>
-                </form>
+
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <span class="pill active" data-tradition="blended" style="cursor: pointer;">Blended</span>
+                        <span class="pill" data-tradition="thich_nhat_hanh" style="cursor: pointer;">Mindfulness</span>
+                        <span class="pill" data-tradition="stoicism" style="cursor: pointer;">Stoicism</span>
+                    </div>
+
+                    <div id="journal-prompt-area" style="min-height: 80px;">
+                        <div class="loading-text">Loading prompt...</div>
+                    </div>
+                    <div style="margin-top: 12px; text-align: right;">
+                        <button id="shuffle-local-prompt-btn"
+                            style="background: none; border: none; font-size: 12px; color: var(--text-muted); cursor: pointer; padding: 4px;">Shuffle
+                            offline templates</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gratitude Bucket -->
+            <div id="j-sec-gratitude" class="j-section" style="display: none;">
+                <div class="card" style="border-left: 4px solid var(--accent);">
+                    <div class="card-header">
+                        <span class="icon">🙏</span>
+                        <h3>Gratitude Bucket</h3>
+                    </div>
+                    <form id="gratitude-form" style="padding-top: 10px;">
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">List 3-10 things
+                            you
+                            are grateful for today. These will be compiled into a word cloud in your weekly report.</p>
+                        <div class="form-group">
+                            <textarea id="gratitude-list" rows="4"
+                                placeholder="1. Having a quiet morning...&#10;2. A good cup of coffee..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="background: var(--accent);">Save Gratitude
+                            ✨</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Random Prompt -->
+            <div id="j-sec-random-prompt" class="j-section" style="display: none;">
+                <div class="card" style="border-left: 4px solid var(--accent-amber);">
+                    <div class="card-header" style="justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="icon">🎲</span>
+                            <h3>Random Prompt</h3>
+                        </div>
+                        <button class="btn btn-secondary" id="generate-random-prompt-btn"
+                            style="padding: 4px 8px; font-size: 12px; height: auto;">Draw Another</button>
+                    </div>
+                    <div id="random-prompt-area" style="padding-top: 10px; min-height: 80px;">
+                        <div class="loading-text">Click 'Draw Another' to get a prompt.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prompt List -->
+            <div id="j-sec-prompt-list" class="j-section" style="display: none;">
+                <div class="card" style="border-left: 4px solid var(--accent-blue);">
+                    <div class="card-header">
+                        <span class="icon">📜</span>
+                        <h3>100 Prompts</h3>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px; margin-bottom: 12px;">
+                        Click any prompt to copy it or use it as inspiration.</p>
+                    <div id="prompt-list-area"
+                        style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                        <!-- JS populated -->
+                    </div>
+                </div>
             </div>
 
             <!-- Journal Entry -->

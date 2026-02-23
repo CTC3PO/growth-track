@@ -26,6 +26,8 @@ async def strava_login():
     auth_url = f"https://www.strava.com/oauth/authorize?client_id={STRAVA_CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}&approval_prompt=force&scope=activity:read_all"
     return {"url": auth_url}
 
+from fastapi.responses import RedirectResponse
+
 @router.get("/callback")
 async def strava_callback(code: str, scope: str = None):
     """
@@ -50,13 +52,11 @@ async def strava_callback(code: str, scope: str = None):
         
         # In a real app, you would save these tokens to your database (e.g. Firestore)
         # associated with the currently logged-in user.
-        # For now, we'll just return it so the frontend can store it in localStorage.
+        # For now, we'll return it in the URL so the frontend can store it in localStorage.
         
-        return {
-            "message": "Successfully authenticated with Strava!",
-            "athlete": token_data.get("athlete", {}).get("firstname", "Runner"),
-            "access_token": token_data.get("access_token")
-        }
+        access_token = token_data.get("access_token")
+        frontend_redirect_url = f"/?strava_token={access_token}#page-running"
+        return RedirectResponse(url=frontend_redirect_url)
         
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Failed to exchange token with Strava: {str(e)}")
@@ -64,6 +64,37 @@ async def strava_callback(code: str, scope: str = None):
 @router.get("/activities")
 async def get_strava_activities(access_token: str):
     """Fetches the user's recent activities using their access token."""
+    if access_token == "mock_token":
+        # Return mock data for POC demonstration
+        from datetime import date, timedelta
+        today = date.today()
+        return {"runs": [
+            {
+                "id": 1,
+                "name": "Tuesday Easy Run",
+                "distance_km": 5.2,
+                "moving_time_str": "32 min",
+                "pace": "6:09",
+                "date": (today - timedelta(days=5)).isoformat()
+            },
+            {
+                "id": 2,
+                "name": "Thursday Speed Work",
+                "distance_km": 6.0,
+                "moving_time_str": "34 min",
+                "pace": "5:40",
+                "date": (today - timedelta(days=3)).isoformat()
+            },
+            {
+                "id": 3,
+                "name": "Saturday Long Run (struggled)",
+                "distance_km": 10.5,
+                "moving_time_str": "76 min",
+                "pace": "7:14",
+                "date": (today - timedelta(days=1)).isoformat()
+            }
+        ]}
+
     try:
         headers = {"Authorization": f"Bearer {access_token}"}
         # Get the 5 most recent activities

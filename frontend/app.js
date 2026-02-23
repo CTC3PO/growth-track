@@ -86,6 +86,38 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Load initial data
     loadCheckinHistory();
+
+    // Check for Strava token in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('strava_token')) {
+        const token = urlParams.get('strava_token');
+        localStorage.setItem('strava_token', token);
+
+        // Clean up URL without refreshing
+        const newUrl = window.location.pathname + (window.location.hash || '');
+        window.history.replaceState({}, document.title, newUrl);
+
+        showToast('Strava connection successful! 🏃');
+
+        // If they were redirected back to the running page, make sure it activates
+        if (window.location.hash === '#page-running') {
+            document.querySelector('[data-page="running"]').click();
+        }
+    }
+
+    // Update Strava UI state
+    const stravaBtn = document.getElementById('connect-strava-btn');
+    if (stravaBtn) {
+        if (localStorage.getItem('strava_token')) {
+            stravaBtn.textContent = 'Strava Connected ✓';
+            stravaBtn.style.background = 'var(--accent, #4CAF50)';
+            stravaBtn.disabled = true;
+        } else {
+            stravaBtn.addEventListener('click', () => {
+                window.location.href = '/api/strava/login';
+            });
+        }
+    }
 });
 
 
@@ -195,6 +227,66 @@ async function loadRunHistory() {
             '<div class="loading-text">Could not load runs</div>';
     }
 }
+
+// Running Coach Logic
+document.getElementById('get-coach-plan-btn')?.addEventListener('click', async () => {
+    const container = document.getElementById('ai-plan-container');
+    container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Generating AI plan...</div>';
+
+    // Check localStorage. If missing, use mock_token to not catastrophically break
+    const token = localStorage.getItem('strava_token') || 'mock_token';
+
+    try {
+        const response = await apiGet(`/api/running_coach/plan?access_token=${token}`);
+
+        if (response.error) {
+            container.innerHTML = `<div class="loading-text" style="color:var(--accent-rose)">${response.error}</div>`;
+            return;
+        }
+
+        const plan = response.adjusted_plan || {};
+        const adjustments = response.adjustments_made || [];
+
+        container.innerHTML = `
+            <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks (Sub 2:00)</p>
+            
+            <div style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                    <span>Week 2</span>
+                    <span>5 weeks to go</span>
+                </div>
+                <div style="width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+                    <div style="width: 33%; height: 100%; background: var(--accent); border-radius: 3px;"></div>
+                </div>
+            </div>
+
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">${response.assessment || "Taking your recent runs into account..."}</p>
+            
+            ${adjustments.length > 0 ? `
+                <div style="margin-bottom: 16px; font-size: 12px;">
+                    <strong style="color:var(--accent-amber)">Adjustments:</strong>
+                    <ul style="padding-left:16px; margin-top:4px; color:var(--text-secondary)">
+                        ${adjustments.map(a => `<li>${a}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+
+            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; font-size: 13px;">
+                <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px;">
+                    <li><strong style="color: var(--text-muted);">Mon:</strong> Rest 🧘</li>
+                    <li><strong style="color: var(--accent-blue);">Tue:</strong> ${plan.tuesday || 'Easy Run'}</li>
+                    <li><strong style="color: var(--accent-amber);">Wed:</strong> Lower Body Strength (Legs) 🏋️‍♂️</li>
+                    <li><strong style="color: var(--accent);">Thu:</strong> ${plan.thursday || 'Speed Work'}</li>
+                    <li><strong style="color: var(--accent-rose);">Fri:</strong> Rest</li>
+                    <li><strong style="color: var(--text-muted);">Sat:</strong> ${plan.saturday || 'Long Run'}</li>
+                    <li><strong style="color: var(--accent-dark);">Sun:</strong> ${plan.sunday || 'Active Recovery'}</li>
+                </ul>
+            </div>
+        `;
+    } catch (err) {
+        container.innerHTML = `<div class="loading-text" style="color:var(--accent-rose)">Could not generate plan. Ensure GOOGLE_API_KEY is configured.</div>`;
+    }
+});
 
 
 // ─── Reading ───────────────────────────────────────────────────
@@ -353,8 +445,25 @@ document.getElementById('new-prompt-btn').addEventListener('click', () => {
     loadJournalPrompt();
 });
 
-document.getElementById('shuffle-local-prompt-btn')?.addEventListener('click', () => {
-    const area = document.getElementById('journal-prompt-area');
+// Journal Sub-Tabs
+document.querySelectorAll('.j-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.j-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.j-section').forEach(s => s.style.display = 'none');
+        tab.classList.add('active');
+        const target = `j-sec-${tab.dataset.jtab}`;
+        document.getElementById(target).style.display = 'block';
+
+        if (tab.dataset.jtab === 'prompt-list') loadPromptList();
+        if (tab.dataset.jtab === 'random-prompt' && document.getElementById('random-prompt-area').innerHTML.includes('Click \'Draw Another\'')) {
+            generateRandomPrompt();
+        }
+    });
+});
+
+// Random Prompt Logic
+function generateRandomPrompt() {
+    const area = document.getElementById('random-prompt-area');
     const randomPrompt = templatePrompts[Math.floor(Math.random() * templatePrompts.length)];
     area.innerHTML = `
         <div class="prompt-card">
@@ -363,10 +472,50 @@ document.getElementById('shuffle-local-prompt-btn')?.addEventListener('click', (
                 100 Journaling Prompts for Reflection
                 <div class="prompt-source">— decideyourlegacy.com</div>
             </div>
-            <div class="prompt-context">Template Suggestion</div>
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+            <button class="btn btn-secondary use-prompt-btn" data-prompt="${randomPrompt.replace(/"/g, '&quot;')}" style="flex: 1; font-size: 13px;">📝 Use This Prompt</button>
+            <button class="btn btn-secondary copy-prompt-btn" data-prompt="${randomPrompt.replace(/"/g, '&quot;')}" style="flex: 1; font-size: 13px;">📋 Copy</button>
         </div>
     `;
-});
+
+    // Re-bind listeners
+    area.querySelector('.use-prompt-btn').addEventListener('click', (e) => {
+        document.getElementById('journal-content').value = '"' + e.target.dataset.prompt + '"\n\n';
+        document.getElementById('journal-content').focus();
+    });
+    area.querySelector('.copy-prompt-btn').addEventListener('click', (e) => {
+        navigator.clipboard.writeText(e.target.dataset.prompt);
+        showToast('Prompt copied to clipboard!');
+    });
+}
+
+document.getElementById('generate-random-prompt-btn')?.addEventListener('click', generateRandomPrompt);
+
+// Prompt List Logic
+let promptListLoaded = false;
+function loadPromptList() {
+    if (promptListLoaded) return;
+    const area = document.getElementById('prompt-list-area');
+    area.innerHTML = templatePrompts.map(p => `
+        <div class="prompt-inline-item" style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; transition: background 0.2s;" data-prompt="${p.replace(/"/g, '&quot;')}">
+            <p style="font-size: 14px; margin: 0; color: var(--text-primary); line-height: 1.4;">${p}</p>
+        </div>
+    `).join('');
+
+    // Click to use
+    area.querySelectorAll('.prompt-inline-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const text = item.dataset.prompt;
+            document.getElementById('journal-content').value = '"' + text + '"\n\n';
+            document.getElementById('journal-content').focus();
+            showToast('Prompt loaded into journal entry');
+        });
+        item.addEventListener('mouseover', () => item.style.background = 'var(--border)');
+        item.addEventListener('mouseout', () => item.style.background = 'var(--bg-secondary)');
+    });
+    promptListLoaded = true;
+}
 
 async function loadJournalPrompt() {
     const area = document.getElementById('journal-prompt-area');
