@@ -32,11 +32,13 @@ function today() {
     return new Date().toISOString().split('T')[0];
 }
 
-function showToast(msg) {
+function showToast(msg, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
+    toast.className = 'toast';
+    if (type === 'error') toast.classList.add('toast-error');
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2500);
+    setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
 async function apiPost(endpoint, data) {
@@ -112,9 +114,34 @@ window.addEventListener('DOMContentLoaded', () => {
             stravaBtn.textContent = 'Strava Connected ✓';
             stravaBtn.style.background = 'var(--accent, #4CAF50)';
             stravaBtn.disabled = true;
+            // Show connected state in the Strava card
+            const stravaStatus = document.getElementById('strava-status');
+            if (stravaStatus) {
+                stravaStatus.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--accent)">
+                        <span style="font-size:18px">✅</span>
+                        <span style="font-size:13px;font-weight:500">Your Strava account is connected. Click <strong>Adjust Plan</strong> below to generate your AI coaching plan.</span>
+                    </div>
+                `;
+            }
         } else {
-            stravaBtn.addEventListener('click', () => {
-                window.location.href = '/api/strava/login';
+            stravaBtn.addEventListener('click', async () => {
+                try {
+                    stravaBtn.textContent = 'Connecting...';
+                    stravaBtn.disabled = true;
+                    const data = await apiGet('/api/strava/login');
+                    if (data.url) {
+                        window.location.href = data.url;
+                    } else {
+                        showToast('Could not get Strava login URL');
+                        stravaBtn.textContent = 'Connect with Strava';
+                        stravaBtn.disabled = false;
+                    }
+                } catch (err) {
+                    showToast('Strava connection error: ' + err.message);
+                    stravaBtn.textContent = 'Connect with Strava';
+                    stravaBtn.disabled = false;
+                }
             });
         }
     }
@@ -139,12 +166,12 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
 
     try {
         const result = await apiPost('/api/checkin', data);
-        showToast(result.message || 'Check-in saved!');
+        showToast('✓ Check-in saved');
         document.getElementById('checkin-form').reset();
         document.getElementById('checkin-date').value = today();
         loadCheckinHistory();
     } catch (err) {
-        showToast('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -193,12 +220,12 @@ document.getElementById('run-form').addEventListener('submit', async e => {
 
     try {
         const result = await apiPost('/api/runs', data);
-        showToast(result.message || 'Run logged!');
+        showToast('✓ Run saved');
         document.getElementById('run-form').reset();
         document.getElementById('run-date').value = today();
         loadRunHistory();
     } catch (err) {
-        showToast('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -231,7 +258,7 @@ async function loadRunHistory() {
 // Running Coach Logic
 document.getElementById('get-coach-plan-btn')?.addEventListener('click', async () => {
     const container = document.getElementById('ai-plan-container');
-    container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Generating AI plan...</div>';
+    container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your runs & generating AI plan...</div>';
 
     // Check localStorage. If missing, use mock_token to not catastrophically break
     const token = localStorage.getItem('strava_token') || 'mock_token';
@@ -246,6 +273,7 @@ document.getElementById('get-coach-plan-btn')?.addEventListener('click', async (
 
         const plan = response.adjusted_plan || {};
         const adjustments = response.adjustments_made || [];
+        const runs = response.runs || [];
 
         container.innerHTML = `
             <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks (Sub 2:00)</p>
@@ -260,17 +288,41 @@ document.getElementById('get-coach-plan-btn')?.addEventListener('click', async (
                 </div>
             </div>
 
-            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">${response.assessment || "Taking your recent runs into account..."}</p>
+            ${runs.length > 0 ? `
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">📊 Recent Strava Runs Analyzed</div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        ${runs.map(r => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px; font-size: 12px;">
+                                <div>
+                                    <div style="font-weight: 500; color: var(--text-primary);">${r.name}</div>
+                                    <div style="color: var(--text-muted); font-size: 11px;">${r.date}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 600; color: var(--accent);">${r.distance_km} km</div>
+                                    <div style="color: var(--text-muted); font-size: 11px;">${r.pace} min/km · ${r.moving_time_str}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <div style="background: linear-gradient(135deg, rgba(42,157,110,0.08), rgba(42,157,110,0.02)); padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--accent);">
+                <div style="font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 4px;">🤖 AI Coach Assessment</div>
+                <p style="font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5;">${response.assessment || "Taking your recent runs into account..."}</p>
+            </div>
             
             ${adjustments.length > 0 ? `
                 <div style="margin-bottom: 16px; font-size: 12px;">
-                    <strong style="color:var(--accent-amber)">Adjustments:</strong>
-                    <ul style="padding-left:16px; margin-top:4px; color:var(--text-secondary)">
+                    <strong style="color:var(--accent-amber)">⚡ Adjustments Made:</strong>
+                    <ul style="padding-left:16px; margin-top:4px; color:var(--text-secondary); line-height: 1.6;">
                         ${adjustments.map(a => `<li>${a}</li>`).join('')}
                     </ul>
                 </div>
             ` : ''}
 
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">📅 This Week's Plan</div>
             <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; font-size: 13px;">
                 <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px;">
                     <li><strong style="color: var(--text-muted);">Mon:</strong> Rest 🧘</li>
@@ -342,7 +394,7 @@ document.getElementById('book-form').addEventListener('submit', async e => {
 
     try {
         const result = await apiPost('/api/books', data);
-        showToast(result.message || 'Book saved!');
+        showToast('✓ Book saved');
 
         // Show reflection prompts if available
         if (result.reflection_prompts && result.reflection_prompts.length) {
@@ -359,7 +411,7 @@ document.getElementById('book-form').addEventListener('submit', async e => {
         document.getElementById('book-form').reset();
         loadReadingStats();
     } catch (err) {
-        showToast('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -633,7 +685,7 @@ document.getElementById('journal-form').addEventListener('submit', async e => {
 
     try {
         const result = await apiPost('/api/journal', data);
-        showToast(`Journal saved! (${result.word_count} words) 📝`);
+        showToast(`✓ Entry saved (${result.word_count} words)`);
         document.getElementById('journal-form').reset();
         document.getElementById('journal-date').value = today();
         document.getElementById('journal-wc').textContent = '0 words';
@@ -642,7 +694,7 @@ document.getElementById('journal-form').addEventListener('submit', async e => {
         selectedThemes = [];
         document.querySelectorAll('.theme-pill').forEach(p => p.classList.remove('active'));
     } catch (err) {
-        showToast('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -895,13 +947,13 @@ document.getElementById('expense-form').addEventListener('submit', async e => {
     try {
         const result = await apiPost('/api/travel/expenses', data);
         const usdStr = result.amount_usd ? ` (~$${result.amount_usd})` : '';
-        showToast(`${result.message}${usdStr}`);
+        showToast(`✓ Expense saved${usdStr}`);
         document.getElementById('expense-form').reset();
         document.getElementById('expense-date').value = today();
         if (currenciesLoaded) document.getElementById('expense-currency').value = 'VND';
         loadExpenses();
     } catch (err) {
-        showToast('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -970,12 +1022,12 @@ document.getElementById('social-form').addEventListener('submit', async e => {
 
     try {
         const result = await apiPost('/api/social', data);
-        showToast(result.message || 'Connection logged!');
+        showToast('✓ Connection saved');
         document.getElementById('social-form').reset();
         document.getElementById('social-date').value = today();
         loadSocialData();
     } catch (err) {
-        showToast('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 

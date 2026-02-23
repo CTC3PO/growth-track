@@ -16,36 +16,38 @@ load_dotenv()
 _local_store: dict[str, list[dict]] = {}
 _LOCAL_DATA_DIR = Path(__file__).parent.parent / "local_data"
 _FIRESTORE_CLIENT = None
+_FIRESTORE_INIT_ATTEMPTED = False
 _LOGGER = logging.getLogger(__name__)
 
 def _get_firestore_client():
     """Try to get Firestore client initialized via firebase-admin, return None if not available."""
-    global _FIRESTORE_CLIENT
+    global _FIRESTORE_CLIENT, _FIRESTORE_INIT_ATTEMPTED
     
+    # Return cached client if already initialized
     if _FIRESTORE_CLIENT is not None:
         return _FIRESTORE_CLIENT
+    
+    # Don't retry if we already failed
+    if _FIRESTORE_INIT_ATTEMPTED:
+        return None
+    
+    _FIRESTORE_INIT_ATTEMPTED = True
+
+    # Only attempt Firestore if an explicit service account key file is provided
+    service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+    if not service_account_path or not Path(service_account_path).exists():
+        _LOGGER.info("ℹ️ FIREBASE_SERVICE_ACCOUNT not set or file not found. Using local JSON storage.")
+        return None
 
     try:
         import firebase_admin
         from firebase_admin import credentials
         from firebase_admin import firestore
         
-        # Check if already initialized
         if not firebase_admin._apps:
-            service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-            if service_account_path and Path(service_account_path).exists():
-                cred = credentials.Certificate(service_account_path)
-                firebase_admin.initialize_app(cred)
-                _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
-            else:
-                project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
-                if project_id:
-                    # Application Default Credentials fallback
-                    firebase_admin.initialize_app(options={'projectId': project_id})
-                    _LOGGER.info(f"🔥 Firebase Admin initialized using ADC for project {project_id}")
-                else:
-                    _LOGGER.warning("⚠️ No FIREBASE_SERVICE_ACCOUNT or GOOGLE_CLOUD_PROJECT_ID found. Falling back to local JSON.")
-                    return None
+            cred = credentials.Certificate(service_account_path)
+            firebase_admin.initialize_app(cred)
+            _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
                     
         _FIRESTORE_CLIENT = firestore.client()
         return _FIRESTORE_CLIENT

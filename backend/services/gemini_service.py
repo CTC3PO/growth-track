@@ -31,7 +31,7 @@ def generate_text(prompt: str, system_instruction: str = None, temperature: floa
         config.system_instruction = system_instruction
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash-lite",
         contents=prompt,
         config=config,
     )
@@ -50,7 +50,7 @@ def generate_json(prompt: str, system_instruction: str = None) -> dict:
         config.system_instruction = system_instruction
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash-lite",
         contents=prompt,
         config=config,
     )

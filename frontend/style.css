@@ -85,58 +85,19 @@ body {
     transition: var(--transition);
     opacity: 0.6;
     stroke: var(--text-secondary);
-    /* Default greyish */
 }
 
-/* Base icon colors */
-.color-run {
-    stroke: #f43f5e;
-}
-
-/* Rose/Red */
-.color-journal {
-    stroke: #8b5cf6;
-}
-
-/* Purple */
-.color-social {
-    stroke: #3b82f6;
-}
-
-/* Blue */
-.color-checkin {
-    stroke: #10b981;
-}
-
-/* Emerald Green */
-.color-reading {
-    stroke: #f59e0b;
-}
-
-/* Amber */
-.color-travel {
-    stroke: #ec4899;
-}
-
-/* Pink */
-.color-review {
-    stroke: #0ea5e9;
-}
-
-/* Cyan/Sky */
-
-/* Nav item active state matching Ramp's high contrast */
+/* Nav item active state */
 .nav-item.active {
-    background: var(--text-primary);
-    /* Black background */
-    color: var(--accent);
-    /* Neon green text/icon */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: var(--accent);
+    /* Neon green highlight */
+    color: var(--text-primary);
+    border-radius: 12px;
 }
 
 .nav-item.active .icon-svg {
-    stroke: var(--accent);
-    /* Neon green icon */
+    stroke: var(--text-primary);
+    /* Dark/black icon */
     opacity: 1;
     transform: scale(1.1);
 }
@@ -536,6 +497,49 @@ input[type="range"]::-webkit-slider-thumb {
     margin-bottom: 16px;
 }
 
+/* ─── Journal Side-by-Side Layout ────────────────────────────── */
+
+.journal-layout {
+    display: flex;
+    flex-direction: column;
+    /* Mobile: stacked */
+    gap: 0;
+}
+
+.journal-col-prompt,
+.journal-col-entry {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (min-width: 768px) {
+    .journal-layout {
+        flex-direction: row;
+        /* Desktop: side by side */
+        gap: 24px;
+        align-items: flex-start;
+    }
+
+    .journal-col-prompt {
+        flex: 1;
+    }
+
+    .journal-col-entry {
+        flex: 1;
+        position: sticky;
+        top: 100px;
+    }
+}
+
+/* ─── Review Section ─────────────────────────────────────────── */
+
+.review-narrative {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
 .review-section {
     margin-bottom: 16px;
 }
@@ -772,6 +776,10 @@ input[type="range"]::-webkit-slider-thumb {
     transform: translateX(-50%) translateY(0);
 }
 
+.toast-error {
+    background: var(--accent-rose);
+}
+
 /* ─── Spinner ────────────────────────────────────────────────── */
 
 .spinner {
@@ -836,6 +844,11 @@ input[type="range"]::-webkit-slider-thumb {
         column-count: 2;
         /* Masonry layout for cards */
         column-gap: 24px;
+    }
+
+    /* Journal page uses its own flex layout, not masonry */
+    #page-journal.active {
+        column-count: auto;
     }
 
     .card {
