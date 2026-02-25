@@ -538,10 +538,10 @@ input[type="range"]::-webkit-slider-thumb {
 
 @media (min-width: 768px) {
     .journal-layout {
-        flex-direction: row;
-        /* Desktop: side by side */
+        flex-direction: column;
+        /* Desktop: stack vertically */
         gap: 24px;
-        align-items: flex-start;
+        align-items: stretch;
     }
 
     .journal-col-prompt {
@@ -1088,4 +1088,207 @@ input[type="range"]::-webkit-slider-thumb {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
     }
+}
+
+/* ─── Calendar Widget ────────────────────────────────────────── */
+
+.cal-widget {
+    padding: 8px 0;
+}
+
+.cal-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.cal-nav button {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+    transition: background 0.2s;
+}
+
+.cal-nav button:hover {
+    background: var(--bg-input);
+}
+
+.cal-nav .cal-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.cal-header-cell {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 4px 0;
+}
+
+.cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    position: relative;
+    transition: background 0.15s;
+    cursor: default;
+}
+
+.cal-day.today {
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+.cal-day.has-data {
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.cal-day.has-data:hover {
+    background: var(--bg-input);
+}
+
+.cal-day .cal-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 2px;
+}
+
+.cal-day.empty {
+    color: transparent;
+}
+
+.cal-day-detail {
+    margin-top: 12px;
+    padding: 10px;
+    background: var(--bg-input);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.cal-day-detail strong {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* ─── Voice Recording UI ─────────────────────────────────────── */
+
+.voice-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(244, 63, 94, 0.08);
+    border: 1px solid rgba(244, 63, 94, 0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    gap: 8px;
+}
+
+.voice-status-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.voice-pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-rose);
+    animation: pulse-dot 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+    }
+}
+
+#voice-status-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-style: italic;
+}
+
+.voice-timer {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-rose);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.ai-polish-btn {
+    width: auto !important;
+    padding: 4px 12px !important;
+    font-size: 12px !important;
+    margin-top: 4px;
+    gap: 4px !important;
+    border-radius: 16px !important;
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe) !important;
+    border-color: #c4b5fd !important;
+    color: #6d28d9 !important;
+    transition: all 0.2s ease;
+}
+
+.ai-polish-btn:hover {
+    background: linear-gradient(135deg, #ede9fe, #ddd6fe) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(109, 40, 217, 0.15);
+}
+
+.ai-polish-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    transform: none;
+}
+
+/* Voice hint text under mic button */
+.voice-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 2px;
 }

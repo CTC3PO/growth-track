@@ -7,7 +7,7 @@ import os
 import sys
 from datetime import date, timedelta
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -28,6 +28,7 @@ from services.reading_agent import generate_reflection_prompts_for_book
 from services.review_agent import generate_weekly_review, generate_monthly_review, generate_quarterly_review
 from services.summary_agent import generate_summary
 from services.strava_service import router as strava_router
+from services.transcription_service import transcribe_audio
 
 
 @asynccontextmanager
@@ -133,6 +134,21 @@ async def add_book(book: BookEntry):
             pass
 
     return result
+
+
+@app.put("/api/books/{book_id}")
+async def update_book(book_id: str, updates: dict):
+    """Update a book entry (status, is_finished, etc)."""
+    books = get_documents("books", limit=1000)
+    for b in books:
+        if b.get("id") == book_id:
+            for key in ["status", "is_finished", "rating", "reaction"]:
+                if key in updates:
+                    b[key] = updates[key]
+            bid = b.pop("id", book_id)
+            save_document("books", b, doc_id=bid)
+            return {"status": "updated", "id": bid}
+    raise HTTPException(status_code=404, detail="Book not found")
 
 
 @app.get("/api/books/search")
@@ -262,6 +278,34 @@ async def get_journal_prompt(tradition: str = "blended"):
 
     prompt = generate_journal_prompt(tradition=tradition, context=context)
     return prompt
+
+
+@app.post("/api/journal/transcribe")
+async def transcribe_journal_audio(audio: UploadFile = File(...)):
+    """Transcribe uploaded audio using Gemini multimodal AI."""
+    # Validate file type
+    allowed_types = [
+        "audio/webm", "audio/wav", "audio/mp3", "audio/mpeg",
+        "audio/ogg", "audio/mp4", "audio/x-m4a", "audio/aac",
+        "video/webm",  # MediaRecorder sometimes uses video/webm
+    ]
+    content_type = audio.content_type or "audio/webm"
+    if content_type not in allowed_types:
+        raise HTTPException(400, f"Unsupported audio type: {content_type}. Supported: {allowed_types}")
+
+    # Read audio bytes (limit to 25MB)
+    audio_bytes = await audio.read()
+    if len(audio_bytes) > 25 * 1024 * 1024:
+        raise HTTPException(400, "Audio file too large. Maximum 25MB.")
+    if len(audio_bytes) == 0:
+        raise HTTPException(400, "Empty audio file.")
+
+    result = transcribe_audio(audio_bytes, mime_type=content_type)
+
+    if not result["success"]:
+        raise HTTPException(500, f"Transcription failed: {result.get('error', 'Unknown error')}")
+
+    return result
 
 
 # ─── Reviews ─────────────────────────────────────────────────────────

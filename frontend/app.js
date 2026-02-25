@@ -17,11 +17,11 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 
         // Load data for each page on switch
         if (page === 'review') loadReviewData();
-        if (page === 'reading') loadReadingStats();
-        if (page === 'journal') loadJournalPrompt();
-        if (page === 'checkin') loadCheckinHistory();
-        if (page === 'running') loadRunHistory();
-        if (page === 'travel') { initCurrencySelectors(); loadExpenses(); }
+        if (page === 'reading') { loadReadingStats(); loadBooks(); }
+        if (page === 'journal') { loadJournalPrompt(); loadJournalHistory(); }
+        if (page === 'checkin') { loadCheckinHistory(); loadCalendar('checkin'); }
+        if (page === 'running') { loadRunHistory(); loadCalendar('running'); }
+        if (page === 'travel') { initCurrencySelectors(); loadExpenses(); loadCalendar('travel'); }
         if (page === 'social') loadSocialData();
     });
 });
@@ -55,6 +55,132 @@ async function apiGet(endpoint) {
     const res = await fetch(`${API}${endpoint}`);
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+}
+
+
+// ─── Calendar Widget ──────────────────────────────────────────
+
+const _calState = {};  // store month offsets per calendar
+
+function renderCalendar(containerId, dataSets, monthOffset = 0) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    _calState[containerId] = monthOffset;
+
+    const now = new Date();
+    const viewDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const todayStr = today();
+
+    const monthName = viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const firstDay = new Date(year, month, 1).getDay();  // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Build a map of dates → entries
+    const dateMap = {};
+    dataSets.forEach(item => {
+        const d = item.date;
+        if (!d) return;
+        if (!dateMap[d]) dateMap[d] = [];
+        dateMap[d].push(item);
+    });
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let html = `
+        <div class="cal-widget">
+            <div class="cal-nav">
+                <button onclick="renderCalendar('${containerId}', window._calData['${containerId}'], ${monthOffset - 1})">‹</button>
+                <span class="cal-title">${monthName}</span>
+                <button onclick="renderCalendar('${containerId}', window._calData['${containerId}'], ${monthOffset + 1})" ${monthOffset >= 0 ? 'disabled style="opacity:0.3;cursor:default"' : ''}>›</button>
+            </div>
+            <div class="cal-grid">
+    `;
+
+    // Header row
+    dayNames.forEach(d => {
+        html += `<div class="cal-header-cell">${d}</div>`;
+    });
+
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+        html += `<div class="cal-day empty"></div>`;
+    }
+
+    // Day cells
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const hasData = dateMap[dateStr] && dateMap[dateStr].length > 0;
+        const isToday = dateStr === todayStr;
+        const classes = ['cal-day'];
+        if (isToday) classes.push('today');
+        if (hasData) classes.push('has-data');
+
+        html += `<div class="${classes.join(' ')}" ${hasData ? `onclick="showCalDetail('${containerId}', '${dateStr}')"` : ''}>
+            <span>${day}</span>
+            ${hasData ? '<div class="cal-dot"></div>' : ''}
+        </div>`;
+    }
+
+    html += `</div><div id="${containerId}-detail"></div></div>`;
+    container.innerHTML = html;
+
+    // Store data globally for onclick navigation
+    if (!window._calData) window._calData = {};
+    window._calData[containerId] = dataSets;
+}
+
+function showCalDetail(containerId, dateStr) {
+    const detailEl = document.getElementById(`${containerId}-detail`);
+    if (!detailEl) return;
+    const items = (window._calData[containerId] || []).filter(i => i.date === dateStr);
+    if (!items.length) { detailEl.innerHTML = ''; return; }
+
+    const lines = items.map(item => {
+        // Format depending on data type
+        if (item.distance_km !== undefined) {
+            return `🏃 ${item.distance_km} km${item.duration_minutes ? ` · ${item.duration_minutes} min` : ''} (${item.run_type || 'easy'})`;
+        }
+        if (item.amount !== undefined) {
+            return `💰 ${item.amount} ${item.currency || ''} — ${item.description || item.category || ''}`;
+        }
+        if (item.energy !== undefined) {
+            return `✨ Energy: ${item.energy}/10${item.alignment ? ` · Alignment: ${item.alignment}/10` : ''}${item.meditation ? ' · 🧘 Meditated' : ''}`;
+        }
+        if (item.content) {
+            return `📝 ${item.content.substring(0, 80)}${item.content.length > 80 ? '...' : ''}`;
+        }
+        return JSON.stringify(item).substring(0, 80);
+    });
+
+    detailEl.innerHTML = `
+        <div class="cal-day-detail">
+            <strong>${dateStr}</strong><br>
+            ${lines.join('<br>')}
+        </div>
+    `;
+}
+
+async function loadCalendar(type) {
+    try {
+        let data = [];
+        let containerId = '';
+        if (type === 'running') {
+            data = await apiGet('/api/runs?limit=100');
+            containerId = 'run-calendar';
+        } else if (type === 'travel') {
+            const res = await apiGet('/api/travel/expenses?limit=100');
+            data = res.expenses || [];
+            containerId = 'expense-calendar';
+        } else if (type === 'checkin') {
+            data = await apiGet('/api/checkins?limit=100');
+            containerId = 'checkin-calendar';
+        }
+        renderCalendar(containerId, data, _calState[containerId] || 0);
+    } catch (err) {
+        // silently fail for calendars
+    }
 }
 
 // ─── Initialize ────────────────────────────────────────────────
@@ -266,13 +392,13 @@ async function loadRunHistory() {
         }
         container.innerHTML = data.map(r => `
             <div class="history-item">
-                <div>
-                    <div class="history-date">${r.date || 'N/A'}</div>
-                    <div style="font-size:12px;color:var(--text-secondary)">${r.run_type || 'easy'}</div>
+                <div class="history-item-left">
+                    <strong>${r.date || 'N/A'}</strong>
+                    <div class="item-meta">${r.duration_minutes ? r.duration_minutes + ' min' : ''}</div>
+                    <span class="category-badge">${r.run_type || 'easy'}</span>
                 </div>
-                <div style="text-align:right">
-                    <div class="history-value">${r.distance_km} km</div>
-                    ${r.duration_minutes ? `<div style="font-size:11px;color:var(--text-secondary)">${r.duration_minutes} min</div>` : ''}
+                <div class="history-item-right">
+                    <div class="amount">${r.distance_km} km</div>
                 </div>
             </div>
         `).join('');
@@ -381,7 +507,7 @@ document.getElementById('search-book-btn')?.addEventListener('click', async () =
         const res = await apiGet(`/api/books/search?q=${encodeURIComponent(query)}`);
         if (res.status === 'success' && res.results.length > 0) {
             resultsContainer.innerHTML = res.results.map((book, idx) => `
-                <div class="book-result-item" style="padding: 8px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px;" data-title="${book.title.replace(/"/g, '&quot;')}"  data-author="${book.author.replace(/"/g, '&quot;')}">
+                <div class="book-result-item" style="padding: 8px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px;" data-title="${book.title.replace(/"/g, '&quot;')}"  data-author="${book.author.replace(/"/g, '&quot;')}" data-cover="${book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : ''}">
                     ${book.cover_i ? `<img src="https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg" style="width: 30px; height: 45px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 30px; height: 45px; background: var(--border); border-radius: 4px;"></div>'}
                     <div>
                         <div style="font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.2;">${book.title}</div>
@@ -395,6 +521,7 @@ document.getElementById('search-book-btn')?.addEventListener('click', async () =
                 item.addEventListener('click', () => {
                     document.getElementById('book-title').value = item.dataset.title;
                     document.getElementById('book-author').value = item.dataset.author;
+                    document.getElementById('book-cover-url').value = item.dataset.cover || '';
                     resultsContainer.innerHTML = '';
                     document.getElementById('book-search-query').value = '';
                     showToast(`Selected: ${item.dataset.title}`);
@@ -410,12 +537,15 @@ document.getElementById('search-book-btn')?.addEventListener('click', async () =
 
 document.getElementById('book-form').addEventListener('submit', async e => {
     e.preventDefault();
+    const statusVal = document.getElementById('book-status').value;
     const data = {
         title: document.getElementById('book-title').value,
         author: document.getElementById('book-author').value,
         genre: document.getElementById('book-genre').value,
         rating: parseInt(document.getElementById('book-rating').value) || null,
-        is_finished: document.getElementById('book-finished').checked,
+        is_finished: statusVal === 'read',
+        status: statusVal,
+        cover_url: document.getElementById('book-cover-url').value || null,
         reaction: document.getElementById('book-reaction').value || null,
     };
 
@@ -437,6 +567,7 @@ document.getElementById('book-form').addEventListener('submit', async e => {
 
         document.getElementById('book-form').reset();
         loadReadingStats();
+        loadBooks();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
@@ -473,6 +604,80 @@ async function loadReadingStats() {
     } catch (err) {
         document.getElementById('reading-stats').innerHTML =
             '<div class="loading-text">Add your first book to see stats!</div>';
+    }
+}
+
+
+async function loadBooks() {
+    try {
+        const data = await apiGet('/api/books?limit=100');
+        const container = document.getElementById('books-list');
+        if (!data || !data.length) {
+            container.innerHTML = '<div class="loading-text">No books yet. Add your first book!</div>';
+            return;
+        }
+
+        const groups = { 'reading': [], 'to read': [], 'read': [] };
+        data.forEach(b => {
+            const st = b.status || (b.is_finished ? 'read' : 'to read');
+            if (!groups[st]) groups[st] = [];
+            groups[st].push(b);
+        });
+
+        const statusIcons = { 'reading': '📖', 'to read': '📋', 'read': '✅' };
+        const statusOrder = ['reading', 'to read', 'read'];
+
+        container.innerHTML = statusOrder.map(status => {
+            const books = groups[status] || [];
+            if (!books.length) return '';
+            return `
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 10px;">
+                        ${statusIcons[status] || ''} ${status} (${books.length})
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                        ${books.map(b => `
+                            <div class="book-card" data-book-id="${b.id}" data-status="${status}" style="width: 110px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+                                <div style="width: 110px; height: 160px; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 6px; background: var(--bg-input);">
+                                    ${b.cover_url ?
+                    `<img src="${b.cover_url}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:28px;">📚</div>` :
+                    `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">📚</div>`
+                }
+                                </div>
+                                <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${b.title}</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${b.author}</div>
+                                ${b.rating ? `<div style="font-size: 10px; color: var(--accent-amber); margin-top: 2px;">★ ${b.rating}/10</div>` : ''}
+                                ${status !== 'read' ? `<button class="book-status-btn" data-book-id="${b.id}" data-next-status="${status === 'to read' ? 'reading' : 'read'}" style="margin-top: 6px; width: 100%; padding: 4px 6px; font-size: 10px; border: 1px solid var(--border); background: var(--bg-input); border-radius: 6px; cursor: pointer; color: var(--text-primary); font-weight: 500;">${status === 'to read' ? '📖 Start Reading' : '✅ Mark Read'}</button>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Add click listeners for status change buttons
+        container.querySelectorAll('.book-status-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const bookId = btn.dataset.bookId;
+                const nextStatus = btn.dataset.nextStatus;
+                try {
+                    await fetch(`${API}/api/books/${bookId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: nextStatus, is_finished: nextStatus === 'read' })
+                    });
+                    showToast(`Book moved to "${nextStatus}"`);
+                    loadBooks();
+                    loadReadingStats();
+                } catch (err) {
+                    showToast('Error updating book', 'error');
+                }
+            });
+        });
+    } catch (err) {
+        document.getElementById('books-list').innerHTML =
+            '<div class="loading-text">Could not load books</div>';
     }
 }
 
@@ -717,6 +922,8 @@ document.getElementById('journal-form').addEventListener('submit', async e => {
         document.getElementById('journal-date').value = today();
         document.getElementById('journal-wc').textContent = '0 words';
 
+        loadJournalHistory();
+
         // Reset themes
         selectedThemes = [];
         document.querySelectorAll('.theme-pill').forEach(p => p.classList.remove('active'));
@@ -725,6 +932,33 @@ document.getElementById('journal-form').addEventListener('submit', async e => {
     }
 });
 
+
+async function loadJournalHistory() {
+    try {
+        const data = await apiGet('/api/journal?limit=10');
+        const container = document.getElementById('journal-history');
+        if (!data.length) {
+            container.innerHTML = '<div class="loading-text">No entries yet. Start writing!</div>';
+            return;
+        }
+        container.innerHTML = data.map(j => `
+            <div class="history-item">
+                <div class="history-item-left">
+                    <strong>${j.date || 'N/A'}</strong>
+                    <div class="item-meta" style="margin-top:4px;color:var(--text-primary);line-height:1.5;">
+                        ${j.content.length > 150 ? j.content.substring(0, 150) + '...' : j.content}
+                    </div>
+                </div>
+                <div class="history-item-right" style="min-width:60px">
+                    <div class="amount">${j.word_count || 0} w</div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        document.getElementById('journal-history').innerHTML =
+            '<div class="loading-text">Could not load journals</div>';
+    }
+}
 
 // ─── Reviews ───────────────────────────────────────────────────
 
@@ -1176,8 +1410,82 @@ document.getElementById('generate-summary-btn')?.addEventListener('click', async
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 let isRecording = false;
+let recordingStartTime = null;
+let recordingTimerInterval = null;
+let interimText = '';          // Text currently being spoken (not yet finalized)
+let baseTextBeforeRecording = ''; // Snapshot of textarea when recording started
 
 const voiceBtn = document.getElementById('voice-journal-btn');
+
+// Create recording status bar (inserted above textarea dynamically)
+function createRecordingStatusBar() {
+    let bar = document.getElementById('voice-status-bar');
+    if (bar) return bar;
+    bar = document.createElement('div');
+    bar.id = 'voice-status-bar';
+    bar.className = 'voice-status-bar';
+    bar.style.display = 'none';
+    bar.innerHTML = `
+        <div class="voice-status-left">
+            <span class="voice-pulse-dot"></span>
+            <span id="voice-status-text">Listening...</span>
+        </div>
+        <span id="voice-timer" class="voice-timer">0:00</span>
+    `;
+    // Insert before the textarea
+    const textarea = document.getElementById('journal-content');
+    textarea.parentNode.insertBefore(bar, textarea);
+    return bar;
+}
+
+// Create AI polish button (shown after recording stops)
+function createPolishButton() {
+    let btn = document.getElementById('ai-polish-btn');
+    if (btn) return btn;
+    btn = document.createElement('button');
+    btn.id = 'ai-polish-btn';
+    btn.type = 'button';
+    btn.className = 'btn btn-secondary ai-polish-btn';
+    btn.style.display = 'none';
+    btn.innerHTML = '✨ AI Polish';
+    btn.title = 'Clean up grammar, remove filler words (um, uh), fix punctuation';
+    // Insert after word count
+    const wc = document.getElementById('journal-wc');
+    wc.parentNode.insertBefore(btn, wc.nextSibling);
+
+    btn.addEventListener('click', async () => {
+        const textarea = document.getElementById('journal-content');
+        const text = textarea.value.trim();
+        if (!text || text.length < 10) {
+            showToast('Need more text to polish', 'error');
+            return;
+        }
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Polishing...';
+
+        try {
+            const formData = new FormData();
+            // We'll use the transcribe endpoint with a tiny audio placeholder
+            // Actually, let's call a simpler approach — send text to Gemini via existing chat
+            const response = await apiPost('/api/chat', {
+                message: `Please clean up the following journal entry text: fix grammar, remove filler words (um, uh, like), add proper punctuation and paragraph breaks. Keep the original meaning and tone. Return ONLY the cleaned text, nothing else.\n\nText:\n${text}`,
+                agent: 'editor'
+            });
+            if (response.response) {
+                textarea.value = response.response;
+                const wc2 = textarea.value.trim().split(/\s+/).filter(w => w).length;
+                document.getElementById('journal-wc').textContent = `${wc2} words`;
+                showToast('✨ Text polished by AI');
+            }
+        } catch (err) {
+            showToast('Could not polish text: ' + err.message, 'error');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '✨ AI Polish';
+    });
+
+    return btn;
+}
 
 if (SpeechRecognition && voiceBtn) {
     recognition = new SpeechRecognition();
@@ -1188,26 +1496,49 @@ if (SpeechRecognition && voiceBtn) {
     recognition.onresult = (event) => {
         const textarea = document.getElementById('journal-content');
         let finalTranscript = '';
+        let currentInterim = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
                 finalTranscript += transcript + ' ';
+            } else {
+                currentInterim += transcript;
             }
         }
 
+        // Append finalized text
         if (finalTranscript) {
-            const existing = textarea.value;
-            textarea.value = existing + (existing && !existing.endsWith(' ') ? ' ' : '') + finalTranscript.trim() + ' ';
-            const wc = textarea.value.trim().split(/\s+/).filter(w => w).length;
-            document.getElementById('journal-wc').textContent = `${wc} words`;
+            baseTextBeforeRecording += (baseTextBeforeRecording && !baseTextBeforeRecording.endsWith(' ') ? ' ' : '') + finalTranscript.trim() + ' ';
         }
+
+        // Show interim (in-progress) text in a lighter style
+        interimText = currentInterim;
+        textarea.value = baseTextBeforeRecording + (interimText ? interimText : '');
+
+        // Update word count
+        const wc = textarea.value.trim().split(/\s+/).filter(w => w).length;
+        document.getElementById('journal-wc').textContent = `${wc} words`;
+
+        // Update status text with interim preview
+        const statusText = document.getElementById('voice-status-text');
+        if (statusText) {
+            statusText.textContent = interimText ? `"${interimText.slice(0, 50)}${interimText.length > 50 ? '...' : ''}"` : 'Listening...';
+        }
+
+        // Auto-scroll textarea to bottom
+        textarea.scrollTop = textarea.scrollHeight;
     };
 
     recognition.onerror = (event) => {
         console.log('Speech recognition error:', event.error);
         if (event.error === 'not-allowed') {
             showToast('Microphone access denied. Please allow mic permission.', 'error');
+        } else if (event.error === 'no-speech') {
+            // Don't stop on no-speech, just show hint
+            const statusText = document.getElementById('voice-status-text');
+            if (statusText) statusText.textContent = 'No speech detected — try speaking...';
+            return; // Don't stop recording
         }
         stopRecording();
     };
@@ -1234,27 +1565,75 @@ if (SpeechRecognition && voiceBtn) {
 function startRecording() {
     if (!recognition) return;
     isRecording = true;
+    interimText = '';
+    baseTextBeforeRecording = document.getElementById('journal-content').value;
     recognition.start();
+
+    // Update button
     voiceBtn.textContent = '⏹';
     voiceBtn.style.background = 'var(--accent-rose)';
     voiceBtn.style.borderColor = 'var(--accent-rose)';
     voiceBtn.style.color = '#fff';
     voiceBtn.style.animation = 'pulse-recording 1.5s infinite';
     voiceBtn.title = 'Click to stop recording';
+
+    // Show status bar
+    const bar = createRecordingStatusBar();
+    bar.style.display = 'flex';
+    const statusText = document.getElementById('voice-status-text');
+    if (statusText) statusText.textContent = 'Listening...';
+
+    // Start timer
+    recordingStartTime = Date.now();
+    const timerEl = document.getElementById('voice-timer');
+    recordingTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    }, 1000);
+
     showToast('🎤 Listening... Speak now');
 }
 
 function stopRecording() {
     if (!recognition) return;
     isRecording = false;
+    interimText = '';
     try { recognition.stop(); } catch (e) { }
+
+    // Reset button
     voiceBtn.textContent = '🎤';
     voiceBtn.style.background = 'none';
     voiceBtn.style.borderColor = 'var(--accent-teal)';
     voiceBtn.style.color = '';
     voiceBtn.style.animation = '';
     voiceBtn.title = 'Voice journaling — click to speak';
-    showToast('Recording stopped');
+
+    // Hide status bar
+    const bar = document.getElementById('voice-status-bar');
+    if (bar) bar.style.display = 'none';
+
+    // Stop timer
+    if (recordingTimerInterval) {
+        clearInterval(recordingTimerInterval);
+        recordingTimerInterval = null;
+    }
+
+    // Calculate recording duration
+    const elapsed = recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0;
+    recordingStartTime = null;
+
+    // Show AI polish button if there's text
+    const textarea = document.getElementById('journal-content');
+    const polishBtn = createPolishButton();
+    if (textarea.value.trim().length > 20) {
+        polishBtn.style.display = 'inline-flex';
+        showToast(`Recording stopped (${elapsed}s) — click ✨ AI Polish to clean up`);
+    } else {
+        polishBtn.style.display = 'none';
+        showToast('Recording stopped');
+    }
 }
 
 

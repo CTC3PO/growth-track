@@ -106,6 +106,8 @@ class BookEntry(BaseModel):
     reaction: Optional[str] = Field(None, description="2-3 sentence reaction")
     pages: Optional[int] = None
     is_finished: bool = False
+    status: str = "to read"  # to read, reading, read
+    cover_url: Optional[str] = None
 
 
 class ReadingStats(BaseModel):

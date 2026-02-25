@@ -118,6 +118,15 @@
                 </div>
                 <div id="checkin-history"></div>
             </div>
+
+            <!-- Calendar view -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📅</span>
+                    <h3>Activity Calendar</h3>
+                </div>
+                <div id="checkin-calendar"></div>
+            </div>
         </div>
 
         <!-- ═══ RUNNING PAGE ═══ -->
@@ -166,6 +175,15 @@
                     <h3>Recent Runs</h3>
                 </div>
                 <div id="run-history"></div>
+            </div>
+
+            <!-- Run Calendar -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📅</span>
+                    <h3>Run Calendar</h3>
+                </div>
+                <div id="run-calendar"></div>
             </div>
 
             <!-- Strava Integration -->
@@ -242,14 +260,24 @@
                             <label>Rating (1-10)</label>
                             <input type="number" id="book-rating" min="1" max="10" placeholder="8">
                         </div>
-                        <div class="form-group toggle-group" style="padding-top:22px">
+                        <div class="form-group toggle-group" style="padding-top:22px; display:none;"
+                            id="book-finished-group">
                             <input type="checkbox" id="book-finished" class="toggle">
                             <label for="book-finished"
                                 style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
                                 Finished
                             </label>
                         </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="book-status">
+                                <option value="to read">To Read</option>
+                                <option value="reading">Reading</option>
+                                <option value="read">Read</option>
+                            </select>
+                        </div>
                     </div>
+                    <input type="hidden" id="book-cover-url">
                     <div class="form-group">
                         <label>Your reaction (2-3 sentences)</label>
                         <textarea id="book-reaction" rows="2" placeholder="What stood out to you?"></textarea>
@@ -285,6 +313,17 @@
                     <h3>2026 Reading Goal</h3>
                 </div>
                 <div id="reading-stats" class="loading-text">Loading...</div>
+            </div>
+
+            <!-- Books List -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📚</span>
+                    <h3>My Books</h3>
+                </div>
+                <div id="books-list" style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="loading-text">Loading books...</div>
+                </div>
             </div>
 
             <!-- Reflection prompts (when a book is finished) -->
@@ -440,9 +479,12 @@
                             <div class="form-group">
                                 <label style="display: flex; justify-content: space-between; align-items: center;">Your
                                     thoughts
-                                    <button type="button" id="voice-journal-btn"
-                                        title="Voice journaling — click to speak"
-                                        style="background: none; border: 2px solid var(--accent-teal); border-radius: 50%; width: 32px; height: 32px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">🎤</button>
+                                    <span style="display: flex; flex-direction: column; align-items: center;">
+                                        <button type="button" id="voice-journal-btn"
+                                            title="Voice journaling — click to speak"
+                                            style="background: none; border: 2px solid var(--accent-teal); border-radius: 50%; width: 32px; height: 32px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">🎤</button>
+                                        <span class="voice-hint">Tap to dictate</span>
+                                    </span>
                                 </label>
                                 <textarea id="journal-content" rows="8"
                                     placeholder="Begin writing or click 🎤 to speak..."></textarea>
@@ -452,6 +494,14 @@
                         </form>
                     </div>
                 </div><!-- end .journal-col-entry -->
+
+                <!-- Recent journals -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h3>Recent Journals</h3>
+                    </div>
+                    <div id="journal-history"></div>
+                </div>
 
             </div><!-- end .journal-layout -->
         </div>
@@ -784,6 +834,15 @@
                     <h3>Recent Expenses</h3>
                 </div>
                 <div id="expense-history"></div>
+            </div>
+
+            <!-- Expense Calendar -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📅</span>
+                    <h3>Expense Calendar</h3>
+                </div>
+                <div id="expense-calendar"></div>
             </div>
         </div>
 
