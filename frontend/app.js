@@ -15,6 +15,9 @@ document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.add('active');
         document.getElementById(`page-${page}`).classList.add('active');
 
+        // Save active tab to localStorage
+        localStorage.setItem('mindful_active_tab', page);
+
         // Load data for each page on switch
         if (page === 'review') loadReviewData();
         if (page === 'reading') { loadReadingStats(); loadBooks(); }
@@ -297,11 +300,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
             updateAuthHeader();
 
-            // Navigate back to Check-in
+            // Navigate back to the saved tab, or Check-in
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelector('[data-page="checkin"]').classList.add('active');
-            document.getElementById('page-checkin').classList.add('active');
+            const savedTab = localStorage.getItem('mindful_active_tab') || 'checkin';
+            const tabBtn = document.querySelector(`.nav-item[data-page="${savedTab}"]`);
+            if (tabBtn) {
+                tabBtn.click();
+            } else {
+                document.querySelector('[data-page="checkin"]').classList.add('active');
+                document.getElementById('page-checkin').classList.add('active');
+            }
 
             showToast('Authentication successful!');
         });
@@ -360,8 +369,17 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('convert-from').addEventListener('change', runConversion);
     document.getElementById('convert-to').addEventListener('change', runConversion);
 
-    // Load initial data
-    loadCheckinHistory();
+    // Restore active tab
+    const savedTab = localStorage.getItem('mindful_active_tab') || 'checkin';
+    const tabBtn = document.querySelector(`.nav-item[data-page="${savedTab}"]`);
+    if (tabBtn) {
+        // Only restore if not currently on the auth page (from successful login intercept)
+        if (!document.getElementById('page-auth').classList.contains('active')) {
+            tabBtn.click();
+        }
+    } else {
+        loadCheckinHistory();
+    }
 
     // Check for Strava token in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -1528,12 +1546,13 @@ document.getElementById('generate-summary-btn')?.addEventListener('click', async
 
 // ─── Voice Journaling (Speech-to-Text) ─────────────────────────
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
+// ─── Voice Journaling (Speech-to-Text via Gemini) ──────────────
+
+let mediaRecorder = null;
+let audioChunks = [];
 let isRecording = false;
 let recordingStartTime = null;
 let recordingTimerInterval = null;
-let interimText = '';          // Text currently being spoken (not yet finalized)
 let baseTextBeforeRecording = ''; // Snapshot of textarea when recording started
 
 const voiceBtn = document.getElementById('voice-journal-btn');
@@ -1548,7 +1567,7 @@ function createRecordingStatusBar() {
     bar.style.display = 'none';
     bar.innerHTML = `
         <div class="voice-status-left">
-            <span class="voice-pulse-dot"></span>
+            <span class="voice-pulse-dot" id="voice-pulse-indicator"></span>
             <span id="voice-status-text">Listening...</span>
         </div>
         <span id="voice-timer" class="voice-timer">0:00</span>
@@ -1559,169 +1578,77 @@ function createRecordingStatusBar() {
     return bar;
 }
 
-// Create AI polish button (shown after recording stops)
-function createPolishButton() {
-    let btn = document.getElementById('ai-polish-btn');
-    if (btn) return btn;
-    btn = document.createElement('button');
-    btn.id = 'ai-polish-btn';
-    btn.type = 'button';
-    btn.className = 'btn btn-secondary ai-polish-btn';
-    btn.style.display = 'none';
-    btn.innerHTML = '✨ AI Polish';
-    btn.title = 'Clean up grammar, remove filler words (um, uh), fix punctuation';
-    // Insert after word count
-    const wc = document.getElementById('journal-wc');
-    wc.parentNode.insertBefore(btn, wc.nextSibling);
-
-    btn.addEventListener('click', async () => {
-        const textarea = document.getElementById('journal-content');
-        const text = textarea.value.trim();
-        if (!text || text.length < 10) {
-            showToast('Need more text to polish', 'error');
-            return;
-        }
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Polishing...';
-
-        try {
-            const formData = new FormData();
-            // We'll use the transcribe endpoint with a tiny audio placeholder
-            // Actually, let's call a simpler approach — send text to Gemini via existing chat
-            const response = await apiPost('/api/chat', {
-                message: `Please clean up the following journal entry text: fix grammar, remove filler words (um, uh, like), add proper punctuation and paragraph breaks. Keep the original meaning and tone. Return ONLY the cleaned text, nothing else.\n\nText:\n${text}`,
-                agent: 'editor'
-            });
-            if (response.response) {
-                textarea.value = response.response;
-                const wc2 = textarea.value.trim().split(/\s+/).filter(w => w).length;
-                document.getElementById('journal-wc').textContent = `${wc2} words`;
-                showToast('✨ Text polished by AI');
-            }
-        } catch (err) {
-            showToast('Could not polish text: ' + err.message, 'error');
-        }
-        btn.disabled = false;
-        btn.innerHTML = '✨ AI Polish';
-    });
-
-    return btn;
-}
-
-if (SpeechRecognition && voiceBtn) {
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = (event) => {
-        const textarea = document.getElementById('journal-content');
-        let finalTranscript = '';
-        let currentInterim = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-                finalTranscript += transcript + ' ';
+if (voiceBtn) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        voiceBtn.style.opacity = '0.4';
+        voiceBtn.style.cursor = 'not-allowed';
+        voiceBtn.title = 'Audio recording not supported in this browser';
+    } else {
+        voiceBtn.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
             } else {
-                currentInterim += transcript;
+                startRecording();
             }
-        }
-
-        // Append finalized text
-        if (finalTranscript) {
-            baseTextBeforeRecording += (baseTextBeforeRecording && !baseTextBeforeRecording.endsWith(' ') ? ' ' : '') + finalTranscript.trim() + ' ';
-        }
-
-        // Show interim (in-progress) text in a lighter style
-        interimText = currentInterim;
-        textarea.value = baseTextBeforeRecording + (interimText ? interimText : '');
-
-        // Update word count
-        const wc = textarea.value.trim().split(/\s+/).filter(w => w).length;
-        document.getElementById('journal-wc').textContent = `${wc} words`;
-
-        // Update status text with interim preview
-        const statusText = document.getElementById('voice-status-text');
-        if (statusText) {
-            statusText.textContent = interimText ? `"${interimText.slice(0, 50)}${interimText.length > 50 ? '...' : ''}"` : 'Listening...';
-        }
-
-        // Auto-scroll textarea to bottom
-        textarea.scrollTop = textarea.scrollHeight;
-    };
-
-    recognition.onerror = (event) => {
-        console.log('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-            showToast('Microphone access denied. Please allow mic permission.', 'error');
-        } else if (event.error === 'no-speech') {
-            // Don't stop on no-speech, just show hint
-            const statusText = document.getElementById('voice-status-text');
-            if (statusText) statusText.textContent = 'No speech detected — try speaking...';
-            return; // Don't stop recording
-        }
-        stopRecording();
-    };
-
-    recognition.onend = () => {
-        if (isRecording) {
-            try { recognition.start(); } catch (e) { stopRecording(); }
-        }
-    };
-
-    voiceBtn.addEventListener('click', () => {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            startRecording();
-        }
-    });
-} else if (voiceBtn) {
-    voiceBtn.style.opacity = '0.4';
-    voiceBtn.style.cursor = 'not-allowed';
-    voiceBtn.title = 'Speech recognition not supported in this browser';
+        });
+    }
 }
 
-function startRecording() {
-    if (!recognition) return;
-    isRecording = true;
-    interimText = '';
-    baseTextBeforeRecording = document.getElementById('journal-content').value;
-    recognition.start();
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
 
-    // Update button
-    voiceBtn.textContent = '⏹';
-    voiceBtn.style.background = 'var(--accent-rose)';
-    voiceBtn.style.borderColor = 'var(--accent-rose)';
-    voiceBtn.style.color = '#fff';
-    voiceBtn.style.animation = 'pulse-recording 1.5s infinite';
-    voiceBtn.title = 'Click to stop recording';
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
 
-    // Show status bar
-    const bar = createRecordingStatusBar();
-    bar.style.display = 'flex';
-    const statusText = document.getElementById('voice-status-text');
-    if (statusText) statusText.textContent = 'Listening...';
+        mediaRecorder.onstop = processAudio;
 
-    // Start timer
-    recordingStartTime = Date.now();
-    const timerEl = document.getElementById('voice-timer');
-    recordingTimerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-        const mins = Math.floor(elapsed / 60);
-        const secs = elapsed % 60;
-        if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-    }, 1000);
+        isRecording = true;
+        baseTextBeforeRecording = document.getElementById('journal-content').value;
+        mediaRecorder.start();
 
-    showToast('🎤 Listening... Speak now');
+        // Update button
+        voiceBtn.textContent = '⏹';
+        voiceBtn.style.background = 'var(--accent-rose)';
+        voiceBtn.style.borderColor = 'var(--accent-rose)';
+        voiceBtn.style.color = '#fff';
+        voiceBtn.style.animation = 'pulse-recording 1.5s infinite';
+        voiceBtn.title = 'Click to stop recording';
+
+        // Show status bar
+        const bar = createRecordingStatusBar();
+        bar.style.display = 'flex';
+        document.getElementById('voice-pulse-indicator').style.display = 'block';
+        const statusText = document.getElementById('voice-status-text');
+        if (statusText) statusText.textContent = 'Listening...';
+
+        // Start timer
+        recordingStartTime = Date.now();
+        const timerEl = document.getElementById('voice-timer');
+        recordingTimerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        showToast('🎤 Listening... Speak now');
+    } catch (err) {
+        console.error('Error starting recording:', err);
+        showToast('Microphone access denied or unavailable.', 'error');
+    }
 }
 
 function stopRecording() {
-    if (!recognition) return;
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
     isRecording = false;
-    interimText = '';
-    try { recognition.stop(); } catch (e) { }
+
+    // Stop recording, which triggers onstop (processAudio)
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Release mic
 
     // Reset button
     voiceBtn.textContent = '🎤';
@@ -1731,30 +1658,75 @@ function stopRecording() {
     voiceBtn.style.animation = '';
     voiceBtn.title = 'Voice journaling — click to speak';
 
-    // Hide status bar
-    const bar = document.getElementById('voice-status-bar');
-    if (bar) bar.style.display = 'none';
-
     // Stop timer
     if (recordingTimerInterval) {
         clearInterval(recordingTimerInterval);
         recordingTimerInterval = null;
     }
 
-    // Calculate recording duration
-    const elapsed = recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0;
-    recordingStartTime = null;
+    // Update status bar to show "Transcribing..."
+    const statusText = document.getElementById('voice-status-text');
+    if (statusText) statusText.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;margin-right:6px"></span> Transcribing...';
+    document.getElementById('voice-pulse-indicator').style.display = 'none'; // Stop pulsing dot
+}
 
-    // Show AI polish button if there's text
-    const textarea = document.getElementById('journal-content');
-    const polishBtn = createPolishButton();
-    if (textarea.value.trim().length > 20) {
-        polishBtn.style.display = 'inline-flex';
-        showToast(`Recording stopped (${elapsed}s) — click ✨ AI Polish to clean up`);
-    } else {
-        polishBtn.style.display = 'none';
-        showToast('Recording stopped');
+async function processAudio() {
+    if (audioChunks.length === 0) {
+        hideStatusBar();
+        showToast('No audio recorded', 'error');
+        return;
     }
+
+    // Use the mimeType from the recorder if possible, fallback to webm
+    const mimeType = mediaRecorder.mimeType || 'audio/webm';
+    const audioBlob = new Blob(audioChunks, { type: mimeType });
+    const formData = new FormData();
+
+    // Some browsers need a file extension in the filename
+    const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+    formData.append('audio', audioBlob, `recording.${ext}`);
+
+    try {
+        // Send to our Gemini Multimodal endpoint
+        const response = await fetch('/api/journal/transcribe', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Transcription failed');
+        }
+
+        const result = await response.json();
+
+        if (result.success && (result.enhanced || result.transcription)) {
+            // Prefer the enhanced (polished) text from Gemini
+            const finalTranscript = result.enhanced || result.transcription;
+
+            const textarea = document.getElementById('journal-content');
+            textarea.value = baseTextBeforeRecording + (baseTextBeforeRecording && !baseTextBeforeRecording.endsWith(' ') ? ' ' : '') + finalTranscript + ' ';
+
+            // Update word count
+            const wc = textarea.value.trim().split(/\s+/).filter(w => w).length;
+            document.getElementById('journal-wc').textContent = `${wc} words`;
+            textarea.scrollTop = textarea.scrollHeight;
+
+            showToast('✨ Transcription complete');
+        } else {
+            showToast('No speech detected in recording', 'error');
+        }
+    } catch (err) {
+        console.error('Transcription error:', err);
+        showToast('Transcription error: ' + err.message, 'error');
+    } finally {
+        hideStatusBar();
+    }
+}
+
+function hideStatusBar() {
+    const bar = document.getElementById('voice-status-bar');
+    if (bar) bar.style.display = 'none';
 }
 
 

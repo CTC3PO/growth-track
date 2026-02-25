@@ -14,6 +14,11 @@ COPY frontend/ ./frontend/
 ENV APP_PORT=8080
 ENV APP_ENV=production
 
+# Create a non-root user and switch to it
+RUN useradd -m appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8080
 
 # Run the application

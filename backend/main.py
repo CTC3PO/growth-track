@@ -48,10 +48,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from fastapi.responses import JSONResponse
+
 # CORS for frontend
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")] if allowed_origins_str else ["http://localhost:8080", "http://127.0.0.1:8080"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
