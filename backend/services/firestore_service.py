@@ -39,13 +39,22 @@ def _get_firestore_client():
         from firebase_admin import firestore
 
         if not firebase_admin._apps:
-            # Option 1: Explicit service account key file
+            # Option 1: Explicit service account JSON string (Vercel friendly)
+            service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+            # Option 2: Explicit service account key file path
             service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-            if service_account_path and Path(service_account_path).exists():
+            
+            if service_account_json:
+                import json
+                cred_dict = json.loads(service_account_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                _LOGGER.info("🔥 Firebase Admin initialized using FIREBASE_SERVICE_ACCOUNT_JSON")
+            elif service_account_path and Path(service_account_path).exists():
                 cred = credentials.Certificate(service_account_path)
                 firebase_admin.initialize_app(cred)
                 _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
-            # Option 2: Application Default Credentials (Cloud Run, GCE, etc.)
+            # Option 3: Application Default Credentials (Cloud Run, GCE, etc.)
             elif os.getenv("APP_ENV") == "production" or os.getenv("K_SERVICE"):
                 firebase_admin.initialize_app()
                 _LOGGER.info("🔥 Firebase Admin initialized using Application Default Credentials")
