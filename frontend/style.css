@@ -952,6 +952,11 @@ input[type="range"]::-webkit-slider-thumb {
         align-items: start;
     }
 
+    /* Override grid for journal page so the flex layout works */
+    #page-journal.active {
+        display: block;
+    }
+
     .metrics-grid {
         grid-template-columns: repeat(4, 1fr);
     }
