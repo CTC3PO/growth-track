@@ -28,6 +28,8 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 
 // ─── Helpers ───────────────────────────────────────────────────
 
+let currentUser = null; // Store conceptual logged in user Name
+
 function today() {
     return new Date().toISOString().split('T')[0];
 }
@@ -186,6 +188,125 @@ async function loadCalendar(type) {
 // ─── Initialize ────────────────────────────────────────────────
 
 window.addEventListener('DOMContentLoaded', () => {
+
+    // Simple routing to the auth page
+    const authTrigger = document.getElementById('auth-trigger');
+    const authStatus = document.getElementById('auth-status');
+    const pageAuth = document.getElementById('page-auth');
+
+    function updateAuthHeader() {
+        if (currentUser) {
+            authStatus.innerHTML = `Signed in as <strong>${currentUser}</strong> <span style="margin: 0 4px; color: var(--border);">|</span> <span id="auth-logout" style="cursor: pointer; color: var(--text-muted); font-size: 11px; transition: var(--transition);" onmouseover="this.style.color='var(--accent-rose)'" onmouseout="this.style.color='var(--text-muted)'">Log Out</span>`;
+            document.getElementById('greeting').textContent = `Hello, ${currentUser} 👋`;
+
+            const logoutBtn = document.getElementById('auth-logout');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    localStorage.removeItem('mindful_user');
+                    currentUser = null;
+                    document.getElementById('greeting').textContent = `Hello, Chau 👋`; // Reset
+                    updateAuthHeader();
+                    showToast('Logged out');
+                });
+            }
+        } else {
+            authStatus.innerHTML = `<span id="auth-trigger" style="cursor: pointer; color: var(--accent-blue); transition: var(--transition);" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Login / Sign Up</span>`;
+
+            // Re-bind the trigger
+            document.getElementById('auth-trigger').addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById('page-auth').classList.add('active');
+            });
+        }
+    }
+
+    // Check for existing session
+    const savedUser = localStorage.getItem('mindful_user');
+    if (savedUser) {
+        currentUser = savedUser;
+    }
+    updateAuthHeader();
+
+    if (authTrigger) {
+        authTrigger.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-auth').classList.add('active');
+        });
+    }
+
+    // Toggle Tab Logic in Auth Form
+    const tabLogin = document.getElementById('tab-login');
+    const tabSignup = document.getElementById('tab-signup');
+    const nameGroup = document.getElementById('name-group');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    const subtitle = document.getElementById('auth-subtitle');
+    const authName = document.getElementById('auth-name');
+
+    if (tabLogin && tabSignup) {
+        tabLogin.addEventListener('click', () => {
+            tabLogin.classList.add('active');
+            tabLogin.style.background = 'var(--bg-card)';
+            tabLogin.style.color = 'var(--text-primary)';
+            tabLogin.style.boxShadow = 'var(--shadow-sm)';
+
+            tabSignup.classList.remove('active');
+            tabSignup.style.background = 'transparent';
+            tabSignup.style.color = 'var(--text-secondary)';
+            tabSignup.style.boxShadow = 'none';
+
+            nameGroup.style.display = 'none';
+            authName.required = false;
+            submitBtn.innerHTML = 'Log In ✨';
+            subtitle.innerHTML = 'Welcome back. Please log in to continue.';
+        });
+
+        tabSignup.addEventListener('click', () => {
+            tabSignup.classList.add('active');
+            tabSignup.style.background = 'var(--bg-card)';
+            tabSignup.style.color = 'var(--text-primary)';
+            tabSignup.style.boxShadow = 'var(--shadow-sm)';
+
+            tabLogin.classList.remove('active');
+            tabLogin.style.background = 'transparent';
+            tabLogin.style.color = 'var(--text-secondary)';
+            tabLogin.style.boxShadow = 'none';
+
+            nameGroup.style.display = 'block';
+            authName.required = true;
+            submitBtn.innerHTML = 'Create Account ✨';
+            subtitle.innerHTML = 'Join us to track and integrate your personal life.';
+        });
+    }
+
+    // Auth Form Submit
+    const authForm = document.getElementById('auth-form');
+    if (authForm) {
+        authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            let name = 'Chau'; // Default fallback
+            if (tabSignup.classList.contains('active')) {
+                name = authName.value.trim() || 'Chau';
+            } else {
+                name = 'Chau'; // Simulate login
+            }
+
+            currentUser = name;
+            localStorage.setItem('mindful_user', currentUser);
+
+            updateAuthHeader();
+
+            // Navigate back to Check-in
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelector('[data-page="checkin"]').classList.add('active');
+            document.getElementById('page-checkin').classList.add('active');
+
+            showToast('Authentication successful!');
+        });
+    }
+
     // Theme initialization
     const themeToggle = document.getElementById('theme-toggle');
     const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
