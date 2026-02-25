@@ -15,9 +15,6 @@ document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.add('active');
         document.getElementById(`page-${page}`).classList.add('active');
 
-        // Save active tab to localStorage
-        localStorage.setItem('mindful_active_tab', page);
-
         // Load data for each page on switch
         if (page === 'review') loadReviewData();
         if (page === 'reading') { loadReadingStats(); loadBooks(); }
@@ -300,17 +297,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
             updateAuthHeader();
 
-            // Navigate back to the saved tab, or Check-in
+            // Navigate back to Check-in
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            const savedTab = localStorage.getItem('mindful_active_tab') || 'checkin';
-            const tabBtn = document.querySelector(`.nav-item[data-page="${savedTab}"]`);
-            if (tabBtn) {
-                tabBtn.click();
-            } else {
-                document.querySelector('[data-page="checkin"]').classList.add('active');
-                document.getElementById('page-checkin').classList.add('active');
-            }
+            document.querySelector('[data-page="checkin"]').classList.add('active');
+            document.getElementById('page-checkin').classList.add('active');
 
             showToast('Authentication successful!');
         });
@@ -369,17 +360,9 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('convert-from').addEventListener('change', runConversion);
     document.getElementById('convert-to').addEventListener('change', runConversion);
 
-    // Restore active tab
-    const savedTab = localStorage.getItem('mindful_active_tab') || 'checkin';
-    const tabBtn = document.querySelector(`.nav-item[data-page="${savedTab}"]`);
-    if (tabBtn) {
-        // Only restore if not currently on the auth page (from successful login intercept)
-        if (!document.getElementById('page-auth').classList.contains('active')) {
-            tabBtn.click();
-        }
-    } else {
-        loadCheckinHistory();
-    }
+    // Initial load
+    loadCheckinHistory();
+    loadCalendar('checkin');
 
     // Check for Strava token in URL
     const urlParams = new URLSearchParams(window.location.search);

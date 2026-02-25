@@ -885,9 +885,11 @@ input[type="range"]::-webkit-slider-thumb {
         column-gap: 24px;
     }
 
-    /* Journal and Auth pages use their own flex block layout, not masonry */
+    /* Journal, Auth, Social, and Travel pages use their own layout, not masonry */
     #page-journal.active,
-    #page-auth.active {
+    #page-auth.active,
+    #page-social.active,
+    #page-travel.active {
         column-count: auto;
     }
 
