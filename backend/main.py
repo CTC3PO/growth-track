@@ -31,6 +31,7 @@ from services.summary_agent import generate_summary
 from services.strava_service import router as strava_router
 from services.transcription_service import transcribe_audio
 from services.auth_middleware import get_current_user
+from services.work_agent import generate_work_insights
 from fastapi import Depends
 
 
@@ -135,6 +136,18 @@ async def log_work_session(session: WorkSession, user: dict = Depends(get_curren
 async def get_work_sessions(limit: int = 50, user: dict = Depends(get_current_user)):
     """Get recent work sessions."""
     return get_documents("work", limit=limit, user_id=user['uid'])
+
+@app.get("/api/work/insights")
+async def get_work_insights(user: dict = Depends(get_current_user)):
+    """Generate productivity insights from recent work sessions."""
+    # Get last 50 work sessions for the user to generate insights
+    sessions = get_documents("work", limit=50, user_id=user['uid'])
+    
+    if not sessions:
+        return {"insight": "Not enough data yet. Log some work sessions to get insights!"}
+
+    insight = generate_work_insights(sessions)
+    return {"insight": insight}
 
 
 # ─── Reading ─────────────────────────────────────────────────────────

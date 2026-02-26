@@ -1697,6 +1697,29 @@ async function loadWorkData() {
     }
 }
 
+const btnWorkInsights = document.getElementById('btn-work-insights');
+if (btnWorkInsights) {
+    btnWorkInsights.addEventListener('click', async () => {
+        const contentDiv = document.getElementById('work-insights-content');
+
+        btnWorkInsights.textContent = 'Generating... ⏳';
+        btnWorkInsights.disabled = true;
+        contentDiv.style.display = 'none';
+
+        try {
+            const data = await apiGet('/api/work/insights');
+            contentDiv.innerHTML = data.insight ? data.insight.replace(/\n/g, '<br>') : 'No insights generated.';
+            contentDiv.style.display = 'block';
+        } catch (err) {
+            showToast('Failed to fetch insights', 'error');
+            console.error(err);
+        } finally {
+            btnWorkInsights.textContent = 'Generate Insights ✨';
+            btnWorkInsights.disabled = false;
+        }
+    });
+}
+
 
 // ─── Social ────────────────────────────────────────────────────
 
