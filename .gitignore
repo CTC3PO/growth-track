@@ -12,6 +12,8 @@ venv/
 .env
 backend/.env
 backend/local_data/
+*-key.json
+*-service-account*.json
 
 # Node
 node_modules/
