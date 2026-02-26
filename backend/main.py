@@ -30,6 +30,8 @@ from services.review_agent import generate_weekly_review, generate_monthly_revie
 from services.summary_agent import generate_summary
 from services.strava_service import router as strava_router
 from services.transcription_service import transcribe_audio
+from services.auth_middleware import get_current_user
+from fastapi import Depends
 
 
 @asynccontextmanager
@@ -82,31 +84,31 @@ async def health_check():
 # ─── Daily Check-In ─────────────────────────────────────────────────
 
 @app.post("/api/checkin")
-async def create_checkin(checkin: DailyCheckIn):
+async def create_checkin(checkin: DailyCheckIn, user: dict = Depends(get_current_user)):
     """Log a daily check-in (2-minute form)."""
-    doc_id = save_document("checkins", checkin.model_dump(), doc_id=f"checkin_{checkin.date}")
+    doc_id = save_document("checkins", checkin.model_dump(), doc_id=f"checkin_{checkin.date}_{user['uid']}", user_id=user['uid'])
     return {"status": "saved", "id": doc_id, "message": "Daily check-in logged 🧘"}
 
 
 @app.get("/api/checkins")
-async def get_checkins(limit: int = 30):
+async def get_checkins(limit: int = 30, user: dict = Depends(get_current_user)):
     """Get recent check-ins."""
-    return get_documents("checkins", limit=limit)
+    return get_documents("checkins", limit=limit, user_id=user['uid'])
 
 
 # ─── Running ─────────────────────────────────────────────────────────
 
 @app.post("/api/runs")
-async def log_run(run: RunLog):
+async def log_run(run: RunLog, user: dict = Depends(get_current_user)):
     """Log a run."""
-    doc_id = save_document("runs", run.model_dump())
+    doc_id = save_document("runs", run.model_dump(), user_id=user['uid'])
     return {"status": "saved", "id": doc_id, "message": f"Run logged: {run.distance_km}km 🏃"}
 
 
 @app.get("/api/runs")
-async def get_runs(limit: int = 30):
+async def get_runs(limit: int = 30, user: dict = Depends(get_current_user)):
     """Get recent runs."""
-    return get_documents("runs", limit=limit)
+    return get_documents("runs", limit=limit, user_id=user['uid'])
 
 
 @app.get("/api/running_coach/plan")
@@ -123,24 +125,24 @@ async def get_running_plan(access_token: str):
 # ─── Work ────────────────────────────────────────────────────────────
 
 @app.post("/api/work")
-async def log_work_session(session: WorkSession):
+async def log_work_session(session: WorkSession, user: dict = Depends(get_current_user)):
     """Log a deep work session."""
-    doc_id = save_document("work", session.model_dump())
+    doc_id = save_document("work", session.model_dump(), user_id=user['uid'])
     return {"status": "saved", "id": doc_id, "message": f"Work session logged: {session.duration_minutes}m ⏱️"}
 
 
 @app.get("/api/work")
-async def get_work_sessions(limit: int = 50):
+async def get_work_sessions(limit: int = 50, user: dict = Depends(get_current_user)):
     """Get recent work sessions."""
-    return get_documents("work", limit=limit)
+    return get_documents("work", limit=limit, user_id=user['uid'])
 
 
 # ─── Reading ─────────────────────────────────────────────────────────
 
 @app.post("/api/books")
-async def add_book(book: BookEntry):
+async def add_book(book: BookEntry, user: dict = Depends(get_current_user)):
     """Add or update a book entry."""
-    doc_id = save_document("books", book.model_dump())
+    doc_id = save_document("books", book.model_dump(), user_id=user['uid'])
     result = {"status": "saved", "id": doc_id, "message": f"Book logged: {book.title} 📚"}
 
     # If book is finished, generate reflection prompts
@@ -158,16 +160,16 @@ async def add_book(book: BookEntry):
 
 
 @app.put("/api/books/{book_id}")
-async def update_book(book_id: str, updates: dict):
+async def update_book(book_id: str, updates: dict, user: dict = Depends(get_current_user)):
     """Update a book entry (status, is_finished, etc)."""
-    books = get_documents("books", limit=1000)
+    books = get_documents("books", limit=1000, user_id=user['uid'])
     for b in books:
         if b.get("id") == book_id:
             for key in ["title", "author", "genre", "status", "is_finished", "rating", "reaction", "cover_url", "pages", "date_started", "date_finished"]:
                 if key in updates:
                     b[key] = updates[key]
             bid = b.pop("id", book_id)
-            save_document("books", b, doc_id=bid)
+            save_document("books", b, doc_id=bid, user_id=user['uid'])
             return {"status": "updated", "id": bid}
     raise HTTPException(status_code=404, detail="Book not found")
 
@@ -193,17 +195,17 @@ async def search_books(q: str):
 
 
 @app.get("/api/books")
-async def get_books(limit: int = 50):
+async def get_books(limit: int = 50, user: dict = Depends(get_current_user)):
     """Get book entries."""
-    return get_documents("books", limit=limit)
+    return get_documents("books", limit=limit, user_id=user['uid'])
 
 
 @app.get("/api/books/stats")
-async def get_reading_stats():
+async def get_reading_stats(user: dict = Depends(get_current_user)):
     """Get reading progress toward 50/year goal."""
     year_start = date(date.today().year, 1, 1).isoformat()
     year_end = date(date.today().year, 12, 31).isoformat()
-    books = get_documents_by_date_range("books", year_start, year_end)
+    books = get_documents_by_date_range("books", year_start, year_end, user_id=user['uid'])
     finished = [b for b in books if b.get("is_finished")]
 
     genres = {}
@@ -228,17 +230,17 @@ async def get_reading_stats():
 # ─── Journaling ──────────────────────────────────────────────────────
 
 @app.post("/api/journal")
-async def create_journal_entry(entry: JournalEntry):
+async def create_journal_entry(entry: JournalEntry, user: dict = Depends(get_current_user)):
     """Save a journal entry."""
     entry.word_count = len(entry.content.split())
-    doc_id = save_document("journals", entry.model_dump())
+    doc_id = save_document("journals", entry.model_dump(), user_id=user['uid'])
     return {"status": "saved", "id": doc_id, "word_count": entry.word_count}
 
 
 @app.get("/api/journal")
-async def get_journal_entries(limit: int = 20):
+async def get_journal_entries(limit: int = 20, user: dict = Depends(get_current_user)):
     """Get recent journal entries."""
-    return get_documents("journals", limit=limit)
+    return get_documents("journals", limit=limit, user_id=user['uid'])
 
 
 @app.get("/api/journal/prompt")
@@ -404,14 +406,14 @@ EXCHANGE_RATES_TO_USD = {
 
 
 @app.post("/api/travel/expenses")
-async def add_expense(expense: TravelExpense):
+async def add_expense(expense: TravelExpense, user: dict = Depends(get_current_user)):
     """Log a travel expense."""
     data = expense.model_dump()
     # Auto-convert to USD
     rate = EXCHANGE_RATES_TO_USD.get(expense.currency.upper(), None)
     if rate:
         data["amount_usd"] = round(expense.amount * rate, 2)
-    doc_id = save_document("travel_expenses", data)
+    doc_id = save_document("travel_expenses", data, user_id=user['uid'])
     return {
         "status": "saved",
         "id": doc_id,
@@ -421,9 +423,9 @@ async def add_expense(expense: TravelExpense):
 
 
 @app.get("/api/travel/expenses")
-async def get_expenses(trip: str = None, limit: int = 50):
+async def get_expenses(trip: str = None, limit: int = 50, user: dict = Depends(get_current_user)):
     """Get travel expenses, optionally filtered by trip name."""
-    expenses = get_documents("travel_expenses", limit=limit)
+    expenses = get_documents("travel_expenses", limit=limit, user_id=user['uid'])
     if trip:
         expenses = [e for e in expenses if e.get("trip", "").lower() == trip.lower()]
 
@@ -470,27 +472,27 @@ async def list_currencies():
 # ─── Social ─────────────────────────────────────────────────────────
 
 @app.post("/api/social")
-async def log_social(connection: SocialConnection):
+async def log_social(connection: SocialConnection, user: dict = Depends(get_current_user)):
     """Log a social interaction."""
-    doc_id = save_document("social", connection.model_dump())
+    doc_id = save_document("social", connection.model_dump(), user_id=user['uid'])
     return {"status": "saved", "id": doc_id, "message": f"Connection logged: {connection.name} 🤝"}
 
 
 @app.get("/api/social")
-async def get_social(limit: int = 50):
+async def get_social(limit: int = 50, user: dict = Depends(get_current_user)):
     """Get social connections."""
-    return get_documents("social", limit=limit)
+    return get_documents("social", limit=limit, user_id=user['uid'])
 
 
 @app.get("/api/social/stats")
-async def get_social_stats(start_date: str = None, end_date: str = None):
+async def get_social_stats(start_date: str = None, end_date: str = None, user: dict = Depends(get_current_user)):
     """Get social stats for a date range."""
     if not start_date:
         today_d = date.today()
         start_date = (today_d - timedelta(days=30)).isoformat()
         end_date = today_d.isoformat()
 
-    connections = get_documents_by_date_range("social", start_date, end_date)
+    connections = get_documents_by_date_range("social", start_date, end_date, user_id=user['uid'])
     by_category = {}
     unique_people = set()
     for c in connections:

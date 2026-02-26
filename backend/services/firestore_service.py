@@ -84,10 +84,12 @@ def _serialize_dates(data: dict) -> dict:
     return result
 
 
-def save_document(collection: str, data: dict, doc_id: str = None) -> str:
-    """Save a document to Firestore or local JSON fallback."""
+def save_document(collection: str, data: dict, doc_id: str = None, user_id: str = None) -> str:
+    """Save a document to Firestore or local JSON fallback. Scopes by user_id."""
     data = _serialize_dates(data)
     data["created_at"] = datetime.now().isoformat()
+    if user_id:
+        data["user_id"] = user_id
 
     db = _get_firestore_client()
     if db:
@@ -128,40 +130,40 @@ def save_document(collection: str, data: dict, doc_id: str = None) -> str:
         return doc_id
 
 
-def get_documents(collection: str, limit: int = 100) -> list[dict]:
-    """Get all documents from a collection."""
+def get_documents(collection: str, limit: int = 100, user_id: str = None) -> list[dict]:
+    """Get all documents from a collection, optionally scoped by user_id."""
     db = _get_firestore_client()
     if db:
         prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
         full_collection = f"{prefix}_{collection}"
-        docs = db.collection(full_collection).order_by(
-            "created_at", direction="DESCENDING"
-        ).limit(limit).get()
+        query = db.collection(full_collection)
+        if user_id:
+            query = query.where("user_id", "==", user_id)
+        docs = query.order_by("created_at", direction="DESCENDING").limit(limit).get()
         return [{"id": doc.id, **doc.to_dict()} for doc in docs]
     else:
         file_path = _LOCAL_DATA_DIR / f"{collection}.json"
         if file_path.exists():
             data = json.loads(file_path.read_text())
+            if user_id:
+                data = [d for d in data if d.get("user_id") == user_id]
             return sorted(data, key=lambda x: x.get("created_at", ""), reverse=True)[:limit]
         return []
 
 
-def get_documents_by_date_range(collection: str, start_date: str, end_date: str) -> list[dict]:
-    """Get documents within a date range."""
+def get_documents_by_date_range(collection: str, start_date: str, end_date: str, user_id: str = None) -> list[dict]:
+    """Get documents within a date range, scoped by user_id."""
     db = _get_firestore_client()
     if db:
         prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
         full_collection = f"{prefix}_{collection}"
-        docs = (
-            db.collection(full_collection)
-            .where("date", ">=", start_date)
-            .where("date", "<=", end_date)
-            .order_by("date")
-            .get()
-        )
+        query = db.collection(full_collection).where("date", ">=", start_date).where("date", "<=", end_date)
+        if user_id:
+            query = query.where("user_id", "==", user_id)
+        docs = query.order_by("date").get()
         return [{"id": doc.id, **doc.to_dict()} for doc in docs]
     else:
-        all_docs = get_documents(collection, limit=1000)
+        all_docs = get_documents(collection, limit=1000, user_id=user_id)
         return [
             d for d in all_docs
             if start_date <= d.get("date", "") <= end_date
