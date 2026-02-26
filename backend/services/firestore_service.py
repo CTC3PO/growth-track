@@ -137,16 +137,23 @@ def get_documents(collection: str, limit: int = 100, user_id: str = None) -> lis
         prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
         full_collection = f"{prefix}_{collection}"
         query = db.collection(full_collection)
-        if user_id:
-            query = query.where("user_id", "==", user_id)
+        
+        # In a real app we'd strict filter by user_id
+        # For this POC, we'll fetch all and filter in Python so we don't lose old records without user_ids
         docs = query.order_by("created_at", direction="DESCENDING").limit(limit).get()
-        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        results = []
+        for doc in docs:
+            d = doc.to_dict()
+            if not user_id or "user_id" not in d or d["user_id"] == user_id:
+                results.append({"id": doc.id, **d})
+        return results
     else:
         file_path = _LOCAL_DATA_DIR / f"{collection}.json"
         if file_path.exists():
             data = json.loads(file_path.read_text())
             if user_id:
-                data = [d for d in data if d.get("user_id") == user_id]
+                # Fallback to include items with NO user_id (legacy entries)
+                data = [d for d in data if "user_id" not in d or d.get("user_id") == user_id]
             return sorted(data, key=lambda x: x.get("created_at", ""), reverse=True)[:limit]
         return []
 
@@ -158,10 +165,14 @@ def get_documents_by_date_range(collection: str, start_date: str, end_date: str,
         prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
         full_collection = f"{prefix}_{collection}"
         query = db.collection(full_collection).where("date", ">=", start_date).where("date", "<=", end_date)
-        if user_id:
-            query = query.where("user_id", "==", user_id)
+        
         docs = query.order_by("date").get()
-        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        results = []
+        for doc in docs:
+            d = doc.to_dict()
+            if not user_id or "user_id" not in d or d["user_id"] == user_id:
+                results.append({"id": doc.id, **d})
+        return results
     else:
         all_docs = get_documents(collection, limit=1000, user_id=user_id)
         return [
