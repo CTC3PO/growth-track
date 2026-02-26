@@ -191,7 +191,7 @@ body {
     -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid rgba(255, 255, 255, 0.3);
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-around;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -209,15 +209,18 @@ body {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    padding: 10px 14px;
+    padding: 10px 8px;
+    /* Slightly reduced padding to fit all items */
     border: none;
     background: none;
     color: var(--text-muted);
     cursor: pointer;
     transition: var(--transition);
     border-radius: 12px;
-    min-width: 72px;
-    flex-shrink: 0;
+    min-width: 60px;
+    /* Reduced to fit typical mobile width */
+    flex: 1;
+    /* Helps spread items evenly */
 }
 
 .icon-svg {

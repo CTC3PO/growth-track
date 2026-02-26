@@ -39,22 +39,13 @@ def _get_firestore_client():
         from firebase_admin import firestore
 
         if not firebase_admin._apps:
-            # Option 1: Explicit service account JSON string (Vercel friendly)
-            service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-            # Option 2: Explicit service account key file path
+            # Option 1: Explicit service account key file
             service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-            
-            if service_account_json:
-                import json
-                cred_dict = json.loads(service_account_json)
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
-                _LOGGER.info("🔥 Firebase Admin initialized using FIREBASE_SERVICE_ACCOUNT_JSON")
-            elif service_account_path and Path(service_account_path).exists():
+            if service_account_path and Path(service_account_path).exists():
                 cred = credentials.Certificate(service_account_path)
                 firebase_admin.initialize_app(cred)
                 _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
-            # Option 3: Application Default Credentials (Cloud Run, GCE, etc.)
+            # Option 2: Application Default Credentials (Cloud Run, GCE, etc.)
             elif os.getenv("APP_ENV") == "production" or os.getenv("K_SERVICE"):
                 firebase_admin.initialize_app()
                 _LOGGER.info("🔥 Firebase Admin initialized using Application Default Credentials")
@@ -84,12 +75,10 @@ def _serialize_dates(data: dict) -> dict:
     return result
 
 
-def save_document(collection: str, data: dict, doc_id: str = None, user_id: str = None) -> str:
-    """Save a document to Firestore or local JSON fallback. Scopes by user_id."""
+def save_document(collection: str, data: dict, doc_id: str = None) -> str:
+    """Save a document to Firestore or local JSON fallback."""
     data = _serialize_dates(data)
     data["created_at"] = datetime.now().isoformat()
-    if user_id:
-        data["user_id"] = user_id
 
     db = _get_firestore_client()
     if db:
@@ -130,51 +119,40 @@ def save_document(collection: str, data: dict, doc_id: str = None, user_id: str 
         return doc_id
 
 
-def get_documents(collection: str, limit: int = 100, user_id: str = None) -> list[dict]:
-    """Get all documents from a collection, optionally scoped by user_id."""
+def get_documents(collection: str, limit: int = 100) -> list[dict]:
+    """Get all documents from a collection."""
     db = _get_firestore_client()
     if db:
         prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
         full_collection = f"{prefix}_{collection}"
-        query = db.collection(full_collection)
-        
-        # In a real app we'd strict filter by user_id
-        # For this POC, we'll fetch all and filter in Python so we don't lose old records without user_ids
-        docs = query.order_by("created_at", direction="DESCENDING").limit(limit).get()
-        results = []
-        for doc in docs:
-            d = doc.to_dict()
-            if not user_id or "user_id" not in d or d["user_id"] == user_id:
-                results.append({"id": doc.id, **d})
-        return results
+        docs = db.collection(full_collection).order_by(
+            "created_at", direction="DESCENDING"
+        ).limit(limit).get()
+        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
     else:
         file_path = _LOCAL_DATA_DIR / f"{collection}.json"
         if file_path.exists():
             data = json.loads(file_path.read_text())
-            if user_id:
-                # Fallback to include items with NO user_id (legacy entries)
-                data = [d for d in data if "user_id" not in d or d.get("user_id") == user_id]
             return sorted(data, key=lambda x: x.get("created_at", ""), reverse=True)[:limit]
         return []
 
 
-def get_documents_by_date_range(collection: str, start_date: str, end_date: str, user_id: str = None) -> list[dict]:
-    """Get documents within a date range, scoped by user_id."""
+def get_documents_by_date_range(collection: str, start_date: str, end_date: str) -> list[dict]:
+    """Get documents within a date range."""
     db = _get_firestore_client()
     if db:
         prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
         full_collection = f"{prefix}_{collection}"
-        query = db.collection(full_collection).where("date", ">=", start_date).where("date", "<=", end_date)
-        
-        docs = query.order_by("date").get()
-        results = []
-        for doc in docs:
-            d = doc.to_dict()
-            if not user_id or "user_id" not in d or d["user_id"] == user_id:
-                results.append({"id": doc.id, **d})
-        return results
+        docs = (
+            db.collection(full_collection)
+            .where("date", ">=", start_date)
+            .where("date", "<=", end_date)
+            .order_by("date")
+            .get()
+        )
+        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
     else:
-        all_docs = get_documents(collection, limit=1000, user_id=user_id)
+        all_docs = get_documents(collection, limit=1000)
         return [
             d for d in all_docs
             if start_date <= d.get("date", "") <= end_date

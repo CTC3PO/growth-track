@@ -952,25 +952,6 @@
             </button>
         </nav>
 
-        <!-- Firebase SDKs -->
-        <script type="module">
-            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-            import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-
-            // Firebase Config - placeholders for now, the backend verifies tokens via Firebase Admin
-            const firebaseConfig = {
-                apiKey: "YOUR_API_KEY",
-                authDomain: "mindful-life-ai.firebaseapp.com",
-                projectId: "mindful-life-ai",
-                storageBucket: "mindful-life-ai.firebasestorage.app",
-                messagingSenderId: "123456789",
-                appId: "1:123456789:web:123456789"
-            };
-
-            const app = initializeApp(firebaseConfig);
-            window.auth = getAuth(app);
-        </script>
-
         <script src="/static/app.js"></script>
 </body>
 
