@@ -17,12 +17,13 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 
         // Load data for each page on switch
         if (page === 'review') loadReviewData();
-        if (page === 'reading') { loadReadingStats(); loadBooks(); }
-        if (page === 'journal') { loadJournalPrompt(); loadJournalHistory(); }
+        if (page === 'reading') { loadReadingStats(); loadBooks(); loadCalendar('reading'); }
+        if (page === 'journal') { loadJournalPrompt(); loadJournalHistory(); loadCalendar('journal'); }
         if (page === 'checkin') { loadCheckinHistory(); loadCalendar('checkin'); }
         if (page === 'running') { loadRunHistory(); loadCalendar('running'); }
+        if (page === 'work') { loadWorkData(); loadCalendar('work'); }
         if (page === 'travel') { initCurrencySelectors(); loadExpenses(); loadCalendar('travel'); }
-        if (page === 'social') loadSocialData();
+        if (page === 'social') { loadSocialData(); loadCalendar('social'); }
     });
 });
 
@@ -44,9 +45,14 @@ function showToast(msg, type = 'success') {
 }
 
 async function apiPost(endpoint, data) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (window.auth && window.auth.currentUser) {
+        const token = await window.auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+    }
     const res = await fetch(`${API}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -54,7 +60,12 @@ async function apiPost(endpoint, data) {
 }
 
 async function apiGet(endpoint) {
-    const res = await fetch(`${API}${endpoint}`);
+    const headers = {};
+    if (window.auth && window.auth.currentUser) {
+        const token = await window.auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API}${endpoint}`, { headers });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 }
@@ -119,10 +130,40 @@ function renderCalendar(containerId, dataSets, monthOffset = 0) {
         if (isToday) classes.push('today');
         if (hasData) classes.push('has-data');
 
+        // Determine Custom Badge Rendering
+        let badgeHtml = '';
+        if (hasData) {
+            if (containerId === 'run-calendar' && dateMap[dateStr][0].distance_km !== undefined) {
+                const topRun = dateMap[dateStr].sort((a, b) => b.distance_km - a.distance_km)[0];
+                const type = topRun.run_type || 'easy';
+                let color = 'var(--accent-teal, #2dd4bf)';
+                if (type === 'long') color = 'var(--accent-amber)';
+                if (type === 'tempo' || type === 'interval') color = '#eab308';
+                if (type === 'cross_train' || type === 'cross-train') color = 'var(--accent-blue)';
+                badgeHtml = `<div class="cal-val-bubble" style="background:${color};">${topRun.distance_km}</div>`;
+            } else if (containerId === 'journal-calendar' && dateMap[dateStr][0].word_count !== undefined) {
+                const totalWords = dateMap[dateStr].reduce((sum, j) => sum + (j.word_count || 0), 0);
+                badgeHtml = `<div class="cal-val-capsule" style="background:var(--accent);">${totalWords}</div>`;
+            } else if (containerId === 'work-calendar' && dateMap[dateStr][0].duration_minutes !== undefined) {
+                const totalMins = dateMap[dateStr].reduce((sum, w) => sum + (w.duration_minutes || 0), 0);
+                const hrs = (totalMins / 60).toFixed(1).replace('.0', '');
+                badgeHtml = `<div class="cal-val-capsule" style="background:#8b5cf6;">${hrs}h</div>`;
+            } else if (containerId === 'expense-calendar' && dateMap[dateStr][0].amount_usd !== undefined) {
+                const totalSpent = dateMap[dateStr].reduce((sum, e) => sum + (e.amount_usd || 0), 0);
+                badgeHtml = `<div class="cal-val-bubble" style="background:var(--accent-rose); border-radius:4px; padding:2px 4px; font-size:9px;">$${Math.round(totalSpent)}</div>`;
+            } else if (containerId === 'social-calendar' && dateMap[dateStr][0].name !== undefined) {
+                badgeHtml = `<div class="cal-val-bubble" style="background:var(--accent-orange); border-radius:4px; padding:2px 4px; font-size:9px;">${dateMap[dateStr].length}</div>`;
+            } else if (containerId === 'reading-calendar' && dateMap[dateStr][0].title !== undefined) {
+                badgeHtml = `<div class="cal-val-capsule" style="background:var(--accent-amber);">📚</div>`;
+            } else {
+                badgeHtml = '<div class="cal-dot"></div>';
+            }
+        }
+
         html += `<div class="${classes.join(' ')}" ${hasData ? `onclick="showCalDetail('${containerId}', '${dateStr}')"` : ''}>
-            <span>${day}</span>
-            ${hasData ? '<div class="cal-dot"></div>' : ''}
-        </div>`;
+                <span>${day}</span>
+                ${badgeHtml}
+            </div>`;
     }
 
     html += `</div><div id="${containerId}-detail"></div></div>`;
@@ -146,6 +187,15 @@ function showCalDetail(containerId, dateStr) {
         }
         if (item.amount !== undefined) {
             return `💰 ${item.amount} ${item.currency || ''} — ${item.description || item.category || ''}`;
+        }
+        if (item.duration_minutes !== undefined && item.category !== undefined && containerId === 'work-calendar') {
+            return `💻 ${item.duration_minutes} min — ${item.category} ${item.notes ? `(${item.notes})` : ''}`;
+        }
+        if (item.name !== undefined && containerId === 'social-calendar') {
+            return `🤝 ${item.name} — ${item.category} ${item.context ? `(${item.context})` : ''}`;
+        }
+        if (item.title !== undefined && containerId === 'reading-calendar') {
+            return `📚 ${item.title} — ${item.author} ${item.rating ? `(${item.rating}/10)` : ''}`;
         }
         if (item.energy !== undefined) {
             return `✨ Energy: ${item.energy}/10${item.alignment ? ` · Alignment: ${item.alignment}/10` : ''}${item.meditation ? ' · 🧘 Meditated' : ''}`;
@@ -178,6 +228,20 @@ async function loadCalendar(type) {
         } else if (type === 'checkin') {
             data = await apiGet('/api/checkins?limit=100');
             containerId = 'checkin-calendar';
+        } else if (type === 'journal') {
+            data = await apiGet('/api/journal?limit=100');
+            containerId = 'journal-calendar';
+        } else if (type === 'work') {
+            data = await apiGet('/api/work?limit=100');
+            containerId = 'work-calendar';
+        } else if (type === 'social') {
+            data = await apiGet('/api/social?limit=100');
+            containerId = 'social-calendar';
+        } else if (type === 'reading') {
+            data = await apiGet('/api/books?limit=100');
+            containerId = 'reading-calendar';
+            // Books use date_finished or date_started, we need to map it to 'date' for the calendar
+            data = data.map(b => ({ ...b, date: b.date_finished || b.date_started || '' })).filter(b => b.date);
         }
         renderCalendar(containerId, data, _calState[containerId] || 0);
     } catch (err) {
@@ -194,22 +258,26 @@ window.addEventListener('DOMContentLoaded', () => {
     const authStatus = document.getElementById('auth-status');
     const pageAuth = document.getElementById('page-auth');
 
-    function updateAuthHeader() {
-        if (currentUser) {
+    function updateAuthHeader(user) {
+        if (user) {
+            currentUser = user.displayName || user.email;
             authStatus.innerHTML = `Signed in as <strong>${currentUser}</strong> <span style="margin: 0 4px; color: var(--border);">|</span> <span id="auth-logout" style="cursor: pointer; color: var(--text-muted); font-size: 11px; transition: var(--transition);" onmouseover="this.style.color='var(--accent-rose)'" onmouseout="this.style.color='var(--text-muted)'">Log Out</span>`;
             document.getElementById('greeting').textContent = `Hello, ${currentUser} 👋`;
 
             const logoutBtn = document.getElementById('auth-logout');
             if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
-                    localStorage.removeItem('mindful_user');
-                    currentUser = null;
-                    document.getElementById('greeting').textContent = `Hello, Chau 👋`; // Reset
-                    updateAuthHeader();
-                    showToast('Logged out');
+                logoutBtn.addEventListener('click', async () => {
+                    import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js").then(({ signOut }) => {
+                        signOut(window.auth).then(() => {
+                            currentUser = null;
+                            document.getElementById('greeting').textContent = `Hello, Chau 👋`; // Reset
+                            showToast('Logged out');
+                        });
+                    });
                 });
             }
         } else {
+            currentUser = null;
             authStatus.innerHTML = `<span id="auth-trigger" style="cursor: pointer; color: var(--accent-blue); transition: var(--transition);" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Login / Sign Up</span>`;
 
             // Re-bind the trigger
@@ -221,12 +289,20 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Check for existing session
-    const savedUser = localStorage.getItem('mindful_user');
-    if (savedUser) {
-        currentUser = savedUser;
-    }
-    updateAuthHeader();
+    // Subscribe to auth state changes
+    import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js").then(({ onAuthStateChanged }) => {
+        onAuthStateChanged(window.auth, (user) => {
+            updateAuthHeader(user);
+        });
+    });
+
+    // Load setup data for Travel tab
+    initCurrencySelectors();
+
+    // Currency converter live update
+    document.getElementById('convert-amount')?.addEventListener('input', runConversion);
+    document.getElementById('convert-from')?.addEventListener('change', runConversion);
+    document.getElementById('convert-to')?.addEventListener('change', runConversion);
 
     if (authTrigger) {
         authTrigger.addEventListener('click', () => {
@@ -283,27 +359,42 @@ window.addEventListener('DOMContentLoaded', () => {
     // Auth Form Submit
     const authForm = document.getElementById('auth-form');
     if (authForm) {
-        authForm.addEventListener('submit', (e) => {
+        authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            let name = 'Chau'; // Default fallback
-            if (tabSignup.classList.contains('active')) {
-                name = authName.value.trim() || 'Chau';
-            } else {
-                name = 'Chau'; // Simulate login
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+
+            submitBtn.textContent = 'Processing...';
+            submitBtn.disabled = true;
+
+            try {
+                const { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js");
+
+                if (tabSignup.classList.contains('active')) {
+                    // Sign Up
+                    const name = authName.value.trim() || 'User';
+                    const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
+                    await updateProfile(userCredential.user, { displayName: name });
+                    showToast('Account created successfully!');
+                } else {
+                    // Log In
+                    await signInWithEmailAndPassword(window.auth, email, password);
+                    showToast('Authentication successful!');
+                }
+
+                // Navigate back to Check-in
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.querySelector('[data-page="checkin"]').classList.add('active');
+                document.getElementById('page-checkin').classList.add('active');
+                authForm.reset();
+
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                submitBtn.innerHTML = tabSignup.classList.contains('active') ? 'Create Account ✨' : 'Log In ✨';
+                submitBtn.disabled = false;
             }
-
-            currentUser = name;
-            localStorage.setItem('mindful_user', currentUser);
-
-            updateAuthHeader();
-
-            // Navigate back to Check-in
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelector('[data-page="checkin"]').classList.add('active');
-            document.getElementById('page-checkin').classList.add('active');
-
-            showToast('Authentication successful!');
         });
     }
 
@@ -338,6 +429,8 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('checkin-date').value = today();
     document.getElementById('run-date').value = today();
     document.getElementById('journal-date').value = today();
+    const workDate = document.getElementById('work-date');
+    if (workDate) workDate.value = today();
     document.getElementById('expense-date').value = today();
     document.getElementById('social-date').value = today();
 
@@ -363,6 +456,14 @@ window.addEventListener('DOMContentLoaded', () => {
     // Initial load
     loadCheckinHistory();
     loadCalendar('checkin');
+
+    // Attempt global load for default routing setup
+    loadJournalPrompt(); loadJournalHistory(); loadCalendar('journal');
+    loadRunHistory(); loadCalendar('running');
+    loadReadingStats(); loadBooks(); loadCalendar('reading');
+    loadWorkData(); loadCalendar('work');
+    loadExpenses(); loadCalendar('travel');
+    loadSocialData(); loadCalendar('social');
 
     // Check for Strava token in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -618,47 +719,95 @@ document.getElementById('get-coach-plan-btn')?.addEventListener('click', async (
 
 // ─── Reading ───────────────────────────────────────────────────
 
-document.getElementById('search-book-btn')?.addEventListener('click', async () => {
-    const query = document.getElementById('book-search-query').value.trim();
-    if (!query) return;
-
+let bookSearchTimeout;
+document.getElementById('book-title')?.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
     const resultsContainer = document.getElementById('book-search-results');
-    resultsContainer.innerHTML = '<div class="loading-text">Searching...</div>';
 
-    try {
-        const res = await apiGet(`/api/books/search?q=${encodeURIComponent(query)}`);
-        if (res.status === 'success' && res.results.length > 0) {
-            resultsContainer.innerHTML = res.results.map((book, idx) => `
-                <div class="book-result-item" style="padding: 8px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px;" data-title="${book.title.replace(/"/g, '&quot;')}"  data-author="${book.author.replace(/"/g, '&quot;')}" data-cover="${book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : ''}">
-                    ${book.cover_i ? `<img src="https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg" style="width: 30px; height: 45px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 30px; height: 45px; background: var(--border); border-radius: 4px;"></div>'}
-                    <div>
-                        <div style="font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.2;">${book.title}</div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">${book.author}</div>
-                    </div>
-                </div>
-            `).join('');
-
-            // Add click listeners to autofill
-            resultsContainer.querySelectorAll('.book-result-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    document.getElementById('book-title').value = item.dataset.title;
-                    document.getElementById('book-author').value = item.dataset.author;
-                    document.getElementById('book-cover-url').value = item.dataset.cover || '';
-                    resultsContainer.innerHTML = '';
-                    document.getElementById('book-search-query').value = '';
-                    showToast(`Selected: ${item.dataset.title}`);
-                });
-            });
-        } else {
-            resultsContainer.innerHTML = '<div class="loading-text">No results found.</div>';
-        }
-    } catch (err) {
-        resultsContainer.innerHTML = `<div class="loading-text" style="color: var(--accent-rose);">Search failed.</div>`;
+    // Only search if length > 2 and editing is not active
+    if (!query || query.length <= 2 || document.getElementById('book-edit-id').value) {
+        resultsContainer.innerHTML = '';
+        return;
     }
+
+    clearTimeout(bookSearchTimeout);
+    bookSearchTimeout = setTimeout(async () => {
+        resultsContainer.innerHTML = '<div class="loading-text" style="font-size: 11px; padding: 4px;">Searching...</div>';
+
+        try {
+            const res = await apiGet(`/api/books/search?q=${encodeURIComponent(query)}`);
+            if (res.status === 'success' && res.results.length > 0) {
+                resultsContainer.innerHTML = res.results.slice(0, 3).map((book) => `
+                    <div class="book-result-item" style="padding: 6px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px;" data-title="${book.title.replace(/"/g, '&quot;')}"  data-author="${book.author.replace(/"/g, '&quot;')}" data-cover="${book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : ''}">
+                        ${book.cover_i ? `<img src="https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg" style="width: 24px; height: 36px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 24px; height: 36px; background: var(--border); border-radius: 4px;"></div>'}
+                        <div>
+                            <div style="font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.2;">${book.title}</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">${book.author}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+                resultsContainer.querySelectorAll('.book-result-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        document.getElementById('book-title').value = item.dataset.title;
+                        document.getElementById('book-author').value = item.dataset.author;
+                        const coverUrl = item.dataset.cover || '';
+                        document.getElementById('book-cover-input').value = coverUrl;
+                        if (coverUrl) showCoverPreview(coverUrl);
+                        resultsContainer.innerHTML = '';
+                    });
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="loading-text" style="font-size: 11px; padding: 4px;">No results found.</div>';
+            }
+        } catch (err) {
+            resultsContainer.innerHTML = `<div class="loading-text" style="color: var(--accent-rose); font-size: 11px; padding: 4px;">Search failed.</div>`;
+        }
+    }, 500);
 });
 
+// ─── Cover image handling ──────────────────────────────────────
+const coverInput = document.getElementById('book-cover-input');
+const coverFile = document.getElementById('book-cover-file');
+const coverPreview = document.getElementById('book-cover-preview');
+const coverPreviewImg = document.getElementById('book-cover-preview-img');
+const coverRemove = document.getElementById('book-cover-remove');
+const coverHidden = document.getElementById('book-cover-url');
+
+function showCoverPreview(url) {
+    coverHidden.value = url;
+    coverPreviewImg.src = url;
+    coverPreview.style.display = 'flex';
+}
+function hideCoverPreview() {
+    coverHidden.value = '';
+    coverInput.value = '';
+    coverPreview.style.display = 'none';
+}
+
+if (coverInput) coverInput.addEventListener('input', () => {
+    const url = coverInput.value.trim();
+    if (url) showCoverPreview(url);
+    else hideCoverPreview();
+});
+
+if (coverFile) coverFile.addEventListener('change', () => {
+    const file = coverFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        coverInput.value = '';
+        showCoverPreview(e.target.result);   // base64 data URL
+    };
+    reader.readAsDataURL(file);
+});
+
+if (coverRemove) coverRemove.addEventListener('click', hideCoverPreview);
+
+// ─── Book form (create + edit) ─────────────────────────────────
 document.getElementById('book-form').addEventListener('submit', async e => {
     e.preventDefault();
+    const editId = document.getElementById('book-edit-id').value;
     const statusVal = document.getElementById('book-status').value;
     const data = {
         title: document.getElementById('book-title').value,
@@ -672,28 +821,75 @@ document.getElementById('book-form').addEventListener('submit', async e => {
     };
 
     try {
-        const result = await apiPost('/api/books', data);
-        showToast('✓ Book saved');
+        if (editId) {
+            // UPDATE existing book
+            await fetch(`${API}/api/books/${editId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            showToast('✓ Book updated');
+        } else {
+            // CREATE new book
+            const result = await apiPost('/api/books', data);
+            showToast('✓ Book saved');
 
-        // Show reflection prompts if available
-        if (result.reflection_prompts && result.reflection_prompts.length) {
-            const container = document.getElementById('reflection-prompts');
-            container.innerHTML = result.reflection_prompts.map(p => `
-                <div class="prompt-card" style="margin-bottom:10px">
-                    <p class="prompt-text">${p.prompt}</p>
-                    <div class="prompt-source">${p.tradition} · ${p.connection || ''}</div>
-                </div>
-            `).join('');
-            document.getElementById('reflection-prompts-container').style.display = 'block';
+            // Show reflection prompts if available
+            if (result.reflection_prompts && result.reflection_prompts.length) {
+                const container = document.getElementById('reflection-prompts');
+                container.innerHTML = result.reflection_prompts.map(p => `
+                    <div class="prompt-card" style="margin-bottom:10px">
+                        <p class="prompt-text">${p.prompt}</p>
+                        <div class="prompt-source">${p.tradition} · ${p.connection || ''}</div>
+                    </div>
+                `).join('');
+                document.getElementById('reflection-prompts-container').style.display = 'block';
+            }
         }
 
-        document.getElementById('book-form').reset();
+        cancelBookEdit();
         loadReadingStats();
         loadBooks();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
 });
+
+// ─── Edit helpers ──────────────────────────────────────────────
+function openBookEdit(book) {
+    document.getElementById('book-edit-id').value = book.id;
+    document.getElementById('book-title').value = book.title || '';
+    document.getElementById('book-author').value = book.author || '';
+    document.getElementById('book-genre').value = book.genre || 'other';
+    document.getElementById('book-rating').value = book.rating || '';
+    document.getElementById('book-status').value = book.status || 'to read';
+    document.getElementById('book-reaction').value = book.reaction || '';
+
+    if (book.cover_url) {
+        coverInput.value = book.cover_url.startsWith('data:') ? '' : book.cover_url;
+        showCoverPreview(book.cover_url);
+    } else {
+        hideCoverPreview();
+    }
+
+    document.getElementById('book-submit-btn').textContent = 'Update Book 🔄';
+    document.getElementById('book-cancel-edit-btn').style.display = 'inline-flex';
+    document.getElementById('book-delete-btn').style.display = 'inline-flex';
+
+    // Scroll to form
+    document.getElementById('page-reading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelBookEdit() {
+    document.getElementById('book-form').reset();
+    document.getElementById('book-edit-id').value = '';
+    hideCoverPreview();
+    document.getElementById('book-submit-btn').textContent = 'Save Book 📚';
+    document.getElementById('book-cancel-edit-btn').style.display = 'none';
+    document.getElementById('book-delete-btn').style.display = 'none';
+}
+
+document.getElementById('book-cancel-edit-btn').addEventListener('click', cancelBookEdit);
 
 async function loadReadingStats() {
     try {
@@ -703,31 +899,45 @@ async function loadReadingStats() {
         const barColor = stats.on_track ? 'var(--accent)' : 'var(--accent-amber)';
 
         container.innerHTML = `
-            <div style="margin-bottom:16px">
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-                    <span style="font-size:14px;font-weight:600">${stats.books_finished} / ${stats.yearly_goal} books</span>
-                    <span style="font-size:13px;color:${stats.on_track ? 'var(--text-primary)' : 'var(--accent-amber)'}">
-                        ${stats.on_track ? '✓ On track' : '⚠ Behind pace'}
-                    </span>
-                </div>
-                <div class="progress-bar-wrap" style="height:6px">
-                    <div class="progress-bar" style="width:${Math.min(pct, 100)}%;background:${barColor}"></div>
-                </div>
-                <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">
-                    Expected by now: ${stats.expected_by_now} books
-                </div>
+            <div style="display:flex;justify-content:space-between; align-items:flex-end; margin-bottom:6px">
+                <span style="font-size:15px;font-weight:700;color:var(--text-primary)">2026 Reading Goal</span>
+                <span style="font-size:13px;font-weight:600;color:var(--text-primary)">${stats.books_finished} / ${stats.yearly_goal}</span>
             </div>
-            ${Object.keys(stats.genres || {}).length ? `
-                <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">
-                    <strong>Genres:</strong> ${Object.entries(stats.genres).map(([g, c]) => `${g} (${c})`).join(' · ')}
-                </div>
-            ` : ''}
+            <div class="progress-bar-wrap" style="height:8px; border-radius:4px; margin-bottom:4px; position:relative; overflow:visible;">
+                <div class="progress-bar" style="width:${Math.min(pct, 100)}%;background:${barColor}; border-radius:4px;"></div>
+                <!-- Current Pace Marker -->
+                <div style="position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--text-primary); left:${Math.min((stats.expected_by_now || 0) / stats.yearly_goal * 100, 100)}%; z-index:1; border-radius:1px;" title="Expected Pace"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between; align-items:center;">
+                <span style="font-size:11px;color:var(--text-secondary)">
+                    Pace marker: ${stats.expected_by_now || 0} books
+                </span>
+                <span style="font-size:12px;font-weight:500;color:${stats.on_track ? 'var(--accent)' : 'var(--accent-amber)'}">
+                    ${stats.on_track ? '✓ On track' : '⚠ Behind'}
+                </span>
+            </div>
         `;
     } catch (err) {
         document.getElementById('reading-stats').innerHTML =
-            '<div class="loading-text">Add your first book to see stats!</div>';
+            '<div class="loading-text">Add your first book to see tracking!</div>';
     }
 }
+
+document.getElementById('book-delete-btn')?.addEventListener('click', async () => {
+    const editId = document.getElementById('book-edit-id').value;
+    if (!editId) return;
+    if (confirm('Are you sure you want to delete this book?')) {
+        try {
+            await fetch(`${API}/api/books/${editId}`, { method: 'DELETE' });
+            showToast('✓ Book deleted');
+            cancelBookEdit();
+            loadReadingStats();
+            loadBooks();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+});
 
 
 async function loadBooks() {
@@ -738,6 +948,10 @@ async function loadBooks() {
             container.innerHTML = '<div class="loading-text">No books yet. Add your first book!</div>';
             return;
         }
+
+        // Store for edit lookup
+        window._booksData = {};
+        data.forEach(b => { window._booksData[b.id] = b; });
 
         const groups = { 'reading': [], 'to read': [], 'read': [] };
         data.forEach(b => {
@@ -759,8 +973,12 @@ async function loadBooks() {
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 12px;">
                         ${books.map(b => `
-                            <div class="book-card" data-book-id="${b.id}" data-status="${status}" style="width: 110px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-                                <div style="width: 110px; height: 160px; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 6px; background: var(--bg-input);">
+                            <div class="book-card" data-book-id="${b.id}" data-status="${status}" style="width: 110px; cursor: pointer; transition: transform 0.2s; position:relative;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+                                <button class="book-edit-btn" data-book-id="${b.id}" title="Edit book"
+                                    style="position:absolute; top:4px; right:4px; z-index:2; width:24px; height:24px; border-radius:50%; border:none; background:rgba(0,0,0,0.6); color:#fff; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;"
+                                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">✏️</button>
+                                <div style="width: 110px; height: 160px; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 6px; background: var(--bg-input);"
+                                    onmouseover="this.parentElement.querySelector('.book-edit-btn').style.opacity='0.7'" onmouseout="this.parentElement.querySelector('.book-edit-btn').style.opacity='0'">
                                     ${b.cover_url ?
                     `<img src="${b.cover_url}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:28px;">📚</div>` :
                     `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">📚</div>`
@@ -777,7 +995,16 @@ async function loadBooks() {
             `;
         }).join('');
 
-        // Add click listeners for status change buttons
+        // Edit buttons
+        container.querySelectorAll('.book-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const book = window._booksData[btn.dataset.bookId];
+                if (book) openBookEdit(book);
+            });
+        });
+
+        // Status change buttons
         container.querySelectorAll('.book-status-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -1389,6 +1616,88 @@ async function loadExpenses() {
 }
 
 
+// ─── Work (Pomodoro) ───────────────────────────────────────────
+
+const workForm = document.getElementById('work-form');
+if (workForm) {
+    workForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const data = {
+            date: document.getElementById('work-date').value,
+            duration_minutes: parseInt(document.getElementById('work-duration').value),
+            category: document.getElementById('work-category').value,
+            notes: document.getElementById('work-notes').value || null,
+        };
+
+        try {
+            const result = await apiPost('/api/work', data);
+            showToast('✓ Deep Work logged');
+            document.getElementById('work-form').reset();
+            document.getElementById('work-date').value = today();
+            loadWorkData();
+            loadCalendar('work');
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
+
+async function loadWorkData() {
+    try {
+        const data = await apiGet('/api/work?limit=50');
+        const container = document.getElementById('work-history');
+        if (!data || !data.length) {
+            container.innerHTML = '<div class="loading-text">No deep work sessions yet!</div>';
+            return;
+        }
+
+        const todayStr = today();
+        let todayMins = 0;
+        const catCounts = {};
+
+        // History UI
+        container.innerHTML = data.slice(0, 15).map(w => {
+            if (w.date === todayStr) {
+                todayMins += (w.duration_minutes || 0);
+            }
+            const c = w.category || 'others';
+            catCounts[c] = (catCounts[c] || 0) + (w.duration_minutes || 0);
+
+            let hrStr = '';
+            if (w.duration_minutes >= 60) {
+                hrStr = `${Math.floor(w.duration_minutes / 60)}h ${w.duration_minutes % 60}m`;
+            } else {
+                hrStr = `${w.duration_minutes}m`;
+            }
+
+            return `
+                <div class="history-item">
+                    <div class="history-item-left">
+                        <strong>${w.category}</strong>
+                        <div class="item-meta">${w.date} ${w.notes ? `· ${w.notes}` : ''}</div>
+                    </div>
+                    <div class="history-item-right">
+                        <div class="amount" style="color:#8b5cf6;">${hrStr}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Today UI
+        const todayHrs = Math.floor(todayMins / 60);
+        const todayRemMins = todayMins % 60;
+        document.getElementById('work-today-total').textContent = `${todayHrs}h ${todayRemMins}m`;
+
+        const topCat = Object.keys(catCounts).sort((a, b) => catCounts[b] - catCounts[a])[0];
+        document.getElementById('work-today-top').textContent = topCat ? topCat.toUpperCase() : '--';
+
+    } catch (err) {
+        document.getElementById('work-history').innerHTML =
+            '<div class="loading-text">Could not load work history</div>';
+    }
+}
+
+
 // ─── Social ────────────────────────────────────────────────────
 
 document.getElementById('social-form').addEventListener('submit', async e => {
@@ -1529,13 +1838,12 @@ document.getElementById('generate-summary-btn')?.addEventListener('click', async
 
 // ─── Voice Journaling (Speech-to-Text) ─────────────────────────
 
-// ─── Voice Journaling (Speech-to-Text via Gemini) ──────────────
-
-let mediaRecorder = null;
-let audioChunks = [];
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
 let isRecording = false;
 let recordingStartTime = null;
 let recordingTimerInterval = null;
+let interimText = '';          // Text currently being spoken (not yet finalized)
 let baseTextBeforeRecording = ''; // Snapshot of textarea when recording started
 
 const voiceBtn = document.getElementById('voice-journal-btn');
@@ -1550,7 +1858,7 @@ function createRecordingStatusBar() {
     bar.style.display = 'none';
     bar.innerHTML = `
         <div class="voice-status-left">
-            <span class="voice-pulse-dot" id="voice-pulse-indicator"></span>
+            <span class="voice-pulse-dot"></span>
             <span id="voice-status-text">Listening...</span>
         </div>
         <span id="voice-timer" class="voice-timer">0:00</span>
@@ -1561,77 +1869,169 @@ function createRecordingStatusBar() {
     return bar;
 }
 
-if (voiceBtn) {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        voiceBtn.style.opacity = '0.4';
-        voiceBtn.style.cursor = 'not-allowed';
-        voiceBtn.title = 'Audio recording not supported in this browser';
-    } else {
-        voiceBtn.addEventListener('click', () => {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
+// Create AI polish button (shown after recording stops)
+function createPolishButton() {
+    let btn = document.getElementById('ai-polish-btn');
+    if (btn) return btn;
+    btn = document.createElement('button');
+    btn.id = 'ai-polish-btn';
+    btn.type = 'button';
+    btn.className = 'btn btn-secondary ai-polish-btn';
+    btn.style.display = 'none';
+    btn.innerHTML = '✨ AI Polish';
+    btn.title = 'Clean up grammar, remove filler words (um, uh), fix punctuation';
+    // Insert after word count
+    const wc = document.getElementById('journal-wc');
+    wc.parentNode.insertBefore(btn, wc.nextSibling);
+
+    btn.addEventListener('click', async () => {
+        const textarea = document.getElementById('journal-content');
+        const text = textarea.value.trim();
+        if (!text || text.length < 10) {
+            showToast('Need more text to polish', 'error');
+            return;
+        }
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Polishing...';
+
+        try {
+            const formData = new FormData();
+            // We'll use the transcribe endpoint with a tiny audio placeholder
+            // Actually, let's call a simpler approach — send text to Gemini via existing chat
+            const response = await apiPost('/api/chat', {
+                message: `Please clean up the following journal entry text: fix grammar, remove filler words (um, uh, like), add proper punctuation and paragraph breaks. Keep the original meaning and tone. Return ONLY the cleaned text, nothing else.\n\nText:\n${text}`,
+                agent: 'editor'
+            });
+            if (response.response) {
+                textarea.value = response.response;
+                const wc2 = textarea.value.trim().split(/\s+/).filter(w => w).length;
+                document.getElementById('journal-wc').textContent = `${wc2} words`;
+                showToast('✨ Text polished by AI');
             }
-        });
-    }
+        } catch (err) {
+            showToast('Could not polish text: ' + err.message, 'error');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '✨ AI Polish';
+    });
+
+    return btn;
 }
 
-async function startRecording() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+if (SpeechRecognition && voiceBtn) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
 
-        mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) audioChunks.push(e.data);
-        };
+    recognition.onresult = (event) => {
+        const textarea = document.getElementById('journal-content');
+        let finalTranscript = '';
+        let currentInterim = '';
 
-        mediaRecorder.onstop = processAudio;
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            } else {
+                currentInterim += transcript;
+            }
+        }
 
-        isRecording = true;
-        baseTextBeforeRecording = document.getElementById('journal-content').value;
-        mediaRecorder.start();
+        // Append finalized text
+        if (finalTranscript) {
+            baseTextBeforeRecording += (baseTextBeforeRecording && !baseTextBeforeRecording.endsWith(' ') ? ' ' : '') + finalTranscript.trim() + ' ';
+        }
 
-        // Update button
-        voiceBtn.textContent = '⏹';
-        voiceBtn.style.background = 'var(--accent-rose)';
-        voiceBtn.style.borderColor = 'var(--accent-rose)';
-        voiceBtn.style.color = '#fff';
-        voiceBtn.style.animation = 'pulse-recording 1.5s infinite';
-        voiceBtn.title = 'Click to stop recording';
+        // Show interim (in-progress) text in a lighter style
+        interimText = currentInterim;
+        textarea.value = baseTextBeforeRecording + (interimText ? interimText : '');
 
-        // Show status bar
-        const bar = createRecordingStatusBar();
-        bar.style.display = 'flex';
-        document.getElementById('voice-pulse-indicator').style.display = 'block';
+        // Update word count
+        const wc = textarea.value.trim().split(/\s+/).filter(w => w).length;
+        document.getElementById('journal-wc').textContent = `${wc} words`;
+
+        // Update status text with interim preview
         const statusText = document.getElementById('voice-status-text');
-        if (statusText) statusText.textContent = 'Listening...';
+        if (statusText) {
+            statusText.textContent = interimText ? `"${interimText.slice(0, 50)}${interimText.length > 50 ? '...' : ''}"` : 'Listening...';
+        }
 
-        // Start timer
-        recordingStartTime = Date.now();
-        const timerEl = document.getElementById('voice-timer');
-        recordingTimerInterval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-            const mins = Math.floor(elapsed / 60);
-            const secs = elapsed % 60;
-            if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        }, 1000);
+        // Auto-scroll textarea to bottom
+        textarea.scrollTop = textarea.scrollHeight;
+    };
 
-        showToast('🎤 Listening... Speak now');
-    } catch (err) {
-        console.error('Error starting recording:', err);
-        showToast('Microphone access denied or unavailable.', 'error');
-    }
+    recognition.onerror = (event) => {
+        console.log('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+            showToast('Microphone access denied. Please allow mic permission.', 'error');
+        } else if (event.error === 'no-speech') {
+            // Don't stop on no-speech, just show hint
+            const statusText = document.getElementById('voice-status-text');
+            if (statusText) statusText.textContent = 'No speech detected — try speaking...';
+            return; // Don't stop recording
+        }
+        stopRecording();
+    };
+
+    recognition.onend = () => {
+        if (isRecording) {
+            try { recognition.start(); } catch (e) { stopRecording(); }
+        }
+    };
+
+    voiceBtn.addEventListener('click', () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    });
+} else if (voiceBtn) {
+    voiceBtn.style.opacity = '0.4';
+    voiceBtn.style.cursor = 'not-allowed';
+    voiceBtn.title = 'Speech recognition not supported in this browser';
+}
+
+function startRecording() {
+    if (!recognition) return;
+    isRecording = true;
+    interimText = '';
+    baseTextBeforeRecording = document.getElementById('journal-content').value;
+    recognition.start();
+
+    // Update button
+    voiceBtn.textContent = '⏹';
+    voiceBtn.style.background = 'var(--accent-rose)';
+    voiceBtn.style.borderColor = 'var(--accent-rose)';
+    voiceBtn.style.color = '#fff';
+    voiceBtn.style.animation = 'pulse-recording 1.5s infinite';
+    voiceBtn.title = 'Click to stop recording';
+
+    // Show status bar
+    const bar = createRecordingStatusBar();
+    bar.style.display = 'flex';
+    const statusText = document.getElementById('voice-status-text');
+    if (statusText) statusText.textContent = 'Listening...';
+
+    // Start timer
+    recordingStartTime = Date.now();
+    const timerEl = document.getElementById('voice-timer');
+    recordingTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    }, 1000);
+
+    showToast('🎤 Listening... Speak now');
 }
 
 function stopRecording() {
-    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    if (!recognition) return;
     isRecording = false;
-
-    // Stop recording, which triggers onstop (processAudio)
-    mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Release mic
+    interimText = '';
+    try { recognition.stop(); } catch (e) { }
 
     // Reset button
     voiceBtn.textContent = '🎤';
@@ -1641,75 +2041,30 @@ function stopRecording() {
     voiceBtn.style.animation = '';
     voiceBtn.title = 'Voice journaling — click to speak';
 
+    // Hide status bar
+    const bar = document.getElementById('voice-status-bar');
+    if (bar) bar.style.display = 'none';
+
     // Stop timer
     if (recordingTimerInterval) {
         clearInterval(recordingTimerInterval);
         recordingTimerInterval = null;
     }
 
-    // Update status bar to show "Transcribing..."
-    const statusText = document.getElementById('voice-status-text');
-    if (statusText) statusText.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;margin-right:6px"></span> Transcribing...';
-    document.getElementById('voice-pulse-indicator').style.display = 'none'; // Stop pulsing dot
-}
+    // Calculate recording duration
+    const elapsed = recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0;
+    recordingStartTime = null;
 
-async function processAudio() {
-    if (audioChunks.length === 0) {
-        hideStatusBar();
-        showToast('No audio recorded', 'error');
-        return;
+    // Show AI polish button if there's text
+    const textarea = document.getElementById('journal-content');
+    const polishBtn = createPolishButton();
+    if (textarea.value.trim().length > 20) {
+        polishBtn.style.display = 'inline-flex';
+        showToast(`Recording stopped (${elapsed}s) — click ✨ AI Polish to clean up`);
+    } else {
+        polishBtn.style.display = 'none';
+        showToast('Recording stopped');
     }
-
-    // Use the mimeType from the recorder if possible, fallback to webm
-    const mimeType = mediaRecorder.mimeType || 'audio/webm';
-    const audioBlob = new Blob(audioChunks, { type: mimeType });
-    const formData = new FormData();
-
-    // Some browsers need a file extension in the filename
-    const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-    formData.append('audio', audioBlob, `recording.${ext}`);
-
-    try {
-        // Send to our Gemini Multimodal endpoint
-        const response = await fetch('/api/journal/transcribe', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.detail || 'Transcription failed');
-        }
-
-        const result = await response.json();
-
-        if (result.success && (result.enhanced || result.transcription)) {
-            // Prefer the enhanced (polished) text from Gemini
-            const finalTranscript = result.enhanced || result.transcription;
-
-            const textarea = document.getElementById('journal-content');
-            textarea.value = baseTextBeforeRecording + (baseTextBeforeRecording && !baseTextBeforeRecording.endsWith(' ') ? ' ' : '') + finalTranscript + ' ';
-
-            // Update word count
-            const wc = textarea.value.trim().split(/\s+/).filter(w => w).length;
-            document.getElementById('journal-wc').textContent = `${wc} words`;
-            textarea.scrollTop = textarea.scrollHeight;
-
-            showToast('✨ Transcription complete');
-        } else {
-            showToast('No speech detected in recording', 'error');
-        }
-    } catch (err) {
-        console.error('Transcription error:', err);
-        showToast('Transcription error: ' + err.message, 'error');
-    } finally {
-        hideStatusBar();
-    }
-}
-
-function hideStatusBar() {
-    const bar = document.getElementById('voice-status-bar');
-    if (bar) bar.style.display = 'none';
 }
 
 

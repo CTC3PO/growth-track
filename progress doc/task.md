@@ -1,0 +1,19 @@
+- [x] Analyze backend API security (FastAPI/main.py)
+  - [x] Check CORS configuration
+  - [x] Check Authentication & Authorization
+  - [x] Check Input validation and error handling
+  - [x] Check for hardcoded secrets
+- [x] Analyze frontend security
+  - [x] Check for hardcoded API keys or sensitive data exposed
+  - [x] Check handling of authentication tokens and local storage
+- [x] Analyze cloud deployments and services
+  - [x] Review Dockerfile for security best practices (non-root user, minimal base image)
+  - [x] Review GitHub Actions workflows for secret exposure
+  - [x] Review Firebase/Firestore configuration
+  - [x] Review Vercel configuration
+- [/] Propose and implement security fixes
+  - [x] Implement API key authentication in FastAPI (skipped for private app)
+  - [x] Restrict CORS
+  - [x] Update frontend to read and send API key (skipped for private app)
+  - [x] Update Dockerfile to use non-root user
+- [x] Verification and walkthrough

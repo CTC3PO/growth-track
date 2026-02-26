@@ -21,6 +21,7 @@ load_dotenv()
 from models.schemas import (
     DailyCheckIn, RunLog, BookEntry, JournalEntry,
     ChatMessage, ChatResponse, ReviewRequest, TravelExpense, SocialConnection,
+    WorkSession,
 )
 from services.firestore_service import save_document, get_documents, get_documents_by_date_range
 from services.journal_agent import generate_journal_prompt
@@ -119,6 +120,21 @@ async def get_running_plan(access_token: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── Work ────────────────────────────────────────────────────────────
+
+@app.post("/api/work")
+async def log_work_session(session: WorkSession):
+    """Log a deep work session."""
+    doc_id = save_document("work", session.model_dump())
+    return {"status": "saved", "id": doc_id, "message": f"Work session logged: {session.duration_minutes}m ⏱️"}
+
+
+@app.get("/api/work")
+async def get_work_sessions(limit: int = 50):
+    """Get recent work sessions."""
+    return get_documents("work", limit=limit)
+
+
 # ─── Reading ─────────────────────────────────────────────────────────
 
 @app.post("/api/books")
@@ -147,7 +163,7 @@ async def update_book(book_id: str, updates: dict):
     books = get_documents("books", limit=1000)
     for b in books:
         if b.get("id") == book_id:
-            for key in ["status", "is_finished", "rating", "reaction"]:
+            for key in ["title", "author", "genre", "status", "is_finished", "rating", "reaction", "cover_url", "pages", "date_started", "date_finished"]:
                 if key in updates:
                     b[key] = updates[key]
             bid = b.pop("id", book_id)

@@ -19,6 +19,7 @@ class RunType(str, Enum):
     LONG = "long"
     RECOVERY = "recovery"
     RACE = "race"
+    CROSS_TRAIN = "cross_train"
 
 
 class Genre(str, Enum):
@@ -46,6 +47,14 @@ class ReviewPeriod(str, Enum):
     QUARTERLY = "quarterly"
 
 
+class WorkCategory(str, Enum):
+    SCHOOL = "school"
+    DSA = "dsa"
+    COURSES = "courses"
+    JOB = "job"
+    OTHERS = "others"
+
+
 # ─── Daily Check-In ──────────────────────────────────────────────────
 
 class DailyCheckIn(BaseModel):
@@ -61,6 +70,16 @@ class DailyCheckIn(BaseModel):
     deep_work_hours: Optional[float] = Field(None, ge=0)
     energy: Optional[int] = Field(None, ge=1, le=10)
     alignment: Optional[int] = Field(None, ge=1, le=10)
+    notes: Optional[str] = None
+
+
+# ─── Work ────────────────────────────────────────────────────────────
+
+class WorkSession(BaseModel):
+    """Deep work session log."""
+    date: date
+    duration_minutes: int = Field(ge=0)
+    category: WorkCategory = WorkCategory.OTHERS
     notes: Optional[str] = None
 
 
