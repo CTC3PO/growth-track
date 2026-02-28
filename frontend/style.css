@@ -994,6 +994,29 @@ input[type="range"]::-webkit-slider-thumb {
     color: var(--text-primary);
 }
 
+.history-list-container {
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 8px;
+    /* Room for scrollbar */
+    /* Neatly style the scrollbar for webkit browsers */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.history-list-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.history-list-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.history-list-container::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 10px;
+}
+
 /* ─── Responsive ─────────────────────────────────────────────── */
 
 @media (min-width: 768px) {
