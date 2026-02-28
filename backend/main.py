@@ -23,7 +23,7 @@ from models.schemas import (
     ChatMessage, ChatResponse, ReviewRequest, TravelExpense, SocialConnection,
     WorkSession,
 )
-from services.firestore_service import save_document, get_documents, get_documents_by_date_range
+from services.firestore_service import save_document, get_documents, get_documents_by_date_range, delete_document
 from services.journal_agent import generate_journal_prompt
 from services.reading_agent import generate_reflection_prompts_for_book
 from services.review_agent import generate_weekly_review, generate_monthly_review, generate_quarterly_review
@@ -103,6 +103,25 @@ async def log_run(run: RunLog):
     doc_id = save_document("runs", run.model_dump())
     return {"status": "saved", "id": doc_id, "message": f"Run logged: {run.distance_km}km 🏃"}
 
+@app.put("/api/runs/{run_id}")
+async def update_run(run_id: str, updates: dict):
+    runs = get_documents("runs", limit=1000)
+    for r in runs:
+        if r.get("id") == run_id:
+            for key in ["date", "distance_km", "duration_minutes", "run_type", "notes"]:
+                if key in updates:
+                    r[key] = updates[key]
+            rid = r.pop("id", run_id)
+            save_document("runs", r, doc_id=rid)
+            return {"status": "updated", "id": rid}
+    raise HTTPException(status_code=404, detail="Run not found")
+
+@app.delete("/api/runs/{run_id}")
+async def delete_run(run_id: str):
+    if delete_document("runs", run_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Run not found")
+
 
 @app.get("/api/runs")
 async def get_runs(limit: int = 30):
@@ -128,6 +147,25 @@ async def log_work_session(session: WorkSession):
     """Log a deep work session."""
     doc_id = save_document("work", session.model_dump())
     return {"status": "saved", "id": doc_id, "message": f"Work session logged: {session.duration_minutes}m ⏱️"}
+
+@app.put("/api/work/{work_id}")
+async def update_work_session(work_id: str, updates: dict):
+    sessions = get_documents("work", limit=1000)
+    for s in sessions:
+        if s.get("id") == work_id:
+            for key in ["date", "duration_minutes", "category", "notes"]:
+                if key in updates:
+                    s[key] = updates[key]
+            sid = s.pop("id", work_id)
+            save_document("work", s, doc_id=sid)
+            return {"status": "updated", "id": sid}
+    raise HTTPException(status_code=404, detail="Session not found")
+
+@app.delete("/api/work/{work_id}")
+async def delete_work_session(work_id: str):
+    if delete_document("work", work_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Session not found")
 
 
 @app.get("/api/work")
@@ -182,6 +220,12 @@ async def update_book(book_id: str, updates: dict):
             bid = b.pop("id", book_id)
             save_document("books", b, doc_id=bid)
             return {"status": "updated", "id": bid}
+    raise HTTPException(status_code=404, detail="Book not found")
+
+@app.delete("/api/books/{book_id}")
+async def delete_book(book_id: str):
+    if delete_document("books", book_id):
+        return {"status": "deleted"}
     raise HTTPException(status_code=404, detail="Book not found")
 
 
@@ -245,7 +289,6 @@ async def get_reading_stats():
 
 
 # ─── Journaling ──────────────────────────────────────────────────────
-
 @app.post("/api/journal")
 async def create_journal_entry(entry: JournalEntry):
     """Save a journal entry."""
@@ -257,6 +300,24 @@ async def create_journal_entry(entry: JournalEntry):
 @app.get("/api/journal")
 async def get_journal_entries(limit: int = 20):
     """Get recent journal entries."""
+    return get_documents("journals", limit=limit)
+
+
+@app.post("/api/gratitude")
+async def create_gratitude_entry(entry: dict):
+    """Save a gratitude entry."""
+    from datetime import date
+    if "date" not in entry:
+        entry["date"] = date.today().isoformat()
+    # Support list of items
+    doc_id = save_document("gratitude", entry)
+    return {"status": "saved", "id": doc_id}
+
+
+@app.get("/api/gratitude")
+async def get_gratitude_entries(limit: int = 50):
+    """Get recent gratitude entries."""
+    return get_documents("gratitude", limit=limit)
     return get_documents("journals", limit=limit)
 
 
@@ -438,6 +499,30 @@ async def add_expense(expense: TravelExpense):
         "message": f"Expense logged: {expense.amount} {expense.currency} 🧳",
     }
 
+@app.put("/api/travel/expenses/{expense_id}")
+async def update_expense(expense_id: str, updates: dict):
+    expenses = get_documents("travel_expenses", limit=1000)
+    for e in expenses:
+        if e.get("id") == expense_id:
+            for key in ["date", "amount", "currency", "category", "description", "trip"]:
+                if key in updates:
+                    e[key] = updates[key]
+            # Auto-convert to USD
+            rate = EXCHANGE_RATES_TO_USD.get(e.get("currency", "USD").upper(), None)
+            if rate and e.get("amount"):
+                e["amount_usd"] = round(float(e["amount"]) * rate, 2)
+            
+            eid = e.pop("id", expense_id)
+            save_document("travel_expenses", e, doc_id=eid)
+            return {"status": "updated", "id": eid, "amount_usd": e.get("amount_usd")}
+    raise HTTPException(status_code=404, detail="Expense not found")
+
+@app.delete("/api/travel/expenses/{expense_id}")
+async def delete_expense(expense_id: str):
+    if delete_document("travel_expenses", expense_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Expense not found")
+
 
 @app.get("/api/travel/expenses")
 async def get_expenses(trip: str = None, limit: int = 50):
@@ -493,6 +578,25 @@ async def log_social(connection: SocialConnection):
     """Log a social interaction."""
     doc_id = save_document("social", connection.model_dump())
     return {"status": "saved", "id": doc_id, "message": f"Connection logged: {connection.name} 🤝"}
+
+@app.put("/api/social/{social_id}")
+async def update_social(social_id: str, updates: dict):
+    connections = get_documents("social", limit=1000)
+    for c in connections:
+        if c.get("id") == social_id:
+            for key in ["date", "name", "category", "context", "location", "notes", "follow_up"]:
+                if key in updates:
+                    c[key] = updates[key]
+            cid = c.pop("id", social_id)
+            save_document("social", c, doc_id=cid)
+            return {"status": "updated", "id": cid}
+    raise HTTPException(status_code=404, detail="Connection not found")
+
+@app.delete("/api/social/{social_id}")
+async def delete_social(social_id: str):
+    if delete_document("social", social_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Connection not found")
 
 
 @app.get("/api/social")

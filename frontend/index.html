@@ -186,6 +186,7 @@
                     <h3>Log Run</h3>
                 </div>
                 <form id="run-form">
+                    <input type="hidden" id="run-edit-id">
                     <div class="form-row">
                         <div class="form-group">
                             <label>Date</label>
@@ -218,7 +219,15 @@
                         <label>How did it feel?</label>
                         <textarea id="run-notes" rows="2" placeholder="Post-run thoughts, pain, mood..."></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Log Run 🏃</button>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="submit" class="btn btn-primary" id="run-submit-btn" style="flex:1;">Log Run
+                            🏃</button>
+                        <button type="button" class="btn" id="run-delete-btn"
+                            style="display:none; background: #ef4444; color: white; padding: 0 16px;"
+                            title="Delete Run">🗑</button>
+                        <button type="button" class="btn btn-secondary" id="run-cancel-edit-btn"
+                            style="display:none; padding:8px 16px;">Cancel</button>
+                    </div>
                 </form>
             </div>
             <!-- Run Calendar -->
@@ -592,6 +601,17 @@
                     <div id="journal-history"></div>
                 </div>
 
+                <!-- Gratitude List -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <span class="icon">🙏</span>
+                        <h3>Things I'm Grateful About</h3>
+                    </div>
+                    <div id="gratitude-history-list">
+                        <div class="loading-text">Loading gratitude...</div>
+                    </div>
+                </div>
+
             </div><!-- end .journal-layout -->
         </div>
 
@@ -781,6 +801,7 @@
                     <h3>Log Deep Work</h3>
                 </div>
                 <form id="work-form">
+                    <input type="hidden" id="work-edit-id">
                     <div class="form-row">
                         <div class="form-group">
                             <label>Duration (minutes)</label>
@@ -806,7 +827,15 @@
                         <label>Notes/Focus</label>
                         <input type="text" id="work-notes" placeholder="Studied sliding window, read chapter 2...">
                     </div>
-                    <button type="submit" class="btn btn-primary">Log Session 💻</button>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="submit" class="btn btn-primary" id="work-submit-btn" style="flex:1;">Log Session
+                            💻</button>
+                        <button type="button" class="btn" id="work-delete-btn"
+                            style="display:none; background: #ef4444; color: white; padding: 0 16px;"
+                            title="Delete Work">🗑</button>
+                        <button type="button" class="btn btn-secondary" id="work-cancel-edit-btn"
+                            style="display:none; padding:8px 16px;">Cancel</button>
+                    </div>
                 </form>
             </div>
 
@@ -869,6 +898,7 @@
                     <h3>Log Connection</h3>
                 </div>
                 <form id="social-form">
+                    <input type="hidden" id="social-edit-id">
                     <div class="form-row">
                         <div class="form-group">
                             <label>Name</label>
@@ -910,7 +940,15 @@
                         <label>Follow-up</label>
                         <input type="text" id="social-followup" placeholder="Send article, schedule next meet...">
                     </div>
-                    <button type="submit" class="btn btn-primary">Log Connection 🤝</button>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="submit" class="btn btn-primary" id="social-submit-btn" style="flex:1;">Log
+                            Connection 🤝</button>
+                        <button type="button" class="btn" id="social-delete-btn"
+                            style="display:none; background: #ef4444; color: white; padding: 0 16px;"
+                            title="Delete Social">🗑</button>
+                        <button type="button" class="btn btn-secondary" id="social-cancel-edit-btn"
+                            style="display:none; padding:8px 16px;">Cancel</button>
+                    </div>
                 </form>
             </div>
 
@@ -953,6 +991,7 @@
                     <h3>Log Expense</h3>
                 </div>
                 <form id="expense-form">
+                    <input type="hidden" id="expense-edit-id">
                     <div class="form-row">
                         <div class="form-group">
                             <label>Amount</label>
@@ -990,7 +1029,15 @@
                         <label>Description</label>
                         <input type="text" id="expense-desc" name="expense-desc" placeholder="What was it?">
                     </div>
-                    <button type="submit" class="btn btn-primary">Log Expense</button>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="submit" class="btn btn-primary" id="expense-submit-btn" style="flex:1;">Log
+                            Expense 💰</button>
+                        <button type="button" class="btn" id="expense-delete-btn"
+                            style="display:none; background: #ef4444; color: white; padding: 0 16px;"
+                            title="Delete Expense">🗑</button>
+                        <button type="button" class="btn btn-secondary" id="expense-cancel-edit-btn"
+                            style="display:none; padding:8px 16px;">Cancel</button>
+                    </div>
                 </form>
             </div>
 

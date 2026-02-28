@@ -235,12 +235,12 @@ body {
 .nav-item.active {
     background: var(--accent);
     /* Neon green highlight */
-    color: var(--text-primary);
+    color: #0f172a;
     border-radius: 12px;
 }
 
 .nav-item.active .icon-svg {
-    stroke: var(--text-primary);
+    stroke: #0f172a;
     /* Dark/black icon */
     opacity: 1;
     transform: scale(1.1);
@@ -504,7 +504,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .btn-primary {
     background: var(--accent);
-    color: var(--text-primary);
+    color: #0f172a;
     /* Black text on neon green */
     border: 1px solid rgba(0, 0, 0, 0.1);
     /* Subtle dark border */
@@ -514,7 +514,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .btn-primary:hover {
     background: var(--accent-dark);
-    color: var(--text-primary);
+    color: #0f172a;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }

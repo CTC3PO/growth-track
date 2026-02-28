@@ -140,6 +140,32 @@ def save_document(collection: str, data: dict, doc_id: str = None) -> str:
         return doc_id
 
 
+def delete_document(collection: str, doc_id: str) -> bool:
+    """Delete a document from Firestore or local JSON fallback."""
+    db = _get_firestore_client()
+    if db:
+        prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
+        full_collection = f"{prefix}_{collection}"
+        db.collection(full_collection).document(doc_id).delete()
+        return True
+    else:
+        if os.getenv("VERCEL"):
+            raise RuntimeError("Database not connected. Cannot use local JSON fallback on Vercel.")
+            
+        file_path = _LOCAL_DATA_DIR / f"{collection}.json"
+        if not file_path.exists():
+            return False
+            
+        existing = json.loads(file_path.read_text())
+        new_existing = [doc for doc in existing if doc.get("id") != doc_id]
+        
+        if len(new_existing) == len(existing):
+            return False
+            
+        file_path.write_text(json.dumps(new_existing, indent=2, default=str))
+        return True
+
+
 def get_documents(collection: str, limit: int = 100) -> list[dict]:
     """Get all documents from a collection."""
     db = _get_firestore_client()
