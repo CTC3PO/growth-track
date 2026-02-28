@@ -102,7 +102,7 @@
                 <form id="checkin-form">
                     <div class="form-group">
                         <label>Date</label>
-                        <input type="date" id="checkin-date" required>
+                        <input type="date" id="checkin-date" name="checkin-date" required>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -161,14 +161,6 @@
                 </form>
             </div>
 
-            <!-- Recent check-ins -->
-            <div class="card">
-                <div class="card-header">
-                    <h3>Recent Check-Ins</h3>
-                </div>
-                <div id="checkin-history"></div>
-            </div>
-
             <!-- Calendar view -->
             <div class="card">
                 <div class="card-header">
@@ -176,6 +168,14 @@
                     <h3>Activity Calendar</h3>
                 </div>
                 <div id="checkin-calendar"></div>
+            </div>
+
+            <!-- Recent check-ins -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Check-Ins</h3>
+                </div>
+                <div id="checkin-history"></div>
             </div>
         </div>
 
@@ -189,11 +189,12 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Date</label>
-                            <input type="date" id="run-date" required>
+                            <input type="date" id="run-date" name="run-date" required>
                         </div>
                         <div class="form-group">
                             <label>Distance (km)</label>
-                            <input type="number" id="run-distance" step="0.1" min="0" required placeholder="10.5">
+                            <input type="number" id="run-distance" name="run-distance" step="0.1" min="0" required
+                                placeholder="10.5">
                         </div>
                     </div>
                     <div class="form-row">
@@ -220,13 +221,6 @@
                     <button type="submit" class="btn btn-primary">Log Run 🏃</button>
                 </form>
             </div>
-            <div class="card">
-                <div class="card-header">
-                    <h3>Recent Runs</h3>
-                </div>
-                <div id="run-history"></div>
-            </div>
-
             <!-- Run Calendar -->
             <div class="card">
                 <div class="card-header">
@@ -272,12 +266,24 @@
                         click Adjust Plan to generate your AI coaching plan based on your recent runs.</p>
                 </div>
             </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Runs</h3>
+                </div>
+                <div id="run-history"></div>
+            </div>
         </div>
 
         <!-- ═══ READING PAGE ═══ -->
         <div id="page-reading" class="page">
-            <!-- Reading stats (Minimal Progress Bar) -->
-            <div id="reading-stats" style="margin-bottom: 24px;"></div>
+
+            <!-- Reading stats (Progress Goal) -->
+            <div class="span-all" style="margin-bottom: 24px;">
+                <div id="reading-stats" class="loading-text"
+                    style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px;">
+                    Loading...</div>
+            </div>
 
             <div class="card">
                 <div class="card-header">
@@ -286,7 +292,7 @@
                 <form id="book-form">
                     <div class="form-group">
                         <label>Title</label>
-                        <input type="text" id="book-title" autocomplete="off" required
+                        <input type="text" id="book-title" name="book-title" autocomplete="off" required
                             placeholder="Type title to search...">
                         <div id="book-search-results"
                             style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
@@ -295,7 +301,8 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Author</label>
-                            <input type="text" id="book-author" required placeholder="Thich Nhat Hanh">
+                            <input type="text" id="book-author" name="book-author" required
+                                placeholder="Thich Nhat Hanh">
                         </div>
                         <div class="form-group">
                             <label>Genre</label>
@@ -371,17 +378,6 @@
                 </form>
             </div>
 
-            <!-- Books List -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="icon">📚</span>
-                    <h3>My Books</h3>
-                </div>
-                <div id="books-list" style="display:flex; flex-direction:column; gap:20px;">
-                    <div class="loading-text">Loading books...</div>
-                </div>
-            </div>
-
             <!-- Reading Calendar -->
             <div class="card">
                 <div class="card-header">
@@ -389,6 +385,17 @@
                     <h3>Reading Calendar</h3>
                 </div>
                 <div id="reading-calendar"></div>
+            </div>
+
+            <!-- Books List -->
+            <div class="card span-all">
+                <div class="card-header">
+                    <span class="icon">📚</span>
+                    <h3>My Books</h3>
+                </div>
+                <div id="books-list" style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="loading-text">Loading books...</div>
+                </div>
             </div>
 
             <!-- Reflection prompts (when a book is finished) -->
@@ -407,7 +414,7 @@
         <div id="page-journal" class="page">
 
             <!-- Journal Tool Tabs -->
-            <div class="review-period-tabs" style="margin-bottom: 16px;">
+            <div class="review-period-tabs span-all" style="margin-bottom: 16px;">
                 <button class="period-tab j-tab active" data-jtab="ai-prompt">✨ Daily AI</button>
                 <button class="period-tab j-tab" data-jtab="gratitude">🙏 Gratitude</button>
                 <button class="period-tab j-tab" data-jtab="random-prompt">🎲 Random</button>
@@ -415,7 +422,7 @@
             </div>
 
             <!-- Journal Side-by-Side Layout -->
-            <div class="journal-layout">
+            <div class="journal-layout span-all">
 
                 <!-- LEFT: Prompt Sections -->
                 <div class="journal-col-prompt">
@@ -525,7 +532,7 @@
                         <form id="journal-form">
                             <div class="form-group">
                                 <label>Date</label>
-                                <input type="date" id="journal-date" required>
+                                <input type="date" id="journal-date" name="journal-date" required>
                             </div>
                             <div class="form-group">
                                 <label>Themes (Select up to 3)</label>
@@ -568,14 +575,6 @@
                     </div>
                 </div><!-- end .journal-col-entry -->
 
-                <!-- Recent journals -->
-                <div class="card" style="margin-top: 24px;">
-                    <div class="card-header">
-                        <h3>Recent Journals</h3>
-                    </div>
-                    <div id="journal-history"></div>
-                </div>
-
                 <!-- Journal Calendar -->
                 <div class="card" style="margin-top: 24px;">
                     <div class="card-header">
@@ -583,6 +582,14 @@
                         <h3>Journal Calendar</h3>
                     </div>
                     <div id="journal-calendar"></div>
+                </div>
+
+                <!-- Recent journals -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h3>Recent Journals</h3>
+                    </div>
+                    <div id="journal-history"></div>
                 </div>
 
             </div><!-- end .journal-layout -->
@@ -626,13 +633,119 @@
                     </div>
                 </div> <!-- End metrics-grid -->
 
-                <!-- Expense Calendar (Standalone card in review page) -->
-                <div class="card">
-                    <div class="card-header">
-                        <span class="icon">📅</span>
-                        <h3>Expense Calendar</h3>
+                <!-- Body -->
+                <div class="card" style="margin-bottom: 12px;">
+                    <div class="card-header" style="margin-bottom: 12px;">
+                        <span class="icon">🏃</span>
+                        <h3 style="font-size: 16px;">Body</h3>
                     </div>
-                    <div id="expense-calendar"></div>
+                    <div class="category-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Running Distance</span>
+                            <span class="stat-value" id="cat-run-km">0 km</span>
+                        </div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar" id="cat-run-bar"></div>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Sleep</span>
+                            <span class="stat-value" id="cat-sleep-avg">-- hrs</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mind -->
+                <div class="card" style="margin-bottom: 12px;">
+                    <div class="card-header" style="margin-bottom: 12px;">
+                        <span class="icon">🧠</span>
+                        <h3 style="font-size: 16px;">Mind</h3>
+                    </div>
+                    <div class="category-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Deep Work</span>
+                            <span class="stat-value" id="cat-deepwork">0 hrs</span>
+                        </div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar accent-blue" id="cat-deepwork-bar"></div>
+                        </div>
+                        <div class="stat-row" style="margin-top: 4px;">
+                            <span class="stat-label">Books Read</span>
+                            <span class="stat-value" id="cat-books">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Reading Goal Pace</span>
+                            <span class="stat-value" id="cat-books-pace">--</span>
+                        </div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar accent-blue" id="cat-books-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spirit -->
+                <div class="card" style="margin-bottom: 12px;">
+                    <div class="card-header" style="margin-bottom: 12px;">
+                        <span class="icon">✨</span>
+                        <h3 style="font-size: 16px;">Spirit</h3>
+                    </div>
+                    <div class="category-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Meditation Consistency</span>
+                            <span class="stat-value" id="cat-meditation-pct">0%</span>
+                        </div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar accent-teal" id="cat-meditation-bar"></div>
+                        </div>
+                        <div class="stat-row" style="margin-top: 4px;">
+                            <span class="stat-label">Journals Written</span>
+                            <span class="stat-value" id="cat-journal-count">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Alignment</span>
+                            <span class="stat-value" id="cat-alignment">--/10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social -->
+                <div class="card" style="margin-bottom: 12px;">
+                    <div class="card-header" style="margin-bottom: 12px;">
+                        <span class="icon">🤝</span>
+                        <h3 style="font-size: 16px;">Social</h3>
+                    </div>
+                    <div class="category-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Total Interactions</span>
+                            <span class="stat-value" id="cat-social-interactions">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Unique People</span>
+                            <span class="stat-value" id="cat-social-people">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Top Category</span>
+                            <span class="stat-value" id="cat-social-top" style="text-transform: capitalize;">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial -->
+                <div class="card" style="margin-bottom: 12px;">
+                    <div class="card-header" style="margin-bottom: 12px;">
+                        <span class="icon">💰</span>
+                        <h3 style="font-size: 16px;">Financial</h3>
+                    </div>
+                    <div class="category-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Total Spend</span>
+                            <span class="stat-value" id="cat-financial-spend">$0.00</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Top Category</span>
+                            <span class="stat-value" id="cat-financial-top"
+                                style="text-transform: capitalize;">--</span>
+                        </div>
+                    </div>
                 </div>
             </div> <!-- End span-all for metrics -->
 
@@ -650,7 +763,8 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Duration (minutes)</label>
-                            <input type="number" id="work-duration" step="5" min="5" required placeholder="60">
+                            <input type="number" id="work-duration" name="work-duration" step="5" min="5" required
+                                placeholder="60">
                         </div>
                         <div class="form-group">
                             <label>Category</label>
@@ -665,7 +779,7 @@
                     </div>
                     <div class="form-group">
                         <label>Date</label>
-                        <input type="date" id="work-date" required>
+                        <input type="date" id="work-date" name="work-date" required>
                     </div>
                     <div class="form-group">
                         <label>Notes/Focus</label>
@@ -673,26 +787,6 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Log Session 💻</button>
                 </form>
-            </div>
-
-            <!-- Work history -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="icon">📋</span>
-                    <h3>Recent Sessions</h3>
-                </div>
-                <div id="work-history"></div>
-            </div>
-
-            <div class="card" style="margin-top: 24px;">
-                <div class="card-header">
-                    <span class="icon">✨</span>
-                    <h3>Work Insights</h3>
-                </div>
-                <button id="btn-work-insights" class="btn-primary" style="margin-bottom: 16px; width: 100%;">Generate
-                    Insights ✨</button>
-                <div id="work-insights-content" class="entry-card"
-                    style="display: none; white-space: pre-wrap; margin-top: 16px;"></div>
             </div>
 
             <!-- Work Calendar -->
@@ -723,6 +817,26 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <span class="icon">✨</span>
+                    <h3>Work Insights</h3>
+                </div>
+                <button id="btn-work-insights" class="btn-primary" style="margin-bottom: 16px; width: 100%;">Generate
+                    Insights ✨</button>
+                <div id="work-insights-content" class="entry-card"
+                    style="display: none; white-space: pre-wrap; margin-top: 16px;"></div>
+            </div>
+
+            <!-- Work history -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📋</span>
+                    <h3>Recent Sessions</h3>
+                </div>
+                <div id="work-history"></div>
+            </div>
         </div>
 
         <!-- ═══ SOCIAL PAGE ═══ -->
@@ -737,7 +851,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Name</label>
-                            <input type="text" id="social-name" required placeholder="John Doe">
+                            <input type="text" id="social-name" name="social-name" required placeholder="John Doe">
                         </div>
                         <div class="form-group">
                             <label>Category</label>
@@ -760,7 +874,7 @@
                         </div>
                         <div class="form-group">
                             <label>Date</label>
-                            <input type="date" id="social-date" required>
+                            <input type="date" id="social-date" name="social-date" required>
                         </div>
                     </div>
                     <div class="form-group">
@@ -777,6 +891,15 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Log Connection 🤝</button>
                 </form>
+            </div>
+
+            <!-- Social Calendar -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📅</span>
+                    <h3>Social Calendar</h3>
+                </div>
+                <div id="social-calendar"></div>
             </div>
 
             <!-- Social stats -->
@@ -798,19 +921,67 @@
                 </div>
                 <div id="social-history"></div>
             </div>
-
-            <!-- Social Calendar -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="icon">📅</span>
-                    <h3>Social Calendar</h3>
-                </div>
-                <div id="social-calendar"></div>
-            </div>
         </div> <!-- ═══ END SOCIAL PAGE ═══ -->
 
         <!-- ═══ TRAVEL PAGE (Expense & Currency) ═══ -->
         <div id="page-travel" class="page">
+            <!-- Log Expense -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">💰</span>
+                    <h3>Log Expense</h3>
+                </div>
+                <form id="expense-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Amount</label>
+                            <input type="number" id="expense-amount" name="expense-amount" required step="any"
+                                placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Currency</label>
+                            <select id="expense-currency" name="expense-currency" required></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="expense-category" name="expense-category" required>
+                                <option value="food">Food</option>
+                                <option value="transport">Transport</option>
+                                <option value="accommodation">Accommodation</option>
+                                <option value="activities">Activities</option>
+                                <option value="coffee">Coffee</option>
+                                <option value="shopping">Shopping</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="expense-date" name="expense-date" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Trip / Location (Optional)</label>
+                        <input type="text" id="expense-trip" name="expense-trip" placeholder="e.g. Japan 2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" id="expense-desc" name="expense-desc" placeholder="What was it?">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log Expense</button>
+                </form>
+            </div>
+
+            <!-- Expense Calendar -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📅</span>
+                    <h3>Expense Calendar</h3>
+                </div>
+                <div id="expense-calendar"></div>
+            </div>
+
             <!-- Currency converter -->
             <div class="card">
                 <div class="card-header">
@@ -832,38 +1003,15 @@
                 </div>
             </div>
 
-            <!-- Log Travel -->
+            <!-- Spending Summary -->
             <div class="card">
                 <div class="card-header">
-                    <span class="icon">✈️</span>
-                    <h3>Log Travel</h3>
+                    <span class="icon">📊</span>
+                    <h3>Summary (USD)</h3>
                 </div>
-                <!-- Adding placeholder text since we don't have the form logic for this page yet -->
-                <p style="font-size: 14px; color: var(--text-secondary);">Travel logging form coming soon.</p>
-            </div>
-
-            <!-- Travel History -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="icon">📋</span>
-                    <h3>Recent Travels</h3>
+                <div class="category-stats" id="expense-summary">
+                    <div class="loading-text">Loading summary...</div>
                 </div>
-                <div id="travel-history">
-                    <div class="loading-text">No recent travels</div>
-                </div>
-            </div>
-        </div> <!-- ═══ END TRAVEL PAGE ═══ -->
-
-        <!-- ═══ EXPENSE PAGE ═══ -->
-        <div id="page-expense" class="page">
-            <!-- Log Expense -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="icon">💰</span>
-                    <h3>Log Expense</h3>
-                </div>
-                <!-- Adding placeholder text since we don't have the form logic for this page yet -->
-                <p style="font-size: 14px; color: var(--text-secondary);">Expense logging form coming soon.</p>
             </div>
 
             <!-- Expense History -->
@@ -872,11 +1020,13 @@
                     <span class="icon">📋</span>
                     <h3>Recent Expenses</h3>
                 </div>
-                <div id="expense-history-list">
+                <div id="expense-history">
                     <div class="loading-text">No recent expenses</div>
                 </div>
             </div>
-        </div> <!-- ═══ END EXPENSE PAGE ═══ -->
+        </div> <!-- ═══ END TRAVEL PAGE ═══ -->
+
+
 
         <!-- Navigation -->
         <nav class="nav">

@@ -85,7 +85,7 @@ async def health_check():
 @app.post("/api/checkin")
 async def create_checkin(checkin: DailyCheckIn):
     """Log a daily check-in (2-minute form)."""
-    doc_id = save_document("checkins", checkin.model_dump(), doc_id=f"checkin_{checkin.date}_{user['uid']}")
+    doc_id = save_document("checkins", checkin.model_dump(), doc_id=f"checkin_{checkin.date}")
     return {"status": "saved", "id": doc_id, "message": "Daily check-in logged 🧘"}
 
 
@@ -144,7 +144,7 @@ async def get_work_insights():
     if not sessions:
         return {"insight": "Not enough data yet. Log some work sessions to get insights!"}
 
-    insight = generate_work_insights(sessions)
+    insight = await generate_work_insights(sessions)
     return {"insight": insight}
 
 

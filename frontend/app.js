@@ -13,7 +13,8 @@ document.querySelectorAll('.nav-item').forEach(btn => {
         document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById(`page-${page}`).classList.add('active');
+        const pageEl = document.getElementById(`page-${page}`);
+        if (pageEl) pageEl.classList.add('active');
 
         // Load data for each page on switch
         if (page === 'review') loadReviewData();
@@ -37,37 +38,55 @@ function today() {
 
 function showToast(msg, type = 'success') {
     const toast = document.getElementById('toast');
-    toast.textContent = msg;
-    toast.className = 'toast';
-    if (type === 'error') toast.classList.add('toast-error');
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2800);
-}
-
-async function apiPost(endpoint, data) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (window.auth && window.auth.currentUser) {
-        const token = await window.auth.currentUser.getIdToken();
-        headers['Authorization'] = `Bearer ${token}`;
+    if (toast) {
+        toast.textContent = msg;
+        toast.className = 'toast';
+        if (type === 'error') toast.classList.add('toast-error');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2800);
     }
-    const res = await fetch(`${API}${endpoint}`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
 }
 
 async function apiGet(endpoint) {
+    console.log(`[API GET] ${endpoint}`);
     const headers = {};
-    if (window.auth && window.auth.currentUser) {
-        const token = await window.auth.currentUser.getIdToken();
-        headers['Authorization'] = `Bearer ${token}`;
+    try {
+        const res = await fetch(`${API}${endpoint}`, { headers });
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`[API GET ERROR] ${endpoint}: ${res.status} ${text}`);
+            throw new Error(text);
+        }
+        const data = await res.json();
+        console.log(`[API GET SUCCESS] ${endpoint}`, data);
+        return data;
+    } catch (err) {
+        console.error(`[API GET FAIL] ${endpoint}: ${err.message}`);
+        throw err;
     }
-    const res = await fetch(`${API}${endpoint}`, { headers });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+}
+
+async function apiPost(endpoint, data) {
+    console.log(`[API POST] ${endpoint}`, data);
+    const headers = { 'Content-Type': 'application/json' };
+    try {
+        const res = await fetch(`${API}${endpoint}`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`[API POST ERROR] ${endpoint}: ${res.status} ${text}`);
+            throw new Error(text);
+        }
+        const result = await res.json();
+        console.log(`[API POST SUCCESS] ${endpoint}`, result);
+        return result;
+    } catch (err) {
+        console.error(`[API POST FAIL] ${endpoint}: ${err.message}`);
+        throw err;
+    }
 }
 
 
@@ -258,43 +277,15 @@ window.addEventListener('DOMContentLoaded', () => {
     const authStatus = document.getElementById('auth-status');
     const pageAuth = document.getElementById('page-auth');
 
-    function updateAuthHeader(user) {
-        if (user) {
-            currentUser = user.displayName || user.email;
-            authStatus.innerHTML = `Signed in as <strong>${currentUser}</strong> <span style="margin: 0 4px; color: var(--border);">|</span> <span id="auth-logout" style="cursor: pointer; color: var(--text-muted); font-size: 11px; transition: var(--transition);" onmouseover="this.style.color='var(--accent-rose)'" onmouseout="this.style.color='var(--text-muted)'">Log Out</span>`;
-            document.getElementById('greeting').textContent = `Hello, ${currentUser} 👋`;
-
-            const logoutBtn = document.getElementById('auth-logout');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', async () => {
-                    import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js").then(({ signOut }) => {
-                        signOut(window.auth).then(() => {
-                            currentUser = null;
-                            document.getElementById('greeting').textContent = `Hello, Chau 👋`; // Reset
-                            showToast('Logged out');
-                        });
-                    });
-                });
-            }
-        } else {
-            currentUser = null;
-            authStatus.innerHTML = `<span id="auth-trigger" style="cursor: pointer; color: var(--accent-blue); transition: var(--transition);" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Login / Sign Up</span>`;
-
-            // Re-bind the trigger
-            document.getElementById('auth-trigger').addEventListener('click', () => {
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                document.getElementById('page-auth').classList.add('active');
-            });
-        }
+    // Since Auth is disabled, we just mock the user as Chau
+    currentUser = 'Chau';
+    if (authStatus) {
+        authStatus.innerHTML = `Signed in locally as <strong>Chau</strong>`;
     }
-
-    // Subscribe to auth state changes
-    import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js").then(({ onAuthStateChanged }) => {
-        onAuthStateChanged(window.auth, (user) => {
-            updateAuthHeader(user);
-        });
-    });
+    const greetingEl = document.getElementById('greeting');
+    if (greetingEl) {
+        greetingEl.textContent = `Hello, Chau 👋`;
+    }
 
     // Load setup data for Travel tab
     initCurrencySelectors();
@@ -361,40 +352,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (authForm) {
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-
-            submitBtn.textContent = 'Processing...';
-            submitBtn.disabled = true;
-
-            try {
-                const { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js");
-
-                if (tabSignup.classList.contains('active')) {
-                    // Sign Up
-                    const name = authName.value.trim() || 'User';
-                    const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
-                    await updateProfile(userCredential.user, { displayName: name });
-                    showToast('Account created successfully!');
-                } else {
-                    // Log In
-                    await signInWithEmailAndPassword(window.auth, email, password);
-                    showToast('Authentication successful!');
-                }
-
-                // Navigate back to Check-in
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                document.querySelector('[data-page="checkin"]').classList.add('active');
-                document.getElementById('page-checkin').classList.add('active');
-                authForm.reset();
-
-            } catch (error) {
-                showToast(error.message, 'error');
-            } finally {
-                submitBtn.innerHTML = tabSignup.classList.contains('active') ? 'Create Account ✨' : 'Log In ✨';
-                submitBtn.disabled = false;
-            }
+            showToast('Authentication is currently disabled.', 'error');
         });
     }
 
@@ -426,38 +384,59 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // Set default dates to today
-    document.getElementById('checkin-date').value = today();
-    document.getElementById('run-date').value = today();
-    document.getElementById('journal-date').value = today();
+    const checkinDate = document.getElementById('checkin-date');
+    if (checkinDate) checkinDate.value = today();
+    const runDate = document.getElementById('run-date');
+    if (runDate) runDate.value = today();
+    const journalDate = document.getElementById('journal-date');
+    if (journalDate) journalDate.value = today();
     const workDate = document.getElementById('work-date');
     if (workDate) workDate.value = today();
-    document.getElementById('expense-date').value = today();
-    document.getElementById('social-date').value = today();
+    const expenseDate = document.getElementById('expense-date');
+    if (expenseDate) expenseDate.value = today();
+    const socialDate = document.getElementById('social-date');
+    if (socialDate) socialDate.value = today();
 
     // Range slider displays
-    document.getElementById('checkin-energy').addEventListener('input', e => {
-        document.getElementById('energy-val').textContent = e.target.value;
-    });
-    document.getElementById('checkin-alignment').addEventListener('input', e => {
-        document.getElementById('alignment-val').textContent = e.target.value;
-    });
+    const energySlider = document.getElementById('checkin-energy');
+    if (energySlider) {
+        energySlider.addEventListener('input', e => {
+            const energyVal = document.getElementById('energy-val');
+            if (energyVal) energyVal.textContent = e.target.value;
+        });
+    }
+    const alignmentSlider = document.getElementById('checkin-alignment');
+    if (alignmentSlider) {
+        alignmentSlider.addEventListener('input', e => {
+            const alignmentVal = document.getElementById('alignment-val');
+            if (alignmentVal) alignmentVal.textContent = e.target.value;
+        });
+    }
 
     // Journal word count
-    document.getElementById('journal-content').addEventListener('input', e => {
-        const wc = e.target.value.trim().split(/\s+/).filter(w => w).length;
-        document.getElementById('journal-wc').textContent = `${wc} words`;
-    });
+    const journalContent = document.getElementById('journal-content');
+    if (journalContent) {
+        journalContent.addEventListener('input', e => {
+            const wc = e.target.value.trim().split(/\s+/).filter(w => w).length;
+            const journalWc = document.getElementById('journal-wc');
+            if (journalWc) journalWc.textContent = `${wc} words`;
+        });
+    }
 
     // Currency converter live update
-    document.getElementById('convert-amount').addEventListener('input', runConversion);
-    document.getElementById('convert-from').addEventListener('change', runConversion);
-    document.getElementById('convert-to').addEventListener('change', runConversion);
+    const convertAmount = document.getElementById('convert-amount');
+    if (convertAmount) convertAmount.addEventListener('input', runConversion);
+    const convertFrom = document.getElementById('convert-from');
+    if (convertFrom) convertFrom.addEventListener('change', runConversion);
+    const convertTo = document.getElementById('convert-to');
+    if (convertTo) convertTo.addEventListener('change', runConversion);
 
     // Initial load
     loadCheckinHistory();
     loadCalendar('checkin');
 
     // Attempt global load for default routing setup
+    initCurrencySelectors();
     loadJournalPrompt(); loadJournalHistory(); loadCalendar('journal');
     loadRunHistory(); loadCalendar('running');
     loadReadingStats(); loadBooks(); loadCalendar('reading');
@@ -526,35 +505,50 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ─── Check-In ──────────────────────────────────────────────────
 
-document.getElementById('checkin-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-        date: document.getElementById('checkin-date').value,
-        sleep_hours: parseFloat(document.getElementById('checkin-sleep').value) || null,
-        steps: parseInt(document.getElementById('checkin-steps').value) || null,
-        deep_work_hours: parseFloat(document.getElementById('checkin-deepwork').value) || null,
-        journal_words: parseInt(document.getElementById('checkin-journal-words').value) || null,
-        energy: parseInt(document.getElementById('checkin-energy').value),
-        alignment: parseInt(document.getElementById('checkin-alignment').value),
-        meditation: document.getElementById('checkin-meditation').checked,
-        notes: document.getElementById('checkin-notes').value || null,
-    };
+const checkinForm = document.getElementById('checkin-form');
+if (checkinForm) {
+    checkinForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const data = {
+            date: document.getElementById('checkin-date').value,
+            sleep_hours: parseFloat(document.getElementById('checkin-sleep').value) || null,
+            steps: parseInt(document.getElementById('checkin-steps').value) || null,
+            deep_work_hours: parseFloat(document.getElementById('checkin-deepwork').value) || null,
+            journal_words: parseInt(document.getElementById('checkin-journal-words').value) || null,
+            energy: parseInt(document.getElementById('checkin-energy').value),
+            alignment: parseInt(document.getElementById('checkin-alignment').value),
+            meditation: document.getElementById('checkin-meditation').checked,
+            notes: document.getElementById('checkin-notes').value || null,
+            date: document.getElementById('checkin-date')?.value,
+            sleep_hours: parseFloat(document.getElementById('checkin-sleep')?.value) || null,
+            steps: parseInt(document.getElementById('checkin-steps')?.value) || null,
+            deep_work_hours: parseFloat(document.getElementById('checkin-deepwork')?.value) || null,
+            journal_words: parseInt(document.getElementById('checkin-journal-words')?.value) || null,
+            energy: parseInt(document.getElementById('checkin-energy')?.value),
+            alignment: parseInt(document.getElementById('checkin-alignment')?.value),
+            meditation: document.getElementById('checkin-meditation')?.checked,
+            notes: document.getElementById('checkin-notes')?.value || null,
+        };
 
-    try {
-        const result = await apiPost('/api/checkin', data);
-        showToast('✓ Check-in saved');
-        document.getElementById('checkin-form').reset();
-        document.getElementById('checkin-date').value = today();
-        loadCheckinHistory();
-    } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-});
+        try {
+            const result = await apiPost('/api/checkin', data);
+            showToast('✓ Check-in saved');
+            checkinForm.reset();
+            const checkinDate = document.getElementById('checkin-date');
+            if (checkinDate) checkinDate.value = today();
+            loadCheckinHistory();
+            loadCalendar('checkin');
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
 
 async function loadCheckinHistory() {
     try {
         const data = await apiGet('/api/checkins?limit=7');
         const container = document.getElementById('checkin-history');
+        if (!container) return;
         if (!data.length) {
             container.innerHTML = '<div class="loading-text">No check-ins yet. Start tracking!</div>';
             return;
@@ -564,8 +558,8 @@ async function loadCheckinHistory() {
                 <div>
                     <div class="history-date">${c.date || 'N/A'}</div>
                     <div style="font-size:12px;color:var(--text-secondary)">
-                        ${c.meditation ? '🧘' : ''} 
-                        ${c.sleep_hours ? `😴${c.sleep_hours}h` : ''} 
+                        ${c.meditation ? '🧘' : ''}
+                        ${c.sleep_hours ? `😴${c.sleep_hours}h` : ''}
                         ${c.steps ? `👟${c.steps.toLocaleString()}` : ''}
                     </div>
                 </div>
@@ -576,7 +570,8 @@ async function loadCheckinHistory() {
             </div>
         `).join('');
     } catch (err) {
-        document.getElementById('checkin-history').innerHTML =
+        const container = document.getElementById('checkin-history');
+        if (container) container.innerHTML =
             '<div class="loading-text">Could not load history</div>';
     }
 }
@@ -584,31 +579,37 @@ async function loadCheckinHistory() {
 
 // ─── Running ───────────────────────────────────────────────────
 
-document.getElementById('run-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-        date: document.getElementById('run-date').value,
-        distance_km: parseFloat(document.getElementById('run-distance').value),
-        duration_minutes: parseFloat(document.getElementById('run-duration').value) || null,
-        run_type: document.getElementById('run-type').value,
-        notes: document.getElementById('run-notes').value || null,
-    };
+const runForm = document.getElementById('run-form');
+if (runForm) {
+    runForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const data = {
+            date: document.getElementById('run-date')?.value,
+            distance_km: parseFloat(document.getElementById('run-distance')?.value),
+            duration_minutes: parseFloat(document.getElementById('run-duration')?.value) || null,
+            run_type: document.getElementById('run-type')?.value,
+            notes: document.getElementById('run-notes')?.value || null,
+        };
 
-    try {
-        const result = await apiPost('/api/runs', data);
-        showToast('✓ Run saved');
-        document.getElementById('run-form').reset();
-        document.getElementById('run-date').value = today();
-        loadRunHistory();
-    } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-});
+        try {
+            const result = await apiPost('/api/runs', data);
+            showToast('✓ Run saved');
+            runForm.reset();
+            const runDate = document.getElementById('run-date');
+            if (runDate) runDate.value = today();
+            loadRunHistory();
+            loadCalendar('running');
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
 
 async function loadRunHistory() {
     try {
         const data = await apiGet('/api/runs?limit=10');
         const container = document.getElementById('run-history');
+        if (!container) return;
         if (!data.length) {
             container.innerHTML = '<div class="loading-text">No runs logged yet. Lace up! 🏃</div>';
             return;
@@ -626,145 +627,158 @@ async function loadRunHistory() {
             </div>
         `).join('');
     } catch (err) {
-        document.getElementById('run-history').innerHTML =
+        const container = document.getElementById('run-history');
+        if (container) container.innerHTML =
             '<div class="loading-text">Could not load runs</div>';
     }
 }
 
 // Running Coach Logic
-document.getElementById('get-coach-plan-btn')?.addEventListener('click', async () => {
-    const container = document.getElementById('ai-plan-container');
-    container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your runs & generating AI plan...</div>';
+const getCoachPlanBtn = document.getElementById('get-coach-plan-btn');
+if (getCoachPlanBtn) {
+    getCoachPlanBtn.addEventListener('click', async () => {
+        const container = document.getElementById('ai-plan-container');
+        if (!container) return;
+        container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your runs & generating AI plan...</div>';
 
-    // Check localStorage. If missing, use mock_token to not catastrophically break
-    const token = localStorage.getItem('strava_token') || 'mock_token';
+        // Check localStorage. If missing, use mock_token to not catastrophically break
+        const token = localStorage.getItem('strava_token') || 'mock_token';
 
-    try {
-        const response = await apiGet(`/api/running_coach/plan?access_token=${token}`);
+        try {
+            const response = await apiGet(`/api/running_coach/plan?access_token=${token}`);
 
-        if (response.error) {
-            container.innerHTML = `<div class="loading-text" style="color:var(--accent-rose)">${response.error}</div>`;
-            return;
-        }
+            if (response.error) {
+                container.innerHTML = `<div class="loading-text" style="color:var(--accent-rose)">${response.error}</div>`;
+                return;
+            }
 
-        const plan = response.adjusted_plan || {};
-        const adjustments = response.adjustments_made || [];
-        const runs = response.runs || [];
+            const plan = response.adjusted_plan || {};
+            const adjustments = response.adjustments_made || [];
+            const runs = response.runs || [];
 
-        container.innerHTML = `
-            <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks (Sub 2:00)</p>
-            
-            <div style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
-                    <span>Week 2</span>
-                    <span>5 weeks to go</span>
-                </div>
-                <div style="width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
-                    <div style="width: 33%; height: 100%; background: var(--accent); border-radius: 3px;"></div>
-                </div>
-            </div>
+            container.innerHTML = `
+                <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks (Sub 2:00)</p>
 
-            ${runs.length > 0 ? `
-                <div style="margin-bottom: 16px;">
-                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">📊 Recent Strava Runs Analyzed</div>
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        ${runs.map(r => `
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px; font-size: 12px;">
-                                <div>
-                                    <div style="font-weight: 500; color: var(--text-primary);">${r.name}</div>
-                                    <div style="color: var(--text-muted); font-size: 11px;">${r.date}</div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="font-weight: 600; color: var(--text-primary);">${r.distance_km} km</div>
-                                    <div style="color: var(--text-muted); font-size: 11px;">${r.pace} min/km · ${r.moving_time_str}</div>
-                                </div>
-                            </div>
-                        `).join('')}
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                        <span>Week 2</span>
+                        <span>5 weeks to go</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+                        <div style="width: 33%; height: 100%; background: var(--accent); border-radius: 3px;"></div>
                     </div>
                 </div>
-            ` : ''}
 
-            <div style="background: linear-gradient(135deg, rgba(42,157,110,0.08), rgba(42,157,110,0.02)); padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--accent);">
-                <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🤖 AI Coach Assessment</div>
-                <p style="font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5;">${response.assessment || "Taking your recent runs into account..."}</p>
-            </div>
-            
-            ${adjustments.length > 0 ? `
-                <div style="margin-bottom: 16px; font-size: 12px;">
-                    <strong style="color:var(--accent-amber)">⚡ Adjustments Made:</strong>
-                    <ul style="padding-left:16px; margin-top:4px; color:var(--text-secondary); line-height: 1.6;">
-                        ${adjustments.map(a => `<li>${a}</li>`).join('')}
+                ${runs.length > 0 ? `
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">📊 Recent Strava Runs Analyzed</div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            ${runs.map(r => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px; font-size: 12px;">
+                                    <div>
+                                        <div style="font-weight: 500; color: var(--text-primary);">${r.name}</div>
+                                        <div style="color: var(--text-muted); font-size: 11px;">${r.date}</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-weight: 600; color: var(--text-primary);">${r.distance_km} km</div>
+                                        <div style="color: var(--text-muted); font-size: 11px;">${r.pace} min/km · ${r.moving_time_str}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div style="background: linear-gradient(135deg, rgba(42,157,110,0.08), rgba(42,157,110,0.02)); padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--accent);">
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🤖 AI Coach Assessment</div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5;">${response.assessment || "Taking your recent runs into account..."}</p>
+                </div>
+
+                ${adjustments.length > 0 ? `
+                    <div style="margin-bottom: 16px; font-size: 12px;">
+                        <strong style="color:var(--accent-amber)">⚡ Adjustments Made:</strong>
+                        <ul style="padding-left:16px; margin-top:4px; color:var(--text-secondary); line-height: 1.6;">
+                            ${adjustments.map(a => `<li>${a}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">📅 This Week's Plan</div>
+                <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; font-size: 13px;">
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px;">
+                        <li><strong style="color: var(--text-muted);">Mon:</strong> Rest 🧘</li>
+                        <li><strong style="color: var(--accent-blue);">Tue:</strong> ${plan.tuesday || 'Easy Run'}</li>
+                        <li><strong style="color: var(--accent-amber);">Wed:</strong> Lower Body Strength (Legs) 🏋️‍♂️</li>
+                        <li><strong style="color: var(--text-primary);">Thu:</strong> ${plan.thursday || 'Speed Work'}</li>
+                        <li><strong style="color: var(--accent-rose);">Fri:</strong> Rest</li>
+                        <li><strong style="color: var(--text-muted);">Sat:</strong> ${plan.saturday || 'Long Run'}</li>
+                        <li><strong style="color: var(--accent-dark);">Sun:</strong> ${plan.sunday || 'Active Recovery'}</li>
                     </ul>
                 </div>
-            ` : ''}
-
-            <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">📅 This Week's Plan</div>
-            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; font-size: 13px;">
-                <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px;">
-                    <li><strong style="color: var(--text-muted);">Mon:</strong> Rest 🧘</li>
-                    <li><strong style="color: var(--accent-blue);">Tue:</strong> ${plan.tuesday || 'Easy Run'}</li>
-                    <li><strong style="color: var(--accent-amber);">Wed:</strong> Lower Body Strength (Legs) 🏋️‍♂️</li>
-                    <li><strong style="color: var(--text-primary);">Thu:</strong> ${plan.thursday || 'Speed Work'}</li>
-                    <li><strong style="color: var(--accent-rose);">Fri:</strong> Rest</li>
-                    <li><strong style="color: var(--text-muted);">Sat:</strong> ${plan.saturday || 'Long Run'}</li>
-                    <li><strong style="color: var(--accent-dark);">Sun:</strong> ${plan.sunday || 'Active Recovery'}</li>
-                </ul>
-            </div>
-        `;
-    } catch (err) {
-        container.innerHTML = `<div class="loading-text" style="color:var(--accent-rose)">Could not generate plan. Ensure GOOGLE_API_KEY is configured.</div>`;
-    }
-});
+            `;
+        } catch (err) {
+            container.innerHTML = `<div class="loading-text" style="color:var(--accent-rose)">Could not generate plan. Ensure GOOGLE_API_KEY is configured.</div>`;
+        }
+    });
+}
 
 
 // ─── Reading ───────────────────────────────────────────────────
 
 let bookSearchTimeout;
-document.getElementById('book-title')?.addEventListener('input', (e) => {
-    const query = e.target.value.trim();
-    const resultsContainer = document.getElementById('book-search-results');
+const bookTitleInput = document.getElementById('book-title');
+if (bookTitleInput) {
+    bookTitleInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        const resultsContainer = document.getElementById('book-search-results');
+        if (!resultsContainer) return;
 
-    // Only search if length > 2 and editing is not active
-    if (!query || query.length <= 2 || document.getElementById('book-edit-id').value) {
-        resultsContainer.innerHTML = '';
-        return;
-    }
-
-    clearTimeout(bookSearchTimeout);
-    bookSearchTimeout = setTimeout(async () => {
-        resultsContainer.innerHTML = '<div class="loading-text" style="font-size: 11px; padding: 4px;">Searching...</div>';
-
-        try {
-            const res = await apiGet(`/api/books/search?q=${encodeURIComponent(query)}`);
-            if (res.status === 'success' && res.results.length > 0) {
-                resultsContainer.innerHTML = res.results.slice(0, 3).map((book) => `
-                    <div class="book-result-item" style="padding: 6px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px;" data-title="${book.title.replace(/"/g, '&quot;')}"  data-author="${book.author.replace(/"/g, '&quot;')}" data-cover="${book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : ''}">
-                        ${book.cover_i ? `<img src="https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg" style="width: 24px; height: 36px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 24px; height: 36px; background: var(--border); border-radius: 4px;"></div>'}
-                        <div>
-                            <div style="font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.2;">${book.title}</div>
-                            <div style="font-size: 11px; color: var(--text-secondary);">${book.author}</div>
-                        </div>
-                    </div>
-                `).join('');
-
-                resultsContainer.querySelectorAll('.book-result-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        document.getElementById('book-title').value = item.dataset.title;
-                        document.getElementById('book-author').value = item.dataset.author;
-                        const coverUrl = item.dataset.cover || '';
-                        document.getElementById('book-cover-input').value = coverUrl;
-                        if (coverUrl) showCoverPreview(coverUrl);
-                        resultsContainer.innerHTML = '';
-                    });
-                });
-            } else {
-                resultsContainer.innerHTML = '<div class="loading-text" style="font-size: 11px; padding: 4px;">No results found.</div>';
-            }
-        } catch (err) {
-            resultsContainer.innerHTML = `<div class="loading-text" style="color: var(--accent-rose); font-size: 11px; padding: 4px;">Search failed.</div>`;
+        // Only search if length > 2 and editing is not active
+        const bookEditId = document.getElementById('book-edit-id');
+        if (!query || query.length <= 2 || (bookEditId && bookEditId.value)) {
+            resultsContainer.innerHTML = '';
+            return;
         }
-    }, 500);
-});
+
+        clearTimeout(bookSearchTimeout);
+        bookSearchTimeout = setTimeout(async () => {
+            resultsContainer.innerHTML = '<div class="loading-text" style="font-size: 11px; padding: 4px;">Searching...</div>';
+
+            try {
+                const res = await apiGet(`/api/books/search?q=${encodeURIComponent(query)}`);
+                if (res.status === 'success' && res.results.length > 0) {
+                    resultsContainer.innerHTML = res.results.slice(0, 3).map((book) => `
+                        <div class="book-result-item" style="padding: 6px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px;" data-title="${book.title.replace(/"/g, '&quot;')}"  data-author="${book.author.replace(/"/g, '&quot;')}" data-cover="${book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : ''}">
+                            ${book.cover_i ? `<img src="https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg" style="width: 24px; height: 36px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 24px; height: 36px; background: var(--border); border-radius: 4px;"></div>'}
+                            <div>
+                                <div style="font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.2;">${book.title}</div>
+                                <div style="font-size: 11px; color: var(--text-secondary);">${book.author}</div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    resultsContainer.querySelectorAll('.book-result-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const bookTitle = document.getElementById('book-title');
+                            if (bookTitle) bookTitle.value = item.dataset.title;
+                            const bookAuthor = document.getElementById('book-author');
+                            if (bookAuthor) bookAuthor.value = item.dataset.author;
+                            const coverUrl = item.dataset.cover || '';
+                            const bookCoverInput = document.getElementById('book-cover-input');
+                            if (bookCoverInput) bookCoverInput.value = coverUrl;
+                            if (coverUrl) showCoverPreview(coverUrl);
+                            resultsContainer.innerHTML = '';
+                        });
+                    });
+                } else {
+                    resultsContainer.innerHTML = '<div class="loading-text" style="font-size: 11px; padding: 4px;">No results found.</div>';
+                }
+            } catch (err) {
+                resultsContainer.innerHTML = `<div class="loading-text" style="color: var(--accent-rose); font-size: 11px; padding: 4px;">Search failed.</div>`;
+            }
+        }, 500);
+    });
+}
 
 // ─── Cover image handling ──────────────────────────────────────
 const coverInput = document.getElementById('book-cover-input');
@@ -775,14 +789,14 @@ const coverRemove = document.getElementById('book-cover-remove');
 const coverHidden = document.getElementById('book-cover-url');
 
 function showCoverPreview(url) {
-    coverHidden.value = url;
-    coverPreviewImg.src = url;
-    coverPreview.style.display = 'flex';
+    if (coverHidden) coverHidden.value = url;
+    if (coverPreviewImg) coverPreviewImg.src = url;
+    if (coverPreview) coverPreview.style.display = 'flex';
 }
 function hideCoverPreview() {
-    coverHidden.value = '';
-    coverInput.value = '';
-    coverPreview.style.display = 'none';
+    if (coverHidden) coverHidden.value = '';
+    if (coverInput) coverInput.value = '';
+    if (coverPreview) coverPreview.style.display = 'none';
 }
 
 if (coverInput) coverInput.addEventListener('input', () => {
@@ -796,7 +810,7 @@ if (coverFile) coverFile.addEventListener('change', () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = e => {
-        coverInput.value = '';
+        if (coverInput) coverInput.value = '';
         showCoverPreview(e.target.result);   // base64 data URL
     };
     reader.readAsDataURL(file);
@@ -805,96 +819,120 @@ if (coverFile) coverFile.addEventListener('change', () => {
 if (coverRemove) coverRemove.addEventListener('click', hideCoverPreview);
 
 // ─── Book form (create + edit) ─────────────────────────────────
-document.getElementById('book-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const editId = document.getElementById('book-edit-id').value;
-    const statusVal = document.getElementById('book-status').value;
-    const data = {
-        title: document.getElementById('book-title').value,
-        author: document.getElementById('book-author').value,
-        genre: document.getElementById('book-genre').value,
-        rating: parseInt(document.getElementById('book-rating').value) || null,
-        is_finished: statusVal === 'read',
-        status: statusVal,
-        cover_url: document.getElementById('book-cover-url').value || null,
-        reaction: document.getElementById('book-reaction').value || null,
-    };
+const bookForm = document.getElementById('book-form');
+if (bookForm) {
+    bookForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const editId = document.getElementById('book-edit-id')?.value;
+        const statusVal = document.getElementById('book-status')?.value;
+        const data = {
+            title: document.getElementById('book-title')?.value,
+            author: document.getElementById('book-author')?.value,
+            genre: document.getElementById('book-genre')?.value,
+            rating: parseInt(document.getElementById('book-rating')?.value) || null,
+            is_finished: statusVal === 'read',
+            status: statusVal,
+            cover_url: document.getElementById('book-cover-url')?.value || null,
+            reaction: document.getElementById('book-reaction')?.value || null,
+        };
 
-    try {
-        if (editId) {
-            // UPDATE existing book
-            await fetch(`${API}/api/books/${editId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            showToast('✓ Book updated');
-        } else {
-            // CREATE new book
-            const result = await apiPost('/api/books', data);
-            showToast('✓ Book saved');
+        try {
+            if (editId) {
+                // UPDATE existing book
+                await fetch(`${API}/api/books/${editId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                showToast('✓ Book updated');
+            } else {
+                // CREATE new book
+                const result = await apiPost('/api/books', data);
+                showToast('✓ Book saved');
 
-            // Show reflection prompts if available
-            if (result.reflection_prompts && result.reflection_prompts.length) {
-                const container = document.getElementById('reflection-prompts');
-                container.innerHTML = result.reflection_prompts.map(p => `
-                    <div class="prompt-card" style="margin-bottom:10px">
-                        <p class="prompt-text">${p.prompt}</p>
-                        <div class="prompt-source">${p.tradition} · ${p.connection || ''}</div>
-                    </div>
-                `).join('');
-                document.getElementById('reflection-prompts-container').style.display = 'block';
+                // Show reflection prompts if available
+                if (result.reflection_prompts && result.reflection_prompts.length) {
+                    const container = document.getElementById('reflection-prompts');
+                    if (container) {
+                        container.innerHTML = result.reflection_prompts.map(p => `
+                        <div class="prompt-card" style="margin-bottom:10px">
+                            <p class="prompt-text">${p.prompt}</p>
+                            <div class="prompt-source">${p.tradition} · ${p.connection || ''}</div>
+                        </div>
+                    `).join('');
+                    }
+                    const reflectionPromptsContainer = document.getElementById('reflection-prompts-container');
+                    if (reflectionPromptsContainer) reflectionPromptsContainer.style.display = 'block';
+                }
             }
-        }
 
-        cancelBookEdit();
-        loadReadingStats();
-        loadBooks();
-    } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-});
+            cancelBookEdit();
+            loadReadingStats();
+            loadBooks();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
 
 // ─── Edit helpers ──────────────────────────────────────────────
 function openBookEdit(book) {
-    document.getElementById('book-edit-id').value = book.id;
-    document.getElementById('book-title').value = book.title || '';
-    document.getElementById('book-author').value = book.author || '';
-    document.getElementById('book-genre').value = book.genre || 'other';
-    document.getElementById('book-rating').value = book.rating || '';
-    document.getElementById('book-status').value = book.status || 'to read';
-    document.getElementById('book-reaction').value = book.reaction || '';
+    const bookEditId = document.getElementById('book-edit-id');
+    if (bookEditId) bookEditId.value = book.id;
+    const bookTitle = document.getElementById('book-title');
+    if (bookTitle) bookTitle.value = book.title || '';
+    const bookAuthor = document.getElementById('book-author');
+    if (bookAuthor) bookAuthor.value = book.author || '';
+    const bookGenre = document.getElementById('book-genre');
+    if (bookGenre) bookGenre.value = book.genre || 'other';
+    const bookRating = document.getElementById('book-rating');
+    if (bookRating) bookRating.value = book.rating || '';
+    const bookStatus = document.getElementById('book-status');
+    if (bookStatus) bookStatus.value = book.status || 'to read';
+    const bookReaction = document.getElementById('book-reaction');
+    if (bookReaction) bookReaction.value = book.reaction || '';
 
     if (book.cover_url) {
-        coverInput.value = book.cover_url.startsWith('data:') ? '' : book.cover_url;
+        if (coverInput) coverInput.value = book.cover_url.startsWith('data:') ? '' : book.cover_url;
         showCoverPreview(book.cover_url);
     } else {
         hideCoverPreview();
     }
 
-    document.getElementById('book-submit-btn').textContent = 'Update Book 🔄';
-    document.getElementById('book-cancel-edit-btn').style.display = 'inline-flex';
-    document.getElementById('book-delete-btn').style.display = 'inline-flex';
+    const bookSubmitBtn = document.getElementById('book-submit-btn');
+    if (bookSubmitBtn) bookSubmitBtn.textContent = 'Update Book 🔄';
+    const bookCancelEditBtn = document.getElementById('book-cancel-edit-btn');
+    if (bookCancelEditBtn) bookCancelEditBtn.style.display = 'inline-flex';
+    const bookDeleteBtn = document.getElementById('book-delete-btn');
+    if (bookDeleteBtn) bookDeleteBtn.style.display = 'inline-flex';
 
     // Scroll to form
-    document.getElementById('page-reading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const pageReading = document.getElementById('page-reading');
+    if (pageReading) pageReading.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function cancelBookEdit() {
-    document.getElementById('book-form').reset();
-    document.getElementById('book-edit-id').value = '';
+    const bookForm = document.getElementById('book-form');
+    if (bookForm) bookForm.reset();
+    const bookEditId = document.getElementById('book-edit-id');
+    if (bookEditId) bookEditId.value = '';
     hideCoverPreview();
-    document.getElementById('book-submit-btn').textContent = 'Save Book 📚';
-    document.getElementById('book-cancel-edit-btn').style.display = 'none';
-    document.getElementById('book-delete-btn').style.display = 'none';
+    const bookSubmitBtn = document.getElementById('book-submit-btn');
+    if (bookSubmitBtn) bookSubmitBtn.textContent = 'Save Book 📚';
+    const bookCancelEditBtn = document.getElementById('book-cancel-edit-btn');
+    if (bookCancelEditBtn) bookCancelEditBtn.style.display = 'none';
+    const bookDeleteBtn = document.getElementById('book-delete-btn');
+    if (bookDeleteBtn) bookDeleteBtn.style.display = 'none';
 }
 
-document.getElementById('book-cancel-edit-btn').addEventListener('click', cancelBookEdit);
+const bookCancelEditBtn = document.getElementById('book-cancel-edit-btn');
+if (bookCancelEditBtn) bookCancelEditBtn.addEventListener('click', cancelBookEdit);
 
 async function loadReadingStats() {
     try {
         const stats = await apiGet('/api/books/stats');
         const container = document.getElementById('reading-stats');
+        if (!container) return;
         const pct = stats.pace_pct || 0;
         const barColor = stats.on_track ? 'var(--accent)' : 'var(--accent-amber)';
 
@@ -918,32 +956,37 @@ async function loadReadingStats() {
             </div>
         `;
     } catch (err) {
-        document.getElementById('reading-stats').innerHTML =
+        const container = document.getElementById('reading-stats');
+        if (container) container.innerHTML =
             '<div class="loading-text">Add your first book to see tracking!</div>';
     }
 }
 
-document.getElementById('book-delete-btn')?.addEventListener('click', async () => {
-    const editId = document.getElementById('book-edit-id').value;
-    if (!editId) return;
-    if (confirm('Are you sure you want to delete this book?')) {
-        try {
-            await fetch(`${API}/api/books/${editId}`, { method: 'DELETE' });
-            showToast('✓ Book deleted');
-            cancelBookEdit();
-            loadReadingStats();
-            loadBooks();
-        } catch (err) {
-            showToast('Error: ' + err.message, 'error');
+const bookDeleteBtn = document.getElementById('book-delete-btn');
+if (bookDeleteBtn) {
+    bookDeleteBtn.addEventListener('click', async () => {
+        const editId = document.getElementById('book-edit-id')?.value;
+        if (!editId) return;
+        if (confirm('Are you sure you want to delete this book?')) {
+            try {
+                await fetch(`${API}/api/books/${editId}`, { method: 'DELETE' });
+                showToast('✓ Book deleted');
+                cancelBookEdit();
+                loadReadingStats();
+                loadBooks();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
         }
-    }
-});
+    });
+}
 
 
 async function loadBooks() {
     try {
         const data = await apiGet('/api/books?limit=100');
         const container = document.getElementById('books-list');
+        if (!container) return;
         if (!data || !data.length) {
             container.innerHTML = '<div class="loading-text">No books yet. Add your first book!</div>';
             return;
@@ -1025,7 +1068,8 @@ async function loadBooks() {
             });
         });
     } catch (err) {
-        document.getElementById('books-list').innerHTML =
+        const container = document.getElementById('books-list');
+        if (container) container.innerHTML =
             '<div class="loading-text">Could not load books</div>';
     }
 }
@@ -1126,9 +1170,12 @@ document.querySelectorAll('.pill').forEach(pill => {
     });
 });
 
-document.getElementById('new-prompt-btn').addEventListener('click', () => {
-    loadJournalPrompt();
-});
+const newPromptBtn = document.getElementById('new-prompt-btn');
+if (newPromptBtn) {
+    newPromptBtn.addEventListener('click', () => {
+        loadJournalPrompt();
+    });
+}
 
 // Journal Sub-Tabs
 document.querySelectorAll('.j-tab').forEach(tab => {
@@ -1137,11 +1184,15 @@ document.querySelectorAll('.j-tab').forEach(tab => {
         document.querySelectorAll('.j-section').forEach(s => s.style.display = 'none');
         tab.classList.add('active');
         const target = `j-sec-${tab.dataset.jtab}`;
-        document.getElementById(target).style.display = 'block';
+        const targetElement = document.getElementById(target);
+        if (targetElement) targetElement.style.display = 'block';
 
         if (tab.dataset.jtab === 'prompt-list') loadPromptList();
-        if (tab.dataset.jtab === 'random-prompt' && document.getElementById('random-prompt-area').innerHTML.includes('Click \'Draw Another\'')) {
-            generateRandomPrompt();
+        if (tab.dataset.jtab === 'random-prompt') {
+            const randomPromptArea = document.getElementById('random-prompt-area');
+            if (randomPromptArea && randomPromptArea.innerHTML.includes('Click \'Draw Another\'')) {
+                generateRandomPrompt();
+            }
         }
     });
 });
@@ -1149,6 +1200,7 @@ document.querySelectorAll('.j-tab').forEach(tab => {
 // Random Prompt Logic
 function generateRandomPrompt() {
     const area = document.getElementById('random-prompt-area');
+    if (!area) return;
     const randomPrompt = templatePrompts[Math.floor(Math.random() * templatePrompts.length)];
     area.innerHTML = `
         <div class="prompt-card">
@@ -1165,23 +1217,34 @@ function generateRandomPrompt() {
     `;
 
     // Re-bind listeners
-    area.querySelector('.use-prompt-btn').addEventListener('click', (e) => {
-        document.getElementById('journal-content').value = '"' + e.target.dataset.prompt + '"\n\n';
-        document.getElementById('journal-content').focus();
-    });
-    area.querySelector('.copy-prompt-btn').addEventListener('click', (e) => {
-        navigator.clipboard.writeText(e.target.dataset.prompt);
-        showToast('Prompt copied to clipboard!');
-    });
+    const usePromptBtn = area.querySelector('.use-prompt-btn');
+    if (usePromptBtn) {
+        usePromptBtn.addEventListener('click', (e) => {
+            const journalContent = document.getElementById('journal-content');
+            if (journalContent) {
+                journalContent.value = '"' + e.target.dataset.prompt + '"\n\n';
+                journalContent.focus();
+            }
+        });
+    }
+    const copyPromptBtn = area.querySelector('.copy-prompt-btn');
+    if (copyPromptBtn) {
+        copyPromptBtn.addEventListener('click', (e) => {
+            navigator.clipboard.writeText(e.target.dataset.prompt);
+            showToast('Prompt copied to clipboard!');
+        });
+    }
 }
 
-document.getElementById('generate-random-prompt-btn')?.addEventListener('click', generateRandomPrompt);
+const generateRandomPromptBtn = document.getElementById('generate-random-prompt-btn');
+if (generateRandomPromptBtn) generateRandomPromptBtn.addEventListener('click', generateRandomPrompt);
 
 // Prompt List Logic
 let promptListLoaded = false;
 function loadPromptList() {
     if (promptListLoaded) return;
     const area = document.getElementById('prompt-list-area');
+    if (!area) return;
     area.innerHTML = templatePrompts.map(p => `
         <div class="prompt-inline-item" style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer; transition: background 0.2s;" data-prompt="${p.replace(/"/g, '&quot;')}">
             <p style="font-size: 14px; margin: 0; color: var(--text-primary); line-height: 1.4;">${p}</p>
@@ -1192,8 +1255,11 @@ function loadPromptList() {
     area.querySelectorAll('.prompt-inline-item').forEach(item => {
         item.addEventListener('click', () => {
             const text = item.dataset.prompt;
-            document.getElementById('journal-content').value = '"' + text + '"\n\n';
-            document.getElementById('journal-content').focus();
+            const journalContent = document.getElementById('journal-content');
+            if (journalContent) {
+                journalContent.value = '"' + text + '"\n\n';
+                journalContent.focus();
+            }
             showToast('Prompt loaded into journal entry');
         });
         item.addEventListener('mouseover', () => item.style.background = 'var(--border)');
@@ -1204,6 +1270,7 @@ function loadPromptList() {
 
 async function loadJournalPrompt() {
     const area = document.getElementById('journal-prompt-area');
+    if (!area) return;
     area.innerHTML = '<div class="spinner"></div> Generating your prompt...';
 
     try {
@@ -1236,75 +1303,95 @@ async function loadJournalPrompt() {
 
 // Journal Themes Selection
 let selectedThemes = [];
-document.querySelectorAll('.theme-pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-        const theme = pill.dataset.theme;
-        if (selectedThemes.includes(theme)) {
-            selectedThemes = selectedThemes.filter(t => t !== theme);
-            pill.classList.remove('active');
-        } else {
-            if (selectedThemes.length >= 3) {
-                showToast('You can only select up to 3 themes.');
-                return;
-            }
-            selectedThemes.push(theme);
-            pill.classList.add('active');
+document.addEventListener('click', e => {
+    const pill = e.target.closest('.theme-pill');
+    if (!pill) return;
+
+    // Ignore clicks on static themes in the history view
+    if (pill.hasAttribute('data-static')) return;
+
+    const theme = pill.dataset.theme;
+    if (!theme) return;
+
+    if (selectedThemes.includes(theme)) {
+        selectedThemes = selectedThemes.filter(t => t !== theme);
+        pill.classList.remove('active');
+    } else {
+        if (selectedThemes.length >= 3) {
+            showToast('You can only select up to 3 themes.');
+            return;
         }
-    });
-});
-
-document.getElementById('journal-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const content = document.getElementById('journal-content').value;
-    const data = {
-        date: document.getElementById('journal-date').value,
-        content: content,
-        word_count: content.trim().split(/\s+/).filter(w => w).length,
-        tradition: currentTradition,
-        themes: selectedThemes
-    };
-
-    try {
-        const result = await apiPost('/api/journal', data);
-        showToast(`✓ Entry saved (${result.word_count} words)`);
-        document.getElementById('journal-form').reset();
-        document.getElementById('journal-date').value = today();
-        document.getElementById('journal-wc').textContent = '0 words';
-
-        loadJournalHistory();
-
-        // Reset themes
-        selectedThemes = [];
-        document.querySelectorAll('.theme-pill').forEach(p => p.classList.remove('active'));
-    } catch (err) {
-        showToast('Error: ' + err.message, 'error');
+        selectedThemes.push(theme);
+        pill.classList.add('active');
     }
 });
 
+const journalForm = document.getElementById('journal-form');
+if (journalForm) {
+    journalForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const content = document.getElementById('journal-content')?.value;
+        const data = {
+            date: document.getElementById('journal-date')?.value,
+            content: content,
+            word_count: content?.trim().split(/\s+/).filter(w => w).length || 0,
+            tradition: currentTradition,
+            themes: selectedThemes
+        };
+
+        try {
+            const result = await apiPost('/api/journal', data);
+            showToast(`✓ Entry saved (${result.word_count} words)`);
+            journalForm.reset();
+            const journalDate = document.getElementById('journal-date');
+            if (journalDate) journalDate.value = today();
+            const journalWc = document.getElementById('journal-wc');
+            if (journalWc) journalWc.textContent = '0 words';
+
+            loadJournalHistory();
+
+            // Reset themes
+            selectedThemes = [];
+            document.querySelectorAll('.theme-pill').forEach(p => p.classList.remove('active'));
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
 
 async function loadJournalHistory() {
     try {
         const data = await apiGet('/api/journal?limit=10');
         const container = document.getElementById('journal-history');
+        if (!container) return;
         if (!data.length) {
             container.innerHTML = '<div class="loading-text">No entries yet. Start writing!</div>';
             return;
         }
-        container.innerHTML = data.map(j => `
-            <div class="history-item">
-                <div class="history-item-left">
-                    <strong>${j.date || 'N/A'}</strong>
+        container.innerHTML = data.map(j => {
+            const themesHtml = (j.themes && j.themes.length) ?
+                j.themes.map(t => `<span class="pill theme-pill" data-static="true" style="font-size:10px; padding:2px 6px; margin-left:6px; background:var(--accent-light); color:var(--accent-dark); border:none; display:inline-block; vertical-align:middle; cursor:default;">${t}</span>`).join('') : '';
+
+            return `
+            <div class="history-item" style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div class="history-item-left" style="width: 100%;">
+                    <div style="display:flex; align-items:center; flex-wrap:wrap;">
+                        <strong>${j.date || 'N/A'}</strong>
+                        ${themesHtml}
+                    </div>
                     <div class="item-meta" style="margin-top:4px;color:var(--text-primary);line-height:1.5;">
-                        ${j.content.length > 150 ? j.content.substring(0, 150) + '...' : j.content}
+                        ${j.content.length > 200 ? j.content.substring(0, 200) + '...' : j.content}
                     </div>
                 </div>
                 <div class="history-item-right" style="min-width:60px">
                     <div class="amount">${j.word_count || 0} w</div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (err) {
-        document.getElementById('journal-history').innerHTML =
+        const container = document.getElementById('journal-history');
+        if (container) container.innerHTML =
             '<div class="loading-text">Could not load journals</div>';
     }
 }
@@ -1323,75 +1410,104 @@ document.querySelectorAll('.period-tab').forEach(tab => {
     });
 });
 
-// Generate review button
-document.getElementById('generate-review-btn').addEventListener('click', () => {
-    loadReview(currentPeriod);
-});
+// Generate review button (Guarded)
+const genReviewBtn = document.getElementById('generate-review-btn');
+if (genReviewBtn) {
+    genReviewBtn.addEventListener('click', () => {
+        loadReview(currentPeriod);
+    });
+}
 
 async function loadReviewData() {
     try {
         const review = await apiGet(`/api/review/${currentPeriod}?generate=false`);
         const m = review.metrics || {};
 
-        // Top metrics
-        document.getElementById('m-km').textContent = m.total_km || 0;
-        document.getElementById('m-meditation').textContent = `${m.meditation_pct || 0}%`;
-        document.getElementById('m-energy').textContent = m.avg_energy || '--';
-        document.getElementById('m-books').textContent = m.books_finished || 0;
+        // Top metrics (Guarded)
+        const mKm = document.getElementById('m-km');
+        if (mKm) mKm.textContent = m.total_km || 0;
+        const mMed = document.getElementById('m-meditation');
+        if (mMed) mMed.textContent = `${m.meditation_pct || 0}%`;
+        const mEnergy = document.getElementById('m-energy');
+        if (mEnergy) mEnergy.textContent = m.avg_energy || '--';
+        const mBooks = document.getElementById('m-books');
+        if (mBooks) mBooks.textContent = m.books_finished || 0;
 
-        // Body category
-        document.getElementById('cat-run-km').textContent = `${m.total_km || 0} km`;
+        // Body category (Guarded)
+        const catRunKm = document.getElementById('cat-run-km');
+        if (catRunKm) catRunKm.textContent = `${m.total_km || 0} km`;
         const runGoalKm = currentPeriod === 'weekly' ? 40 : currentPeriod === 'monthly' ? 160 : 480;
         setProgressBar('cat-run-bar', m.total_km || 0, runGoalKm);
-        document.getElementById('cat-sleep-avg').textContent = `${m.avg_sleep || '--'} hrs`;
-        document.getElementById('cat-steps-pct').textContent = `${m.steps_pct || 0}%`;
-        if (document.getElementById('cat-steps-streak')) {
-            document.getElementById('cat-steps-streak').textContent = `${m.current_steps_streak || 0} 🔥`;
+        const catSleepAvg = document.getElementById('cat-sleep-avg');
+        if (catSleepAvg) catSleepAvg.textContent = `${m.avg_sleep || '--'} hrs`;
+        const catStepsPct = document.getElementById('cat-steps-pct');
+        if (catStepsPct) catStepsPct.textContent = `${m.steps_pct || 0}%`;
+        const catStepsStreak = document.getElementById('cat-steps-streak');
+        if (catStepsStreak) {
+            catStepsStreak.textContent = `${m.current_steps_streak || 0} 🔥`;
         }
 
-        // Mind category
-        document.getElementById('cat-deepwork').textContent = `${m.deep_work_hours || 0} hrs`;
-        document.getElementById('cat-books').textContent = m.books_finished || 0;
+        // Mind category (Guarded)
+        const catDeepwork = document.getElementById('cat-deepwork');
+        if (catDeepwork) catDeepwork.textContent = `${m.deep_work_hours || 0} hrs`;
+        const catBooks = document.getElementById('cat-books');
+        if (catBooks) catBooks.textContent = m.books_finished || 0;
 
-        // Reading pace
+        // Reading pace (Guarded)
         try {
             const stats = await apiGet('/api/books/stats');
-            document.getElementById('cat-books-pace').textContent =
-                `${stats.books_finished}/${stats.yearly_goal}`;
+            const catBooksPace = document.getElementById('cat-books-pace');
+            if (catBooksPace) catBooksPace.textContent = `${stats.books_finished}/${stats.yearly_goal}`;
             setProgressBar('cat-books-bar', stats.books_finished, stats.yearly_goal);
         } catch (e) {
-            document.getElementById('cat-books-pace').textContent = '--';
+            const catBooksPace = document.getElementById('cat-books-pace');
+            if (catBooksPace) catBooksPace.textContent = '--';
         }
 
-        // Spirit category
-        document.getElementById('cat-meditation-pct').textContent = `${m.meditation_pct || 0}%`;
+        // Spirit category (Guarded)
+        const catMedPct = document.getElementById('cat-meditation-pct');
+        if (catMedPct) catMedPct.textContent = `${m.meditation_pct || 0}%`;
         setProgressBar('cat-meditation-bar', m.meditation_pct || 0, 100);
-        if (document.getElementById('cat-meditation-streak')) {
-            document.getElementById('cat-meditation-streak').textContent = `${m.current_meditation_streak || 0} 🔥`;
+        const catMeditationStreak = document.getElementById('cat-meditation-streak');
+        if (catMeditationStreak) {
+            catMeditationStreak.textContent = `${m.current_meditation_streak || 0} 🔥`;
         }
-        document.getElementById('cat-journal-count').textContent = m.journal_entries || 0;
-        document.getElementById('cat-alignment').textContent = `${m.avg_alignment || '--'}/10`;
+        const catJournalCount = document.getElementById('cat-journal-count');
+        if (catJournalCount) catJournalCount.textContent = m.journal_entries || 0;
+        const catAlignment = document.getElementById('cat-alignment');
+        if (catAlignment) catAlignment.textContent = `${m.avg_alignment || '--'}/10`;
 
         // Tracking Streak (Global)
-        if (document.getElementById('global-checkin-streak')) {
-            document.getElementById('global-checkin-streak').textContent = `${m.current_checkin_streak || 0} days`;
+        const globalCheckinStreak = document.getElementById('global-checkin-streak');
+        if (globalCheckinStreak) {
+            globalCheckinStreak.textContent = `${m.current_checkin_streak || 0} days`;
         }
 
         // Social category in review
         try {
             const socialStats = await apiGet('/api/social/stats');
-            document.getElementById('cat-social-interactions').textContent = socialStats.total_interactions || 0;
-            document.getElementById('cat-social-people').textContent = socialStats.unique_people || 0;
+            const catSocialInteractions = document.getElementById('cat-social-interactions');
+            if (catSocialInteractions) catSocialInteractions.textContent = socialStats.total_interactions || 0;
+            const catSocialPeople = document.getElementById('cat-social-people');
+            if (catSocialPeople) catSocialPeople.textContent = socialStats.unique_people || 0;
             const topCat = Object.entries(socialStats.by_category || {}).sort((a, b) => b[1] - a[1])[0];
-            document.getElementById('cat-social-top').textContent = topCat ? topCat[0].replace('_', ' ') : '--';
+            const catSocialTop = document.getElementById('cat-social-top');
+            if (catSocialTop) catSocialTop.textContent = topCat ? topCat[0].replace('_', ' ') : '--';
         } catch (e) { /* no social data yet */ }
 
-        // Five Non-Negotiables with bars
-        setNNWithBar('nn-sleep', 'nn-sleep-bar', m.sleep_consistency_pct, '%');
-        setNNWithBar('nn-meditation', 'nn-meditation-bar', m.meditation_pct, '%');
-        setNNWithBar('nn-steps', 'nn-steps-bar', m.steps_pct, '%');
-        setNNWithBar('nn-deepwork', 'nn-deepwork-bar', m.deep_work_pct || 0, '%');
-        setNNWithBar('nn-therapy', 'nn-therapy-bar', m.therapy_checkin ? 100 : 0, '%');
+        // Financial category in review
+        try {
+            const expenseData = await apiGet('/api/travel/expenses');
+            if (expenseData && expenseData.total_usd !== undefined) {
+                const catFinancialSpend = document.getElementById('cat-financial-spend');
+                if (catFinancialSpend) catFinancialSpend.textContent = `$${expenseData.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                const topExpCat = Object.entries(expenseData.by_category || {}).sort((a, b) => b[1] - a[1])[0];
+                const catFinancialTop = document.getElementById('cat-financial-top');
+                if (catFinancialTop) catFinancialTop.textContent = topExpCat ? topExpCat[0] : '--';
+            }
+        } catch (e) { /* no financial data yet */ }
+
+        // Five Non-Negotiables with bars (UI removed for now)
 
     } catch (err) {
         console.log('Could not load review data:', err);
@@ -1408,8 +1524,8 @@ function setNNWithBar(valueId, barId, value, suffix = '') {
     const el = document.getElementById(valueId);
     const bar = document.getElementById(barId);
     const v = value || 0;
-    el.textContent = `${v}${suffix}`;
-    el.className = `nn-value ${v >= 70 ? 'good' : v >= 40 ? 'warn' : 'bad'}`;
+    if (el) el.textContent = `${v}${suffix}`;
+    if (el) el.className = `nn-value ${v >= 70 ? 'good' : v >= 40 ? 'warn' : 'bad'}`;
     if (bar) {
         bar.style.width = `${Math.min(v, 100)}%`;
         bar.style.background = v >= 70 ? 'var(--accent)' : v >= 40 ? 'var(--accent-amber)' : 'var(--accent-rose)';
@@ -1420,6 +1536,8 @@ async function loadReview(period) {
     const contentDiv = document.getElementById('review-content');
     const bodyDiv = document.getElementById('review-body');
     const titleEl = document.getElementById('review-title');
+
+    if (!contentDiv || !bodyDiv || !titleEl) return;
 
     contentDiv.style.display = 'block';
     const labels = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' };
@@ -1432,7 +1550,7 @@ async function loadReview(period) {
 
         bodyDiv.innerHTML = `
             <div class="review-narrative">${ai.narrative_summary || 'No data available for this period yet. Start tracking to see your review!'}</div>
-            
+
             ${ai.wins && ai.wins.length ? `
                 <div class="review-section">
                     <h4>🏆 Wins</h4>
@@ -1508,16 +1626,14 @@ async function initCurrencySelectors() {
         const toSel = document.getElementById('convert-to');
         const expSel = document.getElementById('expense-currency');
 
-        currencies.forEach(c => {
-            fromSel.add(new Option(c, c));
-            toSel.add(new Option(c, c));
-            expSel.add(new Option(c, c));
-        });
+        if (fromSel) currencies.forEach(c => fromSel.add(new Option(c, c)));
+        if (toSel) currencies.forEach(c => toSel.add(new Option(c, c)));
+        if (expSel) currencies.forEach(c => expSel.add(new Option(c, c)));
 
         // Defaults: VND → USD
-        fromSel.value = 'VND';
-        toSel.value = 'USD';
-        expSel.value = 'VND';
+        if (fromSel) fromSel.value = 'VND';
+        if (toSel) toSel.value = 'USD';
+        if (expSel) expSel.value = 'VND';
         currenciesLoaded = true;
     } catch (e) {
         console.log('Could not load currencies');
@@ -1525,47 +1641,60 @@ async function initCurrencySelectors() {
 }
 
 async function runConversion() {
-    const amount = parseFloat(document.getElementById('convert-amount').value);
+    const amountInput = document.getElementById('convert-amount');
+    const fromInput = document.getElementById('convert-from');
+    const toInput = document.getElementById('convert-to');
+    const resultInput = document.getElementById('convert-result');
+    const rateSpan = document.getElementById('convert-rate');
+
+    if (!amountInput || !fromInput || !toInput || !resultInput || !rateSpan) return;
+
+    const amount = parseFloat(amountInput.value);
     if (!amount || amount <= 0) {
-        document.getElementById('convert-result').value = '--';
-        document.getElementById('convert-rate').textContent = '';
+        resultInput.value = '--';
+        rateSpan.textContent = '';
         return;
     }
-    const from = document.getElementById('convert-from').value;
-    const to = document.getElementById('convert-to').value;
+    const from = fromInput.value;
+    const to = toInput.value;
 
     try {
         const data = await apiGet(`/api/travel/convert?amount=${amount}&from_curr=${from}&to_curr=${to}`);
-        document.getElementById('convert-result').value = data.to_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        document.getElementById('convert-rate').textContent = `1 ${from} = ${data.rate} ${to}`;
+        resultInput.value = data.to_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        rateSpan.textContent = `1 ${from} = ${data.rate} ${to}`;
     } catch (e) {
-        document.getElementById('convert-result').value = 'Error';
+        resultInput.value = 'Error';
     }
 }
 
-document.getElementById('expense-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-        date: document.getElementById('expense-date').value,
-        amount: parseFloat(document.getElementById('expense-amount').value),
-        currency: document.getElementById('expense-currency').value,
-        category: document.getElementById('expense-category').value,
-        description: document.getElementById('expense-desc').value || null,
-        trip: document.getElementById('expense-trip').value || null,
-    };
+const expenseForm = document.getElementById('expense-form');
+if (expenseForm) {
+    expenseForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const data = {
+            date: document.getElementById('expense-date')?.value,
+            amount: parseFloat(document.getElementById('expense-amount')?.value),
+            currency: document.getElementById('expense-currency')?.value,
+            category: document.getElementById('expense-category')?.value,
+            description: document.getElementById('expense-desc')?.value || null,
+            trip: document.getElementById('expense-trip')?.value || null,
+        };
 
-    try {
-        const result = await apiPost('/api/travel/expenses', data);
-        const usdStr = result.amount_usd ? ` (~$${result.amount_usd})` : '';
-        showToast(`✓ Expense saved${usdStr}`);
-        document.getElementById('expense-form').reset();
-        document.getElementById('expense-date').value = today();
-        if (currenciesLoaded) document.getElementById('expense-currency').value = 'VND';
-        loadExpenses();
-    } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-});
+        try {
+            const result = await apiPost('/api/travel/expenses', data);
+            const usdStr = result.amount_usd ? ` (~$${result.amount_usd})` : '';
+            showToast(`✓ Expense saved${usdStr}`);
+            expenseForm.reset();
+            const expenseDate = document.getElementById('expense-date');
+            if (expenseDate) expenseDate.value = today();
+            const expenseCurrency = document.getElementById('expense-currency');
+            if (currenciesLoaded && expenseCurrency) expenseCurrency.value = 'VND';
+            loadExpenses();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
 
 async function loadExpenses() {
     try {
@@ -1573,44 +1702,47 @@ async function loadExpenses() {
         const expenses = data.expenses || [];
 
         // Spending summary
+        // Spending summary (Guarded)
         const summaryDiv = document.getElementById('expense-summary');
-        if (expenses.length === 0) {
-            summaryDiv.innerHTML = '<div class="loading-text">Log your first expense to see a summary</div>';
-        } else {
-            const cats = data.by_category || {};
-            const catIcons = { food: '🍜', coffee: '☕', transport: '🚕', accommodation: '🏨', activities: '🎟️', shopping: '🛍️', other: '📦' };
-            summaryDiv.innerHTML = `
-                <div class="summary-total">$${data.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2 })} USD</div>
-                ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => `
+        if (summaryDiv) {
+            if (expenses.length === 0) {
+                summaryDiv.innerHTML = '<div class="loading-text">Log your first expense to see a summary</div>';
+            } else {
+                const cats = data.by_category || {};
+                const total = data.total_usd || 0;
+
+                summaryDiv.innerHTML = `
                     <div class="stat-row">
-                        <span class="stat-label">${catIcons[cat] || '📦'} ${cat}</span>
-                        <span class="stat-value">$${amt.toFixed(2)}</span>
+                        <span class="stat-label">Total Spending</span>
+                        <span class="stat-value">$${total.toFixed(2)}</span>
                     </div>
-                `).join('')}
-            `;
+                `;
+            }
         }
 
-        // Expense history
+        // Recent expenses (Guarded)
         const historyDiv = document.getElementById('expense-history');
-        if (expenses.length === 0) {
-            historyDiv.innerHTML = '<div class="loading-text">No expenses yet</div>';
-        } else {
-            historyDiv.innerHTML = expenses.slice(0, 20).map(e => `
-                <div class="history-item">
-                    <div class="history-item-left">
-                        <strong>${e.description || e.category}</strong>
-                        <div class="item-meta">${e.date} · ${e.trip || ''}</div>
-                        <span class="category-badge">${e.category}</span>
+        if (historyDiv) {
+            if (expenses.length === 0) {
+                historyDiv.innerHTML = '<div class="loading-text">No expenses logged yet</div>';
+            } else {
+                historyDiv.innerHTML = expenses.slice(0, 20).map(e => `
+                    <div class="history-item">
+                        <div class="history-item-left">
+                            <strong>${e.title}</strong>
+                            <div class="item-meta">${e.date} · ${e.category}</div>
+                        </div>
+                        <div class="history-item-right">
+                            <div class="history-amount">${e.amount} ${e.currency}</div>
+                            ${e.amount_usd ? `<div class="item-meta">≈ $${e.amount_usd.toFixed(2)}</div>` : ''}
+                        </div>
                     </div>
-                    <div class="history-item-right">
-                        <div class="amount">${Number(e.amount).toLocaleString()} ${e.currency}</div>
-                        ${e.amount_usd ? `<div class="amount-usd">~$${e.amount_usd}</div>` : ''}
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         }
     } catch (err) {
-        document.getElementById('expense-history').innerHTML =
+        const historyDiv = document.getElementById('expense-history');
+        if (historyDiv) historyDiv.innerHTML =
             '<div class="loading-text">Could not load expenses</div>';
     }
 }
@@ -1623,17 +1755,18 @@ if (workForm) {
     workForm.addEventListener('submit', async e => {
         e.preventDefault();
         const data = {
-            date: document.getElementById('work-date').value,
-            duration_minutes: parseInt(document.getElementById('work-duration').value),
-            category: document.getElementById('work-category').value,
-            notes: document.getElementById('work-notes').value || null,
+            date: document.getElementById('work-date')?.value || today(),
+            duration_minutes: parseInt(document.getElementById('work-duration')?.value) || 0,
+            category: document.getElementById('work-category')?.value || 'coding',
+            notes: document.getElementById('work-notes')?.value || null,
         };
 
         try {
             const result = await apiPost('/api/work', data);
             showToast('✓ Deep Work logged');
-            document.getElementById('work-form').reset();
-            document.getElementById('work-date').value = today();
+            workForm.reset();
+            const workDate = document.getElementById('work-date');
+            if (workDate) workDate.value = today();
             loadWorkData();
             loadCalendar('work');
         } catch (err) {
@@ -1646,53 +1779,57 @@ async function loadWorkData() {
     try {
         const data = await apiGet('/api/work?limit=50');
         const container = document.getElementById('work-history');
-        if (!data || !data.length) {
-            container.innerHTML = '<div class="loading-text">No deep work sessions yet!</div>';
-            return;
-        }
+        if (!container) return;
 
         const todayStr = today();
         let todayMins = 0;
         const catCounts = {};
 
-        // History UI
-        container.innerHTML = data.slice(0, 15).map(w => {
-            if (w.date === todayStr) {
-                todayMins += (w.duration_minutes || 0);
-            }
-            const c = w.category || 'others';
-            catCounts[c] = (catCounts[c] || 0) + (w.duration_minutes || 0);
+        if (data && data.length) {
+            // History UI
+            container.innerHTML = data.slice(0, 15).map(w => {
+                if (w.date === todayStr) {
+                    todayMins += (w.duration_minutes || 0);
+                }
+                const c = w.category || 'others';
+                catCounts[c] = (catCounts[c] || 0) + (w.duration_minutes || 0);
 
-            let hrStr = '';
-            if (w.duration_minutes >= 60) {
-                hrStr = `${Math.floor(w.duration_minutes / 60)}h ${w.duration_minutes % 60}m`;
-            } else {
-                hrStr = `${w.duration_minutes}m`;
-            }
+                let hrStr = '';
+                if (w.duration_minutes >= 60) {
+                    hrStr = `${Math.floor(w.duration_minutes / 60)}h ${w.duration_minutes % 60}m`;
+                } else {
+                    hrStr = `${w.duration_minutes}m`;
+                }
 
-            return `
-                <div class="history-item">
-                    <div class="history-item-left">
-                        <strong>${w.category}</strong>
-                        <div class="item-meta">${w.date} ${w.notes ? `· ${w.notes}` : ''}</div>
+                return `
+                    <div class="history-item">
+                        <div class="history-item-left">
+                            <strong>${(w.category || 'Work').toUpperCase()}</strong>
+                            <div class="item-meta">${w.date} · ${w.notes || ''}</div>
+                        </div>
+                        <div class="history-item-right">
+                            <div class="history-amount">${hrStr}</div>
+                        </div>
                     </div>
-                    <div class="history-item-right">
-                        <div class="amount" style="color:#8b5cf6;">${hrStr}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = '<div class="loading-text">No deep work sessions yet!</div>';
+        }
 
         // Today UI
         const todayHrs = Math.floor(todayMins / 60);
         const todayRemMins = todayMins % 60;
-        document.getElementById('work-today-total').textContent = `${todayHrs}h ${todayRemMins}m`;
+        const workTodayTotal = document.getElementById('work-today-total');
+        if (workTodayTotal) workTodayTotal.textContent = `${todayHrs}h ${todayRemMins}m`;
 
         const topCat = Object.keys(catCounts).sort((a, b) => catCounts[b] - catCounts[a])[0];
-        document.getElementById('work-today-top').textContent = topCat ? topCat.toUpperCase() : '--';
+        const workTodayTop = document.getElementById('work-today-top');
+        if (workTodayTop) workTodayTop.textContent = topCat ? topCat.toUpperCase() : '--';
 
     } catch (err) {
-        document.getElementById('work-history').innerHTML =
+        const container = document.getElementById('work-history');
+        if (container) container.innerHTML =
             '<div class="loading-text">Could not load work history</div>';
     }
 }
@@ -1701,6 +1838,7 @@ const btnWorkInsights = document.getElementById('btn-work-insights');
 if (btnWorkInsights) {
     btnWorkInsights.addEventListener('click', async () => {
         const contentDiv = document.getElementById('work-insights-content');
+        if (!contentDiv) return;
 
         btnWorkInsights.textContent = 'Generating... ⏳';
         btnWorkInsights.disabled = true;
@@ -1723,78 +1861,86 @@ if (btnWorkInsights) {
 
 // ─── Social ────────────────────────────────────────────────────
 
-document.getElementById('social-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-        date: document.getElementById('social-date').value,
-        name: document.getElementById('social-name').value,
-        category: document.getElementById('social-category').value,
-        context: document.getElementById('social-context').value || null,
-        location: document.getElementById('social-location').value || null,
-        notes: document.getElementById('social-notes').value || null,
-        follow_up: document.getElementById('social-followup').value || null,
-    };
+const socialForm = document.getElementById('social-form');
+if (socialForm) {
+    socialForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const data = {
+            date: document.getElementById('social-date')?.value,
+            name: document.getElementById('social-name')?.value,
+            category: document.getElementById('social-category')?.value,
+            context: document.getElementById('social-context')?.value || null,
+            location: document.getElementById('social-location')?.value || null,
+            notes: document.getElementById('social-notes')?.value || null,
+            follow_up: document.getElementById('social-followup')?.value || null,
+        };
 
-    try {
-        const result = await apiPost('/api/social', data);
-        showToast('✓ Connection saved');
-        document.getElementById('social-form').reset();
-        document.getElementById('social-date').value = today();
-        loadSocialData();
-    } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-});
+        try {
+            const result = await apiPost('/api/social', data);
+            showToast('✓ Connection saved');
+            socialForm.reset();
+            const socialDate = document.getElementById('social-date');
+            if (socialDate) socialDate.value = today();
+            loadSocialData();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
 
 async function loadSocialData() {
     try {
         const stats = await apiGet('/api/social/stats');
         const connections = stats.connections || [];
 
-        // Social stats
+        // Social stats (Guarded)
         const statsDiv = document.getElementById('social-stats');
-        if (stats.total_interactions === 0) {
-            statsDiv.innerHTML = '<div class="loading-text">Log your first connection to see stats</div>';
-        } else {
-            const cats = stats.by_category || {};
-            const catIcons = { friend: '👫', acquaintance: '👋', professional: '💼', colleague: '🏢', family: '👨‍👩‍👧', social_event: '🎉', travel_buddy: '✈️', mentor: '🎓' };
-            statsDiv.innerHTML = `
-                <div class="stat-row">
-                    <span class="stat-label">Total interactions</span>
-                    <span class="stat-value">${stats.total_interactions}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Unique people</span>
-                    <span class="stat-value">${stats.unique_people}</span>
-                </div>
-                ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([cat, count]) => `
+        if (statsDiv) {
+            if (stats.total_interactions === 0) {
+                statsDiv.innerHTML = '<div class="loading-text">Log your first connection to see stats</div>';
+            } else {
+                const cats = stats.by_category || {};
+                const catIcons = { friend: '👫', acquaintance: '👋', professional: '💼', colleague: '🏢', family: '👨‍👩‍👧', social_event: '🎉', travel_buddy: '✈️', mentor: '🎓' };
+                statsDiv.innerHTML = `
                     <div class="stat-row">
-                        <span class="stat-label">${catIcons[cat] || '👤'} ${cat.replace('_', ' ')}</span>
-                        <span class="stat-value">${count}</span>
+                        <span class="stat-label">Total interactions</span>
+                        <span class="stat-value">${stats.total_interactions}</span>
                     </div>
-                `).join('')}
-            `;
+                    <div class="stat-row">
+                        <span class="stat-label">Unique people</span>
+                        <span class="stat-value">${stats.unique_people}</span>
+                    </div>
+                    ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([cat, count]) => `
+                        <div class="stat-row">
+                            <span class="stat-label">${catIcons[cat] || '👤'} ${cat.replace('_', ' ')}</span>
+                            <span class="stat-value">${count}</span>
+                        </div>
+                    `).join('')}
+                `;
+            }
         }
 
         // Recent connections
         const historyDiv = document.getElementById('social-history');
-        if (connections.length === 0) {
-            historyDiv.innerHTML = '<div class="loading-text">No connections logged yet</div>';
-        } else {
-            historyDiv.innerHTML = connections.slice(0, 20).map(c => `
-                <div class="history-item">
-                    <div class="history-item-left">
-                        <strong>${c.name}</strong>
-                        <div class="item-meta">${c.date}${c.location ? ' · ' + c.location : ''}${c.context ? ' · ' + c.context : ''}</div>
-                        <span class="category-badge">${(c.category || 'friend').replace('_', ' ')}</span>
-                        ${c.follow_up ? `<div class="item-meta" style="margin-top:4px;color:var(--text-primary)">↳ ${c.follow_up}</div>` : ''}
+        if (historyDiv) {
+            if (connections.length === 0) {
+                historyDiv.innerHTML = '<div class="loading-text">No connections logged yet</div>';
+            } else {
+                historyDiv.innerHTML = connections.slice(0, 20).map(c => `
+                    <div class="history-item">
+                        <div class="history-item-left">
+                            <strong>${c.name}</strong>
+                            <div class="item-meta">${c.date}${c.location ? ' · ' + c.location : ''}${c.context ? ' · ' + c.context : ''}</div>
+                            <span class="category-badge">${(c.category || 'friend').replace('_', ' ')}</span>
+                            ${c.follow_up ? `<div class="item-meta" style="margin-top:4px;color:var(--text-primary)">↳ ${c.follow_up}</div>` : ''}
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         }
     } catch (err) {
-        document.getElementById('social-history').innerHTML =
-            '<div class="loading-text">Could not load social data</div>';
+        const historyDiv = document.getElementById('social-history');
+        if (historyDiv) historyDiv.innerHTML = '<div class="loading-text">Could not load social data</div>';
     }
 }
 
@@ -1847,8 +1993,9 @@ document.getElementById('generate-summary-btn')?.addEventListener('click', async
                         ${metaParts.join(' · ')}
                         <span>· ${meta.start_date} to ${meta.end_date}</span>
                     </div>
-                ` : ''}
-            `;
+                ` : ''
+                }
+        `;
         }
     } catch (err) {
         container.innerHTML = `<div class="loading-text" style="color: var(--accent-rose);">Could not generate summary. Ensure GOOGLE_API_KEY is configured.</div>`;
@@ -1880,12 +2027,12 @@ function createRecordingStatusBar() {
     bar.className = 'voice-status-bar';
     bar.style.display = 'none';
     bar.innerHTML = `
-        <div class="voice-status-left">
+            < div class="voice-status-left" >
             <span class="voice-pulse-dot"></span>
             <span id="voice-status-text">Listening...</span>
-        </div>
-        <span id="voice-timer" class="voice-timer">0:00</span>
-    `;
+        </div >
+            <span id="voice-timer" class="voice-timer">0:00</span>
+        `;
     // Insert before the textarea
     const textarea = document.getElementById('journal-content');
     textarea.parentNode.insertBefore(bar, textarea);
@@ -1922,7 +2069,7 @@ function createPolishButton() {
             // We'll use the transcribe endpoint with a tiny audio placeholder
             // Actually, let's call a simpler approach — send text to Gemini via existing chat
             const response = await apiPost('/api/chat', {
-                message: `Please clean up the following journal entry text: fix grammar, remove filler words (um, uh, like), add proper punctuation and paragraph breaks. Keep the original meaning and tone. Return ONLY the cleaned text, nothing else.\n\nText:\n${text}`,
+                message: `Please clean up the following journal entry text: fix grammar, remove filler words(um, uh, like), add proper punctuation and paragraph breaks.Keep the original meaning and tone.Return ONLY the cleaned text, nothing else.\n\nText: \n${text} `,
                 agent: 'editor'
             });
             if (response.response) {
@@ -2011,17 +2158,31 @@ if (SpeechRecognition && voiceBtn) {
         }
     });
 } else if (voiceBtn) {
+    // If SpeechRecognition is completely unavailable
+    voiceBtn.addEventListener('click', () => {
+        showToast('Speech recognition is not supported in this browser (try Chrome/Safari or check microphone permissions)', 'error');
+    });
     voiceBtn.style.opacity = '0.4';
     voiceBtn.style.cursor = 'not-allowed';
     voiceBtn.title = 'Speech recognition not supported in this browser';
 }
 
 function startRecording() {
-    if (!recognition) return;
+    if (!recognition) {
+        showToast('Speech recognition not initialized.', 'error');
+        return;
+    }
     isRecording = true;
     interimText = '';
     baseTextBeforeRecording = document.getElementById('journal-content').value;
-    recognition.start();
+
+    try {
+        recognition.start();
+    } catch (err) {
+        showToast('Could not start microphone: ' + err.message, 'error');
+        isRecording = false;
+        return;
+    }
 
     // Update button
     voiceBtn.textContent = '⏹';
@@ -2044,7 +2205,7 @@ function startRecording() {
         const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
         const mins = Math.floor(elapsed / 60);
         const secs = elapsed % 60;
-        if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')} `;
     }, 1000);
 
     showToast('🎤 Listening... Speak now');
@@ -2083,7 +2244,7 @@ function stopRecording() {
     const polishBtn = createPolishButton();
     if (textarea.value.trim().length > 20) {
         polishBtn.style.display = 'inline-flex';
-        showToast(`Recording stopped (${elapsed}s) — click ✨ AI Polish to clean up`);
+        showToast(`Recording stopped(${elapsed}s) — click ✨ AI Polish to clean up`);
     } else {
         polishBtn.style.display = 'none';
         showToast('Recording stopped');

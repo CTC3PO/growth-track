@@ -1,6 +1,6 @@
 /* Service Worker — Mindful Life AI PWA */
 
-const CACHE_NAME = 'mindful-v2';
+const CACHE_NAME = 'mindful-v3';
 const PRECACHE = [
     '/',
     '/static/style.css',
