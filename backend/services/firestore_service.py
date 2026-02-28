@@ -46,16 +46,24 @@ def _get_firestore_client():
             
             if service_account_json:
                 import json
-                cred_dict = json.loads(service_account_json)
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
-                _LOGGER.info("🔥 Firebase Admin initialized using JSON string (Vercel ENV)")
+                try:
+                    # Clean up the string just in case it has surrounding quotes or escaped newlines from Vercel
+                    clean_json = service_account_json.strip()
+                    if clean_json.startswith("'") and clean_json.endswith("'"):
+                        clean_json = clean_json[1:-1]
+                    cred_dict = json.loads(clean_json)
+                    cred = credentials.Certificate(cred_dict)
+                    firebase_admin.initialize_app(cred)
+                    _LOGGER.info("🔥 Firebase Admin initialized using JSON string (Vercel ENV)")
+                except Exception as json_e:
+                    _LOGGER.error(f"❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: {json_e}")
+                    raise RuntimeError(f"Failed to parse Firebase JSON: {json_e}")
             elif service_account_path and Path(service_account_path).exists():
                 cred = credentials.Certificate(service_account_path)
                 firebase_admin.initialize_app(cred)
                 _LOGGER.info(f"🔥 Firebase Admin initialized using {service_account_path}")
             # Option 3: Application Default Credentials (Cloud Run, GCE, etc.)
-            elif os.getenv("APP_ENV") == "production" or os.getenv("K_SERVICE"):
+            elif os.getenv("APP_ENV") == "production" or os.getenv("K_SERVICE") or os.getenv("VERCEL"):
                 firebase_admin.initialize_app()
                 _LOGGER.info("🔥 Firebase Admin initialized using Application Default Credentials")
             else:
@@ -100,6 +108,10 @@ def save_document(collection: str, data: dict, doc_id: str = None) -> str:
             doc_ref = db.collection(full_collection).add(data)
             return doc_ref[1].id
     else:
+        # Check if we are on Vercel (read-only filesystem)
+        if os.getenv("VERCEL"):
+            raise RuntimeError("Database not connected. Cannot use local JSON fallback on Vercel.")
+            
         # Local JSON fallback
         _LOCAL_DATA_DIR.mkdir(exist_ok=True)
         file_path = _LOCAL_DATA_DIR / f"{collection}.json"
@@ -139,6 +151,9 @@ def get_documents(collection: str, limit: int = 100) -> list[dict]:
         ).limit(limit).get()
         return [{"id": doc.id, **doc.to_dict()} for doc in docs]
     else:
+        if os.getenv("VERCEL"):
+            return []
+            
         file_path = _LOCAL_DATA_DIR / f"{collection}.json"
         if file_path.exists():
             data = json.loads(file_path.read_text())
@@ -161,6 +176,9 @@ def get_documents_by_date_range(collection: str, start_date: str, end_date: str)
         )
         return [{"id": doc.id, **doc.to_dict()} for doc in docs]
     else:
+        if os.getenv("VERCEL"):
+            return []
+            
         all_docs = get_documents(collection, limit=1000)
         return [
             d for d in all_docs
