@@ -1600,10 +1600,6 @@ function generateRandomPrompt() {
     area.innerHTML = `
         <div class="prompt-card">
             <p class="prompt-text">"${randomPrompt}"</p>
-            <div class="prompt-quote">
-                100 Journaling Prompts for Reflection
-                <div class="prompt-source">— decideyourlegacy.com</div>
-            </div>
         </div>
         <div style="margin-top: 12px; display: flex; gap: 8px;">
             <button class="btn btn-secondary use-prompt-btn" data-prompt="${randomPrompt.replace(/"/g, '&quot;')}" style="flex: 1; font-size: 13px;">📝 Use This Prompt</button>
