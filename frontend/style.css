@@ -390,8 +390,8 @@ body {
 .form-group textarea:focus {
     outline: none;
     border-color: var(--text-primary);
-    /* Bold black border for focus */
-    background: #ffffff;
+    /* Bold border for focus */
+    background: var(--bg-card);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
