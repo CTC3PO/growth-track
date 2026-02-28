@@ -768,6 +768,17 @@ input[type="range"]::-webkit-slider-thumb {
     margin-bottom: 12px;
     box-shadow: var(--shadow-sm);
     overflow-x: auto;
+    max-width: 100%;
+    box-sizing: border-box;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+}
+
+.review-period-tabs::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
 }
 
 @media (min-width: 768px) {
@@ -913,7 +924,7 @@ input[type="range"]::-webkit-slider-thumb {
     left: 50%;
     transform: translateX(-50%) translateY(-80px);
     background: var(--accent);
-    color: var(--text-primary);
+    color: #0f172a;
     padding: 12px 24px;
     border-radius: 10px;
     font-weight: 600;
