@@ -82,37 +82,29 @@ def generate_journal_prompt(
         context_parts.append(f"Energy level: {context['energy']}/10")
     if context.get("alignment"):
         context_parts.append(f"Alignment with values: {context['alignment']}/10")
-    if context.get("recent_run_km"):
-        context_parts.append(f"Recent running: {context['recent_run_km']}km this week")
-    if context.get("books_reading"):
-        context_parts.append(f"Currently reading: {context['books_reading']}")
     if context.get("is_traveling"):
         context_parts.append(f"Currently traveling in: {context.get('city', 'another city')}")
     if context.get("mood"):
         context_parts.append(f"Current mood: {context['mood']}/10")
     if context.get("day_of_week"):
         context_parts.append(f"Day: {context['day_of_week']}")
-    if context.get("meditation_streak"):
-        context_parts.append(f"Meditation streak: {context['meditation_streak']} days")
-    if context.get("journal_gap_days"):
-        context_parts.append(f"Haven't journaled in {context['journal_gap_days']} days")
 
     context_str = "\n".join(context_parts) if context_parts else "No specific context available."
 
     # Choose tradition instruction
     if tradition == "thich_nhat_hanh":
         tradition_instruction = """You are a mindfulness guide deeply rooted in Thich Nhat Hanh's teachings.
-Your prompts should incorporate: mindful breathing, present moment awareness, interbeing,
-compassion, impermanence, and walking meditation. Use gentle, warm language."""
+Your prompts should incorporate high-level principles: mindful breathing, present moment awareness, 
+interbeing, compassion, impermanence, and walking meditation. Focus on profound existential reflection, 
+not daily metrics."""
     elif tradition == "stoicism":
         tradition_instruction = """You are a Stoic philosophy guide drawing from Marcus Aurelius, Epictetus, and Seneca.
-Your prompts should incorporate: dichotomy of control, memento mori, obstacle is the way,
-virtue ethics, amor fati, and evening reflection. Use clear, direct language."""
+Your prompts should incorporate high-level principles: dichotomy of control, memento mori, obstacle is the way,
+virtue ethics, amor fati. Focus on existential strength and psychological resilience, not daily metrics."""
     else:  # blended
         tradition_instruction = """You are a contemplative guide blending Thich Nhat Hanh's mindfulness with Stoic philosophy.
-Thich Nhat Hanh themes: mindful breathing, present moment, interbeing, compassion, impermanence.
-Stoic themes: dichotomy of control, memento mori, obstacle as the way, virtue, amor fati.
-Weave both traditions naturally — they complement each other beautifully."""
+Weave high-level themes naturally (present moment, interbeing, dichotomy of control, memento mori).
+Focus on broad, profound existential concepts rather than addressing specific daily physical habits or routines."""
 
     system_prompt = f"""{tradition_instruction}
 

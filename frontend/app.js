@@ -3,7 +3,7 @@
  * POC: Tracker forms + AI-powered journaling prompts + review dashboard
  */
 
-const API = '';  // same origin
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8080' : '';
 
 // ─── Navigation ────────────────────────────────────────────────
 
@@ -1701,22 +1701,48 @@ async function loadExpenses() {
         const data = await apiGet('/api/travel/expenses');
         const expenses = data.expenses || [];
 
-        // Spending summary
+        // Filter for current month's expenses
+        const now = new Date();
+        const currentMonthExpenses = expenses.filter(e => {
+            if (!e.date) return false;
+            const edate = new Date(e.date);
+            return edate.getMonth() === now.getMonth() && edate.getFullYear() === now.getFullYear();
+        });
+
+        const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const summaryTitle = document.getElementById('expense-summary-title');
+        if (summaryTitle) {
+            summaryTitle.textContent = `Summary (${monthName})`;
+        }
+
         // Spending summary (Guarded)
         const summaryDiv = document.getElementById('expense-summary');
         if (summaryDiv) {
-            if (expenses.length === 0) {
-                summaryDiv.innerHTML = '<div class="loading-text">Log your first expense to see a summary</div>';
+            if (currentMonthExpenses.length === 0) {
+                summaryDiv.innerHTML = '<div class="loading-text">No expenses logged this month</div>';
             } else {
-                const cats = data.by_category || {};
-                const total = data.total_usd || 0;
+                const total = currentMonthExpenses.reduce((sum, e) => sum + (e.amount_usd || 0), 0);
+
+                // Recalculate categories for the month
+                const cats = {};
+                currentMonthExpenses.forEach(e => {
+                    const cat = e.category || 'other';
+                    cats[cat] = (cats[cat] || 0) + (e.amount_usd || 0);
+                });
 
                 summaryDiv.innerHTML = `
-                    <div class="stat-row">
-                        <span class="stat-label">Total Spending</span>
-                        <span class="stat-value">$${total.toFixed(2)}</span>
+                    <div class="stat-row" style="margin-bottom: 8px;">
+                        <span class="stat-label" style="font-weight: 600; color: var(--text-primary);">Total Monthly Spend</span>
+                        <span class="stat-value" style="font-size: 16px; font-weight: 700; color: var(--accent-rose);">$${total.toFixed(2)}</span>
                     </div>
-                `;
+                ` + Object.entries(cats)
+                        .sort((a, b) => b[1] - a[1]) // Sort categories by amount
+                        .map(([cat, amount]) => `
+                        <div class="stat-row">
+                            <span class="stat-label" style="text-transform: capitalize;">${cat}</span>
+                            <span class="stat-value">$${amount.toFixed(2)}</span>
+                        </div>
+                    `).join('');
             }
         }
 

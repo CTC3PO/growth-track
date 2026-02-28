@@ -661,18 +661,13 @@ input[type="range"]::-webkit-slider-thumb {
 
 @media (min-width: 768px) {
     .journal-layout {
-        flex-direction: column;
-        /* Desktop: stack vertically */
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
         gap: 24px;
-        align-items: stretch;
-    }
-
-    .journal-col-prompt {
-        flex: 1;
+        align-items: start;
     }
 
     .journal-col-entry {
-        flex: 1;
         position: sticky;
         top: 100px;
     }
@@ -823,7 +818,10 @@ input[type="range"]::-webkit-slider-thumb {
 
 .stat-label {
     font-size: 13px;
-    color: var(--text-secondary);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
 }
 
 .stat-value {
