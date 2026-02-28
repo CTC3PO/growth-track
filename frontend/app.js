@@ -1410,8 +1410,8 @@ document.querySelectorAll('.period-tab').forEach(tab => {
     });
 });
 
-// Generate review button (Guarded)
-const genReviewBtn = document.getElementById('generate-review-btn');
+// Generate review button
+const genReviewBtn = document.getElementById('generate-insights-btn');
 if (genReviewBtn) {
     genReviewBtn.addEventListener('click', () => {
         loadReview(currentPeriod);
@@ -1533,16 +1533,10 @@ function setNNWithBar(valueId, barId, value, suffix = '') {
 }
 
 async function loadReview(period) {
-    const contentDiv = document.getElementById('review-content');
-    const bodyDiv = document.getElementById('review-body');
-    const titleEl = document.getElementById('review-title');
+    const bodyDiv = document.getElementById('ai-insights-content');
+    if (!bodyDiv) return;
 
-    if (!contentDiv || !bodyDiv || !titleEl) return;
-
-    contentDiv.style.display = 'block';
-    const labels = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' };
-    titleEl.textContent = `${labels[period] || 'Weekly'} Review`;
-    bodyDiv.innerHTML = '<div class="loading-text"><div class="spinner"></div> Generating AI review...</div>';
+    bodyDiv.innerHTML = '<div class="loading-text"><div class="spinner" style="display:inline-block; border: 2px solid #ddd; border-top-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite;"></div> Analyzing your data and generating AI insights...</div>';
 
     try {
         const review = await apiGet(`/api/review/${period}?generate=true`);

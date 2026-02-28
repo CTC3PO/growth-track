@@ -214,10 +214,16 @@ async def get_books(limit: int = 50):
 @app.get("/api/books/stats")
 async def get_reading_stats():
     """Get reading progress toward 50/year goal."""
-    year_start = date(date.today().year, 1, 1).isoformat()
-    year_end = date(date.today().year, 12, 31).isoformat()
-    books = get_documents_by_date_range("books", year_start, year_end)
-    finished = [b for b in books if b.get("is_finished")]
+    books = get_documents("books", limit=1000)
+    current_year = str(date.today().year)
+    
+    # Filter for books finished this year (fallback to created_at if date_finished is missing)
+    finished = []
+    for b in books:
+        if b.get("is_finished") or b.get("status") == "read":
+            stamp = b.get("date_finished") or b.get("created_at", "")
+            if stamp.startswith(current_year):
+                finished.append(b)
 
     genres = {}
     for b in finished:
