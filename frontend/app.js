@@ -162,7 +162,7 @@ function renderCalendar(containerId, dataSets, monthOffset = 0) {
                 badgeHtml = `<div class="cal-val-bubble" style="background:${color};">${topRun.distance_km}</div>`;
             } else if (containerId === 'journal-calendar' && dateMap[dateStr][0].word_count !== undefined) {
                 const totalWords = dateMap[dateStr].reduce((sum, j) => sum + (j.word_count || 0), 0);
-                badgeHtml = `<div class="cal-val-capsule" style="background:var(--accent);">${totalWords}</div>`;
+                badgeHtml = `<div class="cal-val-capsule" style="background:var(--accent); color:#0f172a;">${totalWords}</div>`;
             } else if (containerId === 'work-calendar' && dateMap[dateStr][0].duration_minutes !== undefined) {
                 const totalMins = dateMap[dateStr].reduce((sum, w) => sum + (w.duration_minutes || 0), 0);
                 const hrs = (totalMins / 60).toFixed(1).replace('.0', '');
@@ -583,6 +583,7 @@ const runForm = document.getElementById('run-form');
 if (runForm) {
     runForm.addEventListener('submit', async e => {
         e.preventDefault();
+        const editId = document.getElementById('run-edit-id')?.value;
         const data = {
             date: document.getElementById('run-date')?.value,
             distance_km: parseFloat(document.getElementById('run-distance')?.value),
@@ -592,11 +593,19 @@ if (runForm) {
         };
 
         try {
-            const result = await apiPost('/api/runs', data);
-            showToast('✓ Run saved');
-            runForm.reset();
-            const runDate = document.getElementById('run-date');
-            if (runDate) runDate.value = today();
+            if (editId) {
+                await fetch(`${API}/api/runs/${editId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                showToast('✓ Run updated');
+            } else {
+                await apiPost('/api/runs', data);
+                showToast('✓ Run saved');
+            }
+
+            cancelRunEdit();
             loadRunHistory();
             loadCalendar('running');
         } catch (err) {
@@ -615,8 +624,10 @@ async function loadRunHistory() {
             return;
         }
         container.innerHTML = data.map(r => `
-            <div class="history-item">
-                <div class="history-item-left">
+            <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.run-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.run-edit-btn').style.opacity='0'">
+                <button class="run-edit-btn" data-run-id="${r.id}" title="Edit"
+                    style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
+                <div class="history-item-left" style="padding-right: 32px;">
                     <strong>${r.date || 'N/A'}</strong>
                     <div class="item-meta">${r.duration_minutes ? r.duration_minutes + ' min' : ''}</div>
                     <span class="category-badge">${r.run_type || 'easy'}</span>
@@ -626,11 +637,85 @@ async function loadRunHistory() {
                 </div>
             </div>
         `).join('');
+
+        // Store data and add edit listeners
+        window._runData = {};
+        data.forEach(r => { window._runData[r.id] = r; });
+        container.querySelectorAll('.run-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const run = window._runData[btn.dataset.runId];
+                if (run) openRunEdit(run);
+            });
+        });
     } catch (err) {
         const container = document.getElementById('run-history');
         if (container) container.innerHTML =
             '<div class="loading-text">Could not load runs</div>';
     }
+}
+
+// ─── Run Edit Helpers ──────────────────────────────────────────
+function openRunEdit(r) {
+    const editId = document.getElementById('run-edit-id');
+    if (editId) editId.value = r.id;
+    const rDate = document.getElementById('run-date');
+    if (rDate) rDate.value = r.date || today();
+    const rDistance = document.getElementById('run-distance');
+    if (rDistance) rDistance.value = r.distance_km || '';
+    const rDuration = document.getElementById('run-duration');
+    if (rDuration) rDuration.value = r.duration_minutes || '';
+    const rType = document.getElementById('run-type');
+    if (rType) rType.value = r.run_type || 'easy';
+    const rNotes = document.getElementById('run-notes');
+    if (rNotes) rNotes.value = r.notes || '';
+
+    const btn = document.getElementById('run-submit-btn');
+    if (btn) btn.textContent = 'Update Run 🔄';
+    const cancelBtn = document.getElementById('run-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    const delBtn = document.getElementById('run-delete-btn');
+    if (delBtn) delBtn.style.display = 'inline-flex';
+
+    document.getElementById('page-run')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelRunEdit() {
+    const form = document.getElementById('run-form');
+    if (form) form.reset();
+    const editId = document.getElementById('run-edit-id');
+    if (editId) editId.value = '';
+    const rDate = document.getElementById('run-date');
+    if (rDate) rDate.value = today();
+
+    const btn = document.getElementById('run-submit-btn');
+    if (btn) btn.textContent = 'Log Run 🏃';
+    const cancelBtn = document.getElementById('run-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const delBtn = document.getElementById('run-delete-btn');
+    if (delBtn) delBtn.style.display = 'none';
+}
+
+const runCancelBtn = document.getElementById('run-cancel-edit-btn');
+if (runCancelBtn) runCancelBtn.addEventListener('click', cancelRunEdit);
+
+const runDeleteBtn = document.getElementById('run-delete-btn');
+if (runDeleteBtn) {
+    runDeleteBtn.addEventListener('click', async () => {
+        const editId = document.getElementById('run-edit-id')?.value;
+        if (!editId) return;
+        if (confirm('Delete this run?')) {
+            try {
+                await fetch(`${API}/api/runs/${editId}`, { method: 'DELETE' });
+                showToast('✓ Run deleted');
+                cancelRunEdit();
+                loadRunHistory();
+                loadCalendar('running');
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+    });
 }
 
 // Running Coach Logic
@@ -1107,49 +1192,359 @@ const templatePrompts = [
     "What do you need less of in your life?",
 
     // Prompts from Reddit (/r/Journaling)
-    "Are you taking enough risks in your life? Would you like to change your relationship to risk?",
+    "Are you taking enough risks in your life? Would you like to change your relationship to risk? If so, how?",
     "At what point in your life have you had the highest self-esteem?",
-    "Consider and reflect on what might be your 'favorite failure.'",
+    "Consider and reflect on what might be your \u201cfavorite failure.\u201d",
+    "Draw 25 circles on a page (5x5 grid of circles). Now set a timer for 3 minutes and try to turn each one into something unique. Could be a ball, hand cuffs, a logo, or an eye for instance.",
+    "Draw a small scribble on the page then use your imagination to turn that scribble into a full drawing.",
+    "Find two unrelated objects near you and think of a clever way they might be used together.",
     "How can you reframe one of your biggest regrets in life?",
-    "How did you bond with one of the best friends you've ever had?",
+    "How did you bond with one of the best friends you\u2019ve ever had?",
+    "How did your parents or caregivers try to influence or control your behavior when you were growing up?",
     "How do the opinions of others affect you?",
     "How do you feel about asking for help?",
-    "How much do your current goals reflect your desires vs someone else's?",
+    "How much do your current goals reflect your desires vs someone else\u2019s?",
+    "If you could eliminate any one disease or illness from the world, what would you choose and why?",
+    "Imagine that you have arrived at a closed door. What does it look like and what\u2019s on the other side?",
     "In what ways are you currently self-sabotaging or holding yourself back?",
-    "Take a task that you've been dreading and break it up into the smallest possible steps.",
+    "Invent your own planet. Draw a rough sketch of the planet and its inhabitants. How is it different than Earth?",
+    "React to the following quote from Ana\u00efs Nin: \u201cWe don't see things as they are, we see them as we are.\u201d",
+    "React to the following quote from We All Looked Up by Tommy Wallach: \u201cDo you think it is better to fail at something worthwhile, or to succeed at something meaningless?\u201d",
+    "Take a task that you\u2019ve been dreading and break it up into the smallest possible steps.",
+    "Talk about a time that you are proud to have told someone \u201cno.\u201d",
+    "The world would be a lot better if\u2026",
+    "Think about a \u201cwhat if?\u201d or worst-case scenario and work your way through the problem, identifying your options to get through it if it were to happen.",
     "Think about the last time you cried. If those tears could talk, what would they have said?",
     "What are some small things that other people have done that really make your day?",
     "What are some things that frustrate you? Can you find any values that explain why they bug you so much?",
+    "What are some things that you could invest more money in to make life smoother and easier for yourself?",
     "What biases do you need to work on?",
     "What could you do to make your life more meaningful?",
-    "What did you learn from your last relationship? If you haven't had one, what could you learn from a relationship that you've observed?",
+    "What did you learn from your last relationship? If you haven\u2019t had one, what could you learn from a relationship that you\u2019ve observed?",
     "What do you need to give yourself more credit for?",
-    "What does 'ready' feel like to you? How did you know you were ready for a major step that you have taken in your life?",
+    "What do you wish you could do more quickly? What do you wish you could do more slowly?",
+    "What does \u201cready\u201d feel like to you? How did you know you were ready for a major step that you have taken in your life?",
     "What happens when you are angry?",
     "What is a boundary that you need to draw in your life?",
+    "What is a made-up rule about your life that you are applying to yourself? How has this held you back and how might you change it?",
     "What is a positive habit that you would really like to cultivate? Why and how could you get started?",
-    "What is a view about the world that has changed for you as you've gotten older?",
+    "What is a question that you are really scared to know the answer to?",
+    "What is a reminder that you would like to tell yourself next time you are in a downward spiral?",
+    "What is a view about the world that has changed for you as you\u2019ve gotten older?",
     "What is holding you back from being more productive at the moment? What can you do about that?",
     "What is something that you grew out of that meant a lot to you at the time?",
     "What is something that you have a hard time being honest about, even to those you trust the most? Why?",
+    "What life lessons, advice, or habits have you picked up from fiction books?",
+    "What made you feel most alive when you were young?",
+    "What part of your work do you most enjoy? What part do you least enjoy? Why?",
     "What pet peeves do you have? Any idea why they drive you so crazy?",
+    "What sensations or experience do you tend to avoid in your life? Why?",
     "What was a seemingly inconsequential decision that made a big impact in your life?",
+    "What would you do if you could stop time for two months?",
     "When was the last time you had to hold your tongue? What would you have said if you didn't have to?",
     "Which emotions in others do you have a difficult time being around? Why?",
+    "Which quotes or pieces of advice do you have committed to memory? Why have those stuck with you?",
+    "Which songs have vivid memories for you?",
+    "Who has been your greatest teacher?",
     "Who is somebody that you miss? Why?",
     "Who is the most difficult person in your life and why?",
+    "Why do you dress the way that you do?",
+    "Write a complete story with just six words. For example: Turns out the pain was temporary.",
+    "Write a letter to someone you miss dearly.",
     "Write a letter to your own body, thanking it for something amazing it has done.",
+    "Write a thank you note to someone. Sending is optional.",
     "Write about a mistake that taught you something about yourself.",
     "Write about an aspect of your personality that you appreciate in other people as well.",
     "Write about something (or someone) that is currently tempting you.",
+    "Write about something that you would like to let go of.",
     "Write an apology to yourself for a time you treated yourself poorly.",
+    "You have been temporarily blinded by a bright light. When your vision clears, what do you see?",
 
-    // Stoicism Prompts
-    "What is outside of your control right now, and how can you accept it?",
-    "If today were your last day, how would you change what you are doing?",
-    "What obstacle is currently in your way, and how can it become the way?",
-    "How did you practice virtue (wisdom, courage, justice, temperance) today?",
-    "What event today did you judge as bad, but can choose to view as an opportunity?",
+    // Decide Your Legacy Prompts
+    "What is something unexpected that happened to you recently? How did it impact you?",
+    "What does love mean to you? How would you describe it to someone else?",
+    "What was one of the best days of your life, and why? Also, what was one of the worst?",
+    "What are five small moments that you were grateful for in the past week?",
+    "What was one of the scariest moments of your life, and why was it scary?",
+    "How did you come to live at your current residence, and why are you living here?",
+    "How do you define personal success, and how do you plan to achieve it?",
+    "How will you enjoy retirement when you no longer want to work?",
+    "How has the past year treated you? What can you do to make this year better?",
+    "How have your current habits been serving you? Are there any that need to change?",
+    "Why are you hesitating to take the next step on a personal project? What do you need to move forward?",
+    "Why is your current lifestyle satisfactory? If it isn't, why not?",
+    "Why are you working at your job? How can you make your job better serve your needs?",
+    "Why should someone invest in you today? What do you want to accomplish?",
+    "Why haven't you taken a risk recently? What do you need to take a calculated risk?",
+    "Who has had the greatest influence on your life? What did they do?",
+    "Who is pushing you to be the best version of yourself? Who is sabotaging your efforts?",
+    "Who has done a recent act of kindness for you? Who can you do a random act of kindness to today?",
+    "Who is your personal role model? Why are they your role model?",
+    "Who has invested in your well-being recently? Who could you invest in?",
+    "When life gets overwhelming, what do you do to regain composure?",
+    "When was the last time you did an activity for only yourself? When can you do so again?",
+    "When did you last take a significant risk? What was it and why did you do it?",
+    "When was the last time you were genuinely curious?",
+    "When do you reflect on your life? Do you regularly schedule a time to reflect?",
+    "What is your favorite time of the day and why?",
+    "How did you meet your first best friend? What are they up to now?",
+    "When have you exceeded your expectations? What did you do?",
+    "Of all living people, who would you most like to have a three-hour dinner with?",
+    "Are you a spender or a saver? Why?",
+    "Life is too short to tolerate __________________.",
+    "If you could get rid of any one bad habit, what would it be?",
+    "Describe a fear you overcame and how you did so.",
+    "What is the most valuable lesson you have learned? Who taught it to you?",
+    "If you could have any career, what would it be and why?",
+    "What do you wish you were the best at?",
+    "How has fear held you back?",
+    "What would you do if you were 10 times more confident?",
+    "Write down an interesting, insightful, or inspiring insight that changed your mind.",
+    "List down three goals you want to achieve within the next three months.",
+    "What is something unique about you that no one knows? Why haven't you shared it?",
+    "Have you ever had a nickname? What is it and how did you earn the name?",
+    "What is your biggest regret?",
+    "What is your greatest accomplishment?",
+    "Journal about your favorite artist, author, or creator. Why do you enjoy their work?",
+    "How would you behave if you didn't care about other people's expectations?",
+    "Other than money, what have you gained from your current job?",
+    "Who has made you laugh recently? What did they do to make you laugh?",
+    "List your favorite foods, drinks, snacks, desserts, and more. When was the last time you got to enjoy one of them with a friend?",
+    "Create a motto for your life.",
+    "When was the last time you overcame a difficult obstacle? How did you beat it?",
+    "Have you taken a day to disconnect from responsibilities? When was the last time you did so?",
+    "If you had a magic wand to solve any one problem, what would it be and how would your life change?",
+    "If you were unapologetically loved and accepted by yourself, what would change moving forward?",
+    "What are you the best at? What do you love doing the most? How could you spend more time engaging in both activities?",
+    "What makes your heart happy? What gives you the greatest thrills?",
+    "What do you believe is holding you back in your life? What could you do to change it to serve you?",
+    "Where do you see yourself in three months, six months, nine months, and twelve months? Be specific.",
+    "What are your top five memories? Why do they hold a special place in your mind?",
+    "How would your life change if you woke up and stopped worrying about your past and your future?",
+    "What scares you the most and why? How can you tackle this fear so it controls less of your life?",
+    "If you could go back in time and tell yourself one piece of advice, what would it be?",
+    "What are three things you are looking forward to doing this week? Why?",
+    "Who do you need to forgive? What's stopping you from doing so today?",
+    "What opportunities do you have in front of you right now? What's making you hesitate to decide?",
+    "How would you like to be remembered when you are gone?",
+    "What energizes you? What drains you? How can you maximize your energizers and limit your drainers?",
+    "What is an assumption about yourself or the world that has been holding you back?",
+    "What is something that is worrying you at the moment? How have you tried to address it?",
+    "What was the last book you read? What about it was interesting or useful?",
+    "If you were happier, how would people know?",
+    "List five people you spend the most time with in your day-to-day life. How are these people helping you grow or live a fulfilling life?",
+    "What do you like about yourself? Why do you like these aspects?",
+    "What advice would you give to a random stranger?",
+    "When did you last spend time with your family or a close friend?",
+    "If there were no limits or obstacles in your way, journal about where would you be in 10 years.",
+    "When was the last time you were seriously sick? How did you heal yourself?",
+    "When was the last time you tried something you were not good at? How did it go?",
+    "What are you settling for in your life right now? How could you change that?",
+    "Journal about one controversial belief you hold and why you hold firm to it.",
+    "What is something you don't want anyone to know about you and why?",
+    "List your favorite activities as a child. When did you engage one of those activities? If not now, then when?",
+    "What is the last thing you've done that is worth remembering?",
+    "When you are 80 years old what will matter to you most?",
+    "Write about your last intense encounter and why was it fulfilling or nerve-wracking.",
+    "Would you break the law to hold to a personal value? What value and why?",
+    "If you could brainwash someone into believing something what would it be and why?",
+    "What would you require to be taught in schools if you were in charge of national education?",
+    "Which is worse, never making an attempt or failing while trying?",
+    "When was the last time you meditated or took a moment to focus on your surroundings?",
+    "What does the American Dream mean to you and how are you achieving it?",
+    "What is the most desirable trait that another person can possess?",
+    "How would you describe a good leader? How would you describe the good follower?",
+    "Are you more worried about doing things right or doing the right things? Journal about it.",
+    "What is one lie you believed for most of your life?",
+    "How would you describe yourself to a stranger?",
+    "Reflect on a moment when you stood up for yourself. What was the result?",
+    "What were you like as a 7-year-old?",
+    "List 3 counterintuitive truths. \"Most people think ______________, but the truth is ________________.\"",
+    "Describe your ideal vacation in detail. If you could give a gift to anyone, what gift would you give and why?",
+
+    // Camille Styles Prompts
+    "What are three great things that happened yesterday?",
+    "What are 10 things that bring you joy?",
+    "What are you looking forward to right now? If you can\u2019t think of anything, what can you do to change that?",
+    "What is one totally-free thing that\u2019s transformed your life?",
+    "What things in your life would you describe as priceless?",
+    "What are 10 things you\u2019re actively enjoying about life right now?",
+    "Write about the most fun you had recently. What were you doing and who were you with?",
+    "Write about an act of kindness that someone did for you that took you by surprise.",
+    "What are some of your favorite ways to show the people in your life that you love them?",
+    "Reflect on a moment of profound beauty that you recently experienced. What about it surprised you and drew you in?",
+    "In this moment, what are three things in your life that you feel the most grateful for?",
+    "Write five guilty pleasures you don\u2019t feel guilty about.",
+    "In what ways have you felt supported by friends, family, or you community recently?",
+    "Name three healthy habits you started within the last year that have changed your life for the better.",
+    "Describe your space. What do you love about it?",
+    "What are your favorite things to eat?",
+    "What are three small, seemingly insignificant moments from the past week that brought you joy?",
+    "Write about someone who inspires you. What qualities do they have that you admire?",
+    "What are five things your younger self would be amazed by or proud of in your life now?",
+    "Describe a recent challenge you overcame. What did it teach you, and how are you stronger because of it?",
+    "Name the top three emotions you are feeling at the moment. What are the emotions you want to feel today?",
+    "What is the one thing you would tell your teenage self if you could?",
+    "What is your body craving at the moment?",
+    "What are 10 questions you wish you had the answers to right now?",
+    "What do you know to be true today that you didn\u2019t know a year ago?",
+    "What are you scared of right now?",
+    "What\u2019s not working in your life right now?",
+    "Write about someone you miss. What do you miss about them? How do they make you feel?",
+    "Picture someone who you\u2019ve experienced a conflict with in the past and try to drop into their perspective. What were they feeling at the time of your conflict? If it\u2019s available to you, how can you express sympathy for their experience?",
+    "What areas of your life are causing you stress? What areas of your life are bringing you joy?",
+    "What would you describe as being the greatest accomplishment of your life so far?",
+    "If someone was to describe your life story back to you, which three events would you want them to highlight the most?",
+    "What has been the most transformative year in your life so far?",
+    "What is your earliest childhood memory?",
+    "How has your relationship to self-love grown and strengthened over the past five years?",
+    "What have you learned to forgive yourself for?",
+    "What does your ideal day look like, from start to finish? What steps can you take today to make it feel more like that?",
+    "When was the last time you felt truly at peace with yourself? What made that moment possible?",
+    "What is one fear you\u2019ve faced in the past that you are proud of overcoming?",
+    "If you could change one thing about the way you show up in the world, what would it be, and why?",
+    "Describe your perfect home. Where is it, what does it look like, and who do you share it with?",
+    "When you were younger, what did you want to be when you grew up and why?",
+    "If failure wasn\u2019t possible, what would you be doing right now?",
+    "If you only had one year left of life, what would you do?",
+    "In another life, who would you want to be? Write out this character, what they do for a living, their personality traits, etc.",
+    "Reflect on your career and personal goals. Are there parallels and consistencies between the two? How do you keep these two areas of your life separate? How are they the same?",
+    "If you could master one skill, what would it be?",
+    "What are new ways you can measure progress this year?",
+    "What is standing in your way of reaching your goals?",
+    "Who are the people you trust the most to help you create the life you\u2019ve always dreamed of?",
+    "What habits and actions can you incorporate into your daily routine to help you prioritize your time in 2025?",
+    "What would it feel like to step out of your comfort zone? How can you step out of your comfort zone more this year?",
+    "What talents or skills do you want to build and strengthen?",
+    "What challenges have you overcome in the past? How has doing so made your life more vibrant and full?",
+    "What\u2019s a commitment you can make to yourself every day to grow more this year?",
+    "What is the one thing you\u2019ve always wanted to achieve but haven\u2019t yet? What steps can you take today to move closer to it?",
+    "What does success look like to you right now? How has your definition of success evolved over the years?",
+    "What are three specific goals you\u2019d like to accomplish this year, and how can you break them down into manageable steps?",
+    "What would you do if you felt completely fearless? How can you embrace that boldness in your current life?",
+    "What\u2019s one big dream you\u2019ve been putting off? What\u2019s the first step you can take today to move closer to making it a reality?",
+    "What top three qualities do you value most in life?",
+    "In what ways are you acting outside of those values?",
+    "In what ways are you acting in alignment with them?",
+    "What do you want to invite more of into 2025?",
+    "What do you want to leave behind?",
+    "What\u2019s something you wish others knew about you?",
+    "Who is someone you admire? What qualities do you love about them?",
+    "What are you looking forward to this week?",
+    "Who is someone you envy and why?",
+    "What distracts you from what\u2019s truly important each day?",
+    "If you decided right now that you had enough money, and that you would always have enough, what would you do with your life?",
+    "When you picture yourself 10 years from now, what do you want to have achieved and experienced?",
+    "How do you want to contribute your talents and passions to the world? Who could be touched by you and how would it affect them?",
+    "What role does love play in your life?",
+    "What does friendship mean to you?",
+    "How did you prioritize your time today?",
+    "What does living authentically look like to you, and how can you bring more of that into your daily life?",
+    "What are the core beliefs that guide your decisions? How do they shape your relationships and goals?",
+    "In what ways can you practice kindness, both toward yourself and others, more intentionally",
+    "How do you define balance in your life, and what actions can you take to bring more of it into your routine?",
+
+    // Stoicism Quotes
+    "It\u2019s not what happens to you, but how you react to it that matters.",
+    "He who laughs at himself never runs out of things to laugh at.",
+    "Only the educated are free.",
+    "Some things are in our control and others not. Things in our control are opinion, pursuit, desire, aversion, and, in a word, whatever are our own actions. Things not in our control are body, property, reputation, command, and, in one word, whatever are not our actions.",
+    "The greater the difficulty, the more glory in surmounting it. Skillful pilots gain their reputation from storms and tempests.",
+    "He is a wise man who does not grieve for the things which he has not, but rejoices for those which he has.",
+    "Seek not the good in external things; seek it in yourselves.",
+    "People are not disturbed by things, but by the views they take of them.",
+    "If anyone tells you that a certain person speaks ill of you, do not make excuses about what is said of you but answer, \u201cHe was ignorant of my other faults, else he would not have mentioned these alone.\u201d",
+    "Any person capable of angering you becomes your master; he can anger you only when you permit yourself to be disturbed by him.",
+    "Wealth consists not in having great possessions, but in having few wants.",
+    "Don\u2019t explain your philosophy. Embody it.",
+    "To accuse others for one\u2019s own misfortune is a sign of want of education. To accuse oneself shows that one\u2019s education has begun. To accuse neither oneself nor others shows that one\u2019s education is complete.",
+    "There is only one way to happiness and that is to cease worrying about things which are beyond the power or our will.",
+    "If you want to improve, be content to be thought foolish and stupid.",
+    "The key is to keep company only with people who uplift you, whose presence calls forth your best.",
+    "If you would be a reader, read; if a writer, write.",
+    "God has entrusted me with myself. No man is free who is not master of himself. A man should so live that his happiness shall depend as little as possible on external things. The world turns aside to let any man pass who knows where he is going.",
+    "Remember, it is not enough to be hit or insulted to be harmed, you must believe that you are being harmed. If someone succeeds in provoking you, realize that your mind is complicit in the provocation. Which is why it is essential that we not respond impulsively to impressions; take a moment before reacting, and you will find it easier to maintain control.",
+    "A ship should not ride on a single anchor, nor life on a single hope.",
+    "Demand not that things happen as you wish, but wish them to happen as they do, and you will go on well.",
+    "Remember that you ought to behave in life as you would at a banquet. As something is being passed around it comes to you; stretch out your hand, take a portion of it politely. It passes on; do not detain it. Or it has not come to you yet; do not project your desire to meet it, but wait until it comes in front of you. So act toward children, so toward a wife, so toward office, so toward wealth.",
+    "Events do not just happen, but arrive by appointment.",
+    "Either God wants to abolish evil, and cannot; or he can, but does not want to.",
+    "It is unrealistic to expect people to see you as you see yourself.",
+    "You have power over your mind \u2014 not outside events. Realize this, and you will find strength.",
+    "The soul becomes dyed with the colour of its thoughts.",
+    "Do not act as if you were going to live ten thousand years. Death hangs over you. While you live, while it is in your power, be good.",
+    "Dwell on the beauty of life. Watch the stars, and see yourself running with them. Think constantly on the changes of the elements into each other, for such thoughts wash away the dust of earthly life.",
+    "The impediment to action advances action. What stands in the way becomes the way.",
+    "If it is not right do not do it; if it is not true do not say it.",
+    "If any man despises me, that is his problem. My only concern is not doing or saying anything deserving of contempt.",
+    "The first rule is to keep an untroubled spirit. The second is to look things in the face and know them for what they are.",
+    "Never let the future disturb you. You will meet it, if you have to, with the same weapons of reason which today arm you against the present.",
+    "How much time he gains who does not look to see what his neighbour says or does or thinks, but only at what he does himself, to make it just and holy.",
+    "Very little is needed to make a happy life; it is all within yourself in your way of thinking.",
+    "Whenever you are about to find fault with someone, ask yourself the following question: What fault of mine most nearly resembles the one I am about to criticize?",
+    "If you are distressed by anything external, the pain is not due to the thing itself, but to your estimate of it; and this you have the power to revoke at any moment.",
+    "The happiness of your life depends upon the quality of your thoughts.",
+    "Everything we hear is an opinion, not a fact. Everything we see is a perspective, not the truth.",
+    "If someone is able to show me that what I think or do is not right, I will happily change, for I seek the truth, by which no one was ever truly harmed. It is the person who continues in his self-deception and ignorance who is harmed.",
+    "I have often wondered how it is that every man loves himself more than all the rest of men, but yet sets less value on his own opinion of himself than on the opinion of others.",
+    "Begin each day by telling yourself: Today I shall be meeting with interference, ingratitude, insolence, disloyalty, ill-will, and selfishness \u2013 all of them due to the offenders\u2019 ignorance of what is good or evil.",
+    "Perfection of character is this: to live each day as if it were your last, without frenzy, without apathy, without pretence.",
+    "A person\u2019s worth is measured by the worth of what he values.",
+    "Observe always that everything is the result of change, and get used to thinking that there is nothing Nature loves so well as to change existing forms and make new ones like them.",
+    "Or is it your reputation that\u2019s bothering you? But look at how soon we\u2019re all forgotten. The abyss of endless time that swallows it all. The emptiness of those applauding hands. The people who praise us; how capricious they are, how arbitrary. And the tiny region it takes place. The whole earth a point in space \u2013 and most of it uninhabited.",
+    "Be like the cliff against which the waves continually break; but it stands firm and tames the fury of the water around it.",
+    "A man must stand erect, not be kept erect by others.",
+    "We suffer more often in imagination than in reality.",
+    "If you really want to escape the things that harass you, what you\u2019re needing is not to be in a different place but to be a different person.",
+    "Sometimes even to live is an act of courage.",
+    "Fire tests gold, suffering tests brave men.",
+    "Enjoy present pleasures in such a way as not to injure future ones.",
+    "They lose the day in expectation of the night, and the night in fear of the dawn.",
+    "It is not that we have so little time but that we lose so much. The life we receive is not short but we make it so; we are not ill provided but use what we have wastefully.",
+    "Luck is what happens when preparation meets opportunity.",
+    "The greatest obstacle to living is expectancy, which hangs upon tomorrow and loses today. You are arranging what lies in Fortune\u2019s control, and abandoning what lies in yours. What are you looking at? To what goal are you straining? The whole future lies in uncertainty: live immediately.",
+    "If a man knows not to which port he sails, no wind is favorable.",
+    "Anger, if not restrained, is frequently more hurtful to us than the injury that provokes it.",
+    "True happiness is to enjoy the present, without anxious dependence upon the future, not to amuse ourselves with either hopes or fears but to rest satisfied with what we have, which is sufficient, for he that is so wants nothing.",
+    "The greatest blessings of mankind are within us and within our reach. A wise man is content with his lot, whatever it may be, without wishing for what he has not.",
+    "All cruelty springs from weakness.",
+    "Difficulties strengthen the mind, as labor does the body.",
+    "Withdraw into yourself, as far as you can. Associate with those who will make a better man of you. Welcome those whom you yourself can improve. The process is mutual; for men learn while they teach.",
+    "He who spares the wicked injures the good.",
+    "You act like mortals in all that you fear, and like immortals in all that you desire.",
+    "He suffers more than necessary, who suffers before it is necessary.",
+    "A gift consists not in what is done or given, but in the intention of the giver or doer.",
+    "People are frugal in guarding their personal property; but as soon as it comes to squandering time they are most wasteful of the one thing in which it is right to be stingy.",
+    "Every new beginning comes from some other beginning\u2019s end.",
+    "To win true freedom you must be a slave to philosophy.",
+    "It is a rough road that leads to the heights of greatness.",
+    "Often a very old man has no other proof of his long life than his age.",
+    "No man is crushed by misfortune unless he has first been deceived by prosperity.",
+    "Man conquers the world by conquering himself.",
+    "Better to trip with the feet than with the tongue.",
+    "Well-being is realized by small steps, but is truly no small thing.",
+    "Nothing is more hostile to a firm grasp on knowledge than self-deception.",
+    "The goal of life is living in agreement with Nature.",
+    "We have two ears and one mouth, so we should listen more than we say.",
+    "If you lay violent hands on me, you\u2019ll have my body, but my mind will remain with Stilpo.",
+    "Happiness is a good flow of life.",
+    "A bad feeling is a commotion of the mind repugnant to reason, and against nature.",
+    "No loss should be more regrettable to us than losing our time, for it\u2019s irretrievable.",
+    "Wealth is able to buy the pleasures of eating, drinking and other sensual pursuits-yet can never afford a cheerful spirit or freedom from sorrow.",
+    "In our control is the most beautiful and important thing, the thing because of which even the god himself is happy\u2014 namely, the proper use of our impressions. We must concern ourselves absolutely with the things that are under our control and entrust the things not in our control to the universe.",
+    "If you accomplish something good with hard work, the labor passes quickly, but the good endures; if you do something shameful in pursuit of pleasure, the pleasure passes quickly, but the shame endures.",
+    "Choose to die well while you can; wait too long, and it might become impossible to do so.",
+    "If we were to measure what is good by how much pleasure it brings, nothing would be better than self-control- if we were to measure what is to be avoided by its pain, nothing would be more painful than lack of self-control.",
+    "From good people you\u2019ll learn good, but if you mingle with the bad you\u2019ll destroy such soul as you had.",
+    "You will earn the respect of all if you begin by earning the respect of yourself. Don\u2019t expect to encourage good deeds in people conscious of your own misdeeds.",
+    "Since every man dies, it is better to die with distinction than to live long.",
+    "To accept injury without a spirit of savage resentment-to show ourselves merciful toward those who wrong us-being a source of good hope to them-is characteristic of a benevolent and civilized way of life.",
+    "We will train both soul and body when we accustom ourselves to cold, heat, thirst, hunger, scarcity of food, hardness of bed, abstaining from pleasures, and enduring pains.",
+    "What good are gilded rooms or precious stones-fitted on the floor, inlaid in the walls, carried from great distances at the greatest expense? These things are pointless and unnecessary-without them isn\u2019t it possible to live healthy? Aren\u2019t they the source of constant trouble? Don\u2019t they cost vast sums of money that, through public and private charity, may have benefited many?",
+    "Being good is the same as being a philosopher. If you obey your father, you will follow the will of a man; if you choose the philosopher\u2019s life, the will of the universe. It is plain, therefore, that your duty lies in the pursuit of philosophy.",
+    "For mankind, evil is injustice and cruelty and indifference to a neighbour\u2019s trouble, while virtue is brotherly love and goodness and justice and beneficence and concern for the welfare of your neighbour\u2014with.",
+    "Husband and wife should come together to craft a shared life, procreating children, seeing all things as shared between them-with nothing withheld or private to one another-not even their bodies.",
+    "To accept injury without a spirit of savage resentment-to show ourselves merciful toward those who wrong us-being a source of good hope to them-is characteristic of a benevolent and civilized way of life.",
 
     // Thich Nhat Hanh Prompts
     "As you breathe in and out right now, what sensations do you notice?",
@@ -1393,6 +1788,60 @@ async function loadJournalHistory() {
         const container = document.getElementById('journal-history');
         if (container) container.innerHTML =
             '<div class="loading-text">Could not load journals</div>';
+    }
+
+    // Also load gratitude alongside journals
+    loadGratitudeHistory();
+}
+
+// ─── Gratitude ─────────────────────────────────────────────────
+
+const gratitudeForm = document.getElementById('gratitude-form');
+if (gratitudeForm) {
+    gratitudeForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const content = document.getElementById('gratitude-list')?.value;
+        const data = {
+            date: document.getElementById('journal-date')?.value || today(),
+            content: content
+        };
+
+        try {
+            await apiPost('/api/gratitude', data);
+            showToast(`✓ Gratitude saved`);
+            gratitudeForm.reset();
+            loadGratitudeHistory();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+}
+
+async function loadGratitudeHistory() {
+    try {
+        const data = await apiGet('/api/gratitude?limit=10');
+        const container = document.getElementById('gratitude-history-list');
+        if (!container) return;
+        if (!data.length) {
+            container.innerHTML = '<div class="loading-text">No gratitude logged yet.</div>';
+            return;
+        }
+
+        // Group by user typed list or bullet points
+        container.innerHTML = data.map(g => {
+            const listItems = (g.content || '').split('\n').filter(l => l.trim()).map(l => `<li style="margin-bottom: 4px;">${l.replace(/^- /, '')}</li>`).join('');
+            return `
+            <div class="history-item" style="display:block; padding: 12px 16px; border-bottom: 1px solid var(--border);">
+                <ul style="margin: 0; padding-left: 20px; color: var(--text-primary); line-height: 1.6;">
+                    ${listItems}
+                </ul>
+            </div>
+            `;
+        }).join('');
+    } catch (err) {
+        const container = document.getElementById('gratitude-history-list');
+        if (container) container.innerHTML =
+            '<div class="loading-text">Could not load gratitude</div>';
     }
 }
 
@@ -1665,6 +2114,7 @@ const expenseForm = document.getElementById('expense-form');
 if (expenseForm) {
     expenseForm.addEventListener('submit', async e => {
         e.preventDefault();
+        const editId = document.getElementById('expense-edit-id')?.value;
         const data = {
             date: document.getElementById('expense-date')?.value,
             amount: parseFloat(document.getElementById('expense-amount')?.value),
@@ -1675,9 +2125,21 @@ if (expenseForm) {
         };
 
         try {
-            const result = await apiPost('/api/travel/expenses', data);
-            const usdStr = result.amount_usd ? ` (~$${result.amount_usd})` : '';
-            showToast(`✓ Expense saved${usdStr}`);
+            if (editId) {
+                const result = await fetch(`${API}/api/travel/expenses/${editId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }).then(res => res.json());
+                const usdStr = result.amount_usd ? ` (~$${result.amount_usd})` : '';
+                showToast(`✓ Expense updated${usdStr}`);
+            } else {
+                const result = await apiPost('/api/travel/expenses', data);
+                const usdStr = result.amount_usd ? ` (~$${result.amount_usd})` : '';
+                showToast(`✓ Expense saved${usdStr}`);
+            }
+
+            cancelExpenseEdit();
             expenseForm.reset();
             const expenseDate = document.getElementById('expense-date');
             if (expenseDate) expenseDate.value = today();
@@ -1747,8 +2209,10 @@ async function loadExpenses() {
                 historyDiv.innerHTML = '<div class="loading-text">No expenses logged yet</div>';
             } else {
                 historyDiv.innerHTML = expenses.slice(0, 20).map(e => `
-                    <div class="history-item">
-                        <div class="history-item-left">
+                    <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.expense-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.expense-edit-btn').style.opacity='0'">
+                        <button class="expense-edit-btn" data-expense-id="${e.id}" title="Edit"
+                            style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
+                        <div class="history-item-left" style="padding-right: 32px;">
                             <strong>${e.title}</strong>
                             <div class="item-meta">${e.date} · ${e.category}</div>
                         </div>
@@ -1758,6 +2222,17 @@ async function loadExpenses() {
                         </div>
                     </div>
                 `).join('');
+
+                // Store data and add edit listeners
+                window._expenseData = {};
+                expenses.forEach(e => { window._expenseData[e.id] = e; });
+                historyDiv.querySelectorAll('.expense-edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        const expense = window._expenseData[btn.dataset.expenseId];
+                        if (expense) openExpenseEdit(expense);
+                    });
+                });
             }
         }
     } catch (err) {
@@ -1767,6 +2242,72 @@ async function loadExpenses() {
     }
 }
 
+// ─── Expense Edit Helpers ───────────────────────────────────────
+function openExpenseEdit(e) {
+    const editId = document.getElementById('expense-edit-id');
+    if (editId) editId.value = e.id;
+    const eDate = document.getElementById('expense-date');
+    if (eDate) eDate.value = e.date || today();
+    const eAmount = document.getElementById('expense-amount');
+    if (eAmount) eAmount.value = e.amount || '';
+    const eCurrency = document.getElementById('expense-currency');
+    if (eCurrency) eCurrency.value = e.currency || 'USD';
+    const eCat = document.getElementById('expense-category');
+    if (eCat) eCat.value = e.category || 'food';
+    const eDesc = document.getElementById('expense-desc');
+    if (eDesc) eDesc.value = e.title?.replace(' Expense', '') || e.description || '';
+    const eTrip = document.getElementById('expense-trip');
+    if (eTrip) eTrip.value = e.trip || '';
+
+    const btn = document.getElementById('expense-submit-btn');
+    if (btn) btn.textContent = 'Update Expense 🔄';
+    const cancelBtn = document.getElementById('expense-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    const delBtn = document.getElementById('expense-delete-btn');
+    if (delBtn) delBtn.style.display = 'inline-flex';
+
+    document.getElementById('page-expense')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelExpenseEdit() {
+    const form = document.getElementById('expense-form');
+    if (form) form.reset();
+    const editId = document.getElementById('expense-edit-id');
+    if (editId) editId.value = '';
+    const eDate = document.getElementById('expense-date');
+    if (eDate) eDate.value = today();
+    const eCurrency = document.getElementById('expense-currency');
+    if (currenciesLoaded && eCurrency) eCurrency.value = 'VND';
+
+    const btn = document.getElementById('expense-submit-btn');
+    if (btn) btn.textContent = 'Log Expense 💰';
+    const cancelBtn = document.getElementById('expense-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const delBtn = document.getElementById('expense-delete-btn');
+    if (delBtn) delBtn.style.display = 'none';
+}
+
+const expenseCancelBtn = document.getElementById('expense-cancel-edit-btn');
+if (expenseCancelBtn) expenseCancelBtn.addEventListener('click', cancelExpenseEdit);
+
+const expenseDeleteBtn = document.getElementById('expense-delete-btn');
+if (expenseDeleteBtn) {
+    expenseDeleteBtn.addEventListener('click', async () => {
+        const editId = document.getElementById('expense-edit-id')?.value;
+        if (!editId) return;
+        if (confirm('Delete this expense?')) {
+            try {
+                await fetch(`${API}/api/travel/expenses/${editId}`, { method: 'DELETE' });
+                showToast('✓ Expense deleted');
+                cancelExpenseEdit();
+                loadExpenses();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+    });
+}
+
 
 // ─── Work (Pomodoro) ───────────────────────────────────────────
 
@@ -1774,6 +2315,7 @@ const workForm = document.getElementById('work-form');
 if (workForm) {
     workForm.addEventListener('submit', async e => {
         e.preventDefault();
+        const editId = document.getElementById('work-edit-id')?.value;
         const data = {
             date: document.getElementById('work-date')?.value || today(),
             duration_minutes: parseInt(document.getElementById('work-duration')?.value) || 0,
@@ -1782,11 +2324,19 @@ if (workForm) {
         };
 
         try {
-            const result = await apiPost('/api/work', data);
-            showToast('✓ Deep Work logged');
-            workForm.reset();
-            const workDate = document.getElementById('work-date');
-            if (workDate) workDate.value = today();
+            if (editId) {
+                await fetch(`${API}/api/work/${editId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                showToast('✓ Deep Work updated');
+            } else {
+                await apiPost('/api/work', data);
+                showToast('✓ Deep Work logged');
+            }
+
+            cancelWorkEdit();
             loadWorkData();
             loadCalendar('work');
         } catch (err) {
@@ -1822,12 +2372,14 @@ async function loadWorkData() {
                 }
 
                 return `
-                    <div class="history-item">
+                    <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.work-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.work-edit-btn').style.opacity='0'">
+                        <button class="work-edit-btn" data-work-id="${w.id}" title="Edit"
+                            style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
                         <div class="history-item-left">
                             <strong>${(w.category || 'Work').toUpperCase()}</strong>
                             <div class="item-meta">${w.date} · ${w.notes || ''}</div>
                         </div>
-                        <div class="history-item-right">
+                        <div class="history-item-right" style="padding-right: 32px;">
                             <div class="history-amount">${hrStr}</div>
                         </div>
                     </div>
@@ -1847,11 +2399,82 @@ async function loadWorkData() {
         const workTodayTop = document.getElementById('work-today-top');
         if (workTodayTop) workTodayTop.textContent = topCat ? topCat.toUpperCase() : '--';
 
+        // Store data and add edit listeners
+        window._workData = {};
+        data.forEach(w => { window._workData[w.id] = w; });
+        container.querySelectorAll('.work-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const w = window._workData[btn.dataset.workId];
+                if (w) openWorkEdit(w);
+            });
+        });
+
     } catch (err) {
         const container = document.getElementById('work-history');
-        if (container) container.innerHTML =
-            '<div class="loading-text">Could not load work history</div>';
+        if (container) container.innerHTML = '<div class="loading-text">Could not load deep work history</div>';
     }
+}
+
+// ─── Work Edit Helpers ─────────────────────────────────────────
+function openWorkEdit(w) {
+    const editId = document.getElementById('work-edit-id');
+    if (editId) editId.value = w.id;
+    const workDate = document.getElementById('work-date');
+    if (workDate) workDate.value = w.date || today();
+    const workDuration = document.getElementById('work-duration');
+    if (workDuration) workDuration.value = w.duration_minutes || '';
+    const workCat = document.getElementById('work-category');
+    if (workCat) workCat.value = w.category || 'coding';
+    const workNotes = document.getElementById('work-notes');
+    if (workNotes) workNotes.value = w.notes || '';
+
+    const btn = document.getElementById('work-submit-btn');
+    if (btn) btn.textContent = 'Update Session 🔄';
+    const cancelBtn = document.getElementById('work-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    const delBtn = document.getElementById('work-delete-btn');
+    if (delBtn) delBtn.style.display = 'inline-flex';
+
+    document.getElementById('page-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelWorkEdit() {
+    const form = document.getElementById('work-form');
+    if (form) form.reset();
+    const editId = document.getElementById('work-edit-id');
+    if (editId) editId.value = '';
+    const workDate = document.getElementById('work-date');
+    if (workDate) workDate.value = today();
+
+    const btn = document.getElementById('work-submit-btn');
+    if (btn) btn.textContent = 'Log Session 💻';
+    const cancelBtn = document.getElementById('work-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const delBtn = document.getElementById('work-delete-btn');
+    if (delBtn) delBtn.style.display = 'none';
+}
+
+const workCancelBtn = document.getElementById('work-cancel-edit-btn');
+if (workCancelBtn) workCancelBtn.addEventListener('click', cancelWorkEdit);
+
+const workDeleteBtn = document.getElementById('work-delete-btn');
+if (workDeleteBtn) {
+    workDeleteBtn.addEventListener('click', async () => {
+        const editId = document.getElementById('work-edit-id')?.value;
+        if (!editId) return;
+        if (confirm('Delete this deep work session?')) {
+            try {
+                await fetch(`${API}/api/work/${editId}`, { method: 'DELETE' });
+                showToast('✓ Session deleted');
+                cancelWorkEdit();
+                loadWorkData();
+                loadCalendar('work');
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+    });
 }
 
 const btnWorkInsights = document.getElementById('btn-work-insights');
@@ -1885,6 +2508,7 @@ const socialForm = document.getElementById('social-form');
 if (socialForm) {
     socialForm.addEventListener('submit', async e => {
         e.preventDefault();
+        const editId = document.getElementById('social-edit-id')?.value;
         const data = {
             date: document.getElementById('social-date')?.value,
             name: document.getElementById('social-name')?.value,
@@ -1896,11 +2520,19 @@ if (socialForm) {
         };
 
         try {
-            const result = await apiPost('/api/social', data);
-            showToast('✓ Connection saved');
-            socialForm.reset();
-            const socialDate = document.getElementById('social-date');
-            if (socialDate) socialDate.value = today();
+            if (editId) {
+                await fetch(`${API}/api/social/${editId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                showToast('✓ Connection updated');
+            } else {
+                await apiPost('/api/social', data);
+                showToast('✓ Connection saved');
+            }
+
+            cancelSocialEdit();
             loadSocialData();
         } catch (err) {
             showToast('Error: ' + err.message, 'error');
@@ -1947,8 +2579,10 @@ async function loadSocialData() {
                 historyDiv.innerHTML = '<div class="loading-text">No connections logged yet</div>';
             } else {
                 historyDiv.innerHTML = connections.slice(0, 20).map(c => `
-                    <div class="history-item">
-                        <div class="history-item-left">
+                    <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.social-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.social-edit-btn').style.opacity='0'">
+                        <button class="social-edit-btn" data-social-id="${c.id}" title="Edit"
+                            style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
+                        <div class="history-item-left" style="padding-right: 32px;">
                             <strong>${c.name}</strong>
                             <div class="item-meta">${c.date}${c.location ? ' · ' + c.location : ''}${c.context ? ' · ' + c.context : ''}</div>
                             <span class="category-badge">${(c.category || 'friend').replace('_', ' ')}</span>
@@ -1956,12 +2590,89 @@ async function loadSocialData() {
                         </div>
                     </div>
                 `).join('');
+
+                // Store data and add edit listeners
+                window._socialData = {};
+                connections.forEach(c => { window._socialData[c.id] = c; });
+                historyDiv.querySelectorAll('.social-edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const c = window._socialData[btn.dataset.socialId];
+                        if (c) openSocialEdit(c);
+                    });
+                });
             }
         }
     } catch (err) {
         const historyDiv = document.getElementById('social-history');
         if (historyDiv) historyDiv.innerHTML = '<div class="loading-text">Could not load social data</div>';
     }
+}
+
+// ─── Social Edit Helpers ───────────────────────────────────────
+function openSocialEdit(c) {
+    const editId = document.getElementById('social-edit-id');
+    if (editId) editId.value = c.id;
+    const sDate = document.getElementById('social-date');
+    if (sDate) sDate.value = c.date || today();
+    const sName = document.getElementById('social-name');
+    if (sName) sName.value = c.name || '';
+    const sCat = document.getElementById('social-category');
+    if (sCat) sCat.value = c.category || 'friend';
+    const sContext = document.getElementById('social-context');
+    if (sContext) sContext.value = c.context || '';
+    const sLocation = document.getElementById('social-location');
+    if (sLocation) sLocation.value = c.location || '';
+    const sNotes = document.getElementById('social-notes');
+    if (sNotes) sNotes.value = c.notes || '';
+    const sFollowup = document.getElementById('social-followup');
+    if (sFollowup) sFollowup.value = c.follow_up || '';
+
+    const btn = document.getElementById('social-submit-btn');
+    if (btn) btn.textContent = 'Update Connection 🔄';
+    const cancelBtn = document.getElementById('social-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    const delBtn = document.getElementById('social-delete-btn');
+    if (delBtn) delBtn.style.display = 'inline-flex';
+
+    document.getElementById('page-social')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelSocialEdit() {
+    const form = document.getElementById('social-form');
+    if (form) form.reset();
+    const editId = document.getElementById('social-edit-id');
+    if (editId) editId.value = '';
+    const sDate = document.getElementById('social-date');
+    if (sDate) sDate.value = today();
+
+    const btn = document.getElementById('social-submit-btn');
+    if (btn) btn.textContent = 'Log Connection 🤝';
+    const cancelBtn = document.getElementById('social-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const delBtn = document.getElementById('social-delete-btn');
+    if (delBtn) delBtn.style.display = 'none';
+}
+
+const socialCancelBtn = document.getElementById('social-cancel-edit-btn');
+if (socialCancelBtn) socialCancelBtn.addEventListener('click', cancelSocialEdit);
+
+const socialDeleteBtn = document.getElementById('social-delete-btn');
+if (socialDeleteBtn) {
+    socialDeleteBtn.addEventListener('click', async () => {
+        const editId = document.getElementById('social-edit-id')?.value;
+        if (!editId) return;
+        if (confirm('Delete this connection?')) {
+            try {
+                await fetch(`${API}/api/social/${editId}`, { method: 'DELETE' });
+                showToast('✓ Connection deleted');
+                cancelSocialEdit();
+                loadSocialData();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+    });
 }
 
 
