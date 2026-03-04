@@ -20,8 +20,27 @@ async def strava_login(request: Request):
     if not STRAVA_CLIENT_ID:
         raise HTTPException(status_code=500, detail="Strava Client ID not configured.")
         
-    base_url = str(request.base_url).rstrip('/')
-    redirect_uri = os.getenv("STRAVA_REDIRECT_URI", f"{base_url}/api/strava/callback")
+    # Robust redirect_uri construction
+    env_redirect = os.getenv("STRAVA_REDIRECT_URI")
+    if env_redirect:
+        redirect_uri = env_redirect
+    else:
+        # Detect base URL
+        base_url = str(request.base_url).rstrip('/')
+        
+        # On Vercel/Cloud Run, request.base_url might be 'http' due to the proxy.
+        # Check X-Forwarded-Proto header first.
+        proto = request.headers.get("x-forwarded-proto", "http")
+        
+        # Host detection
+        host = request.headers.get("host", "localhost:8080")
+        
+        # Construct redirect URI
+        if "localhost" in host or "127.0.0.1" in host:
+            redirect_uri = f"{base_url}/api/strava/callback"
+        else:
+            # Force https for non-local environments
+            redirect_uri = f"https://{host}/api/strava/callback"
         
     auth_url = f"https://www.strava.com/oauth/authorize?client_id={STRAVA_CLIENT_ID}&response_type=code&redirect_uri={redirect_uri}&approval_prompt=force&scope=activity:read_all"
     return {"url": auth_url}
