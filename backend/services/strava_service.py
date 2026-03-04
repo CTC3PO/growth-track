@@ -14,6 +14,23 @@ class StravaTokenResponse(BaseModel):
     expires_at: int
     athlete_id: int
 
+@router.get("/debug")
+async def strava_debug(request: Request):
+    """Debug endpoint to see what the server 'sees' for URI construction."""
+    host = request.headers.get("host")
+    proto = request.headers.get("x-forwarded-proto")
+    base_url = str(request.base_url)
+    env_redirect = os.getenv("STRAVA_REDIRECT_URI")
+    
+    return {
+        "host_header": host,
+        "x_forwarded_proto": proto,
+        "base_url": base_url,
+        "env_strava_redirect_uri": env_redirect,
+        "os_env_keys": [k for k in os.environ.keys() if "STRAVA" in k],
+        "constructed_redirect_uri": env_redirect or (f"https://{host}/api/strava/callback" if host and "localhost" not in host else f"{base_url.rstrip('/')}/api/strava/callback")
+    }
+
 @router.get("/login")
 async def strava_login(request: Request):
     """Returns the URL the frontend should redirect the user to for Strava OAuth."""
@@ -24,6 +41,7 @@ async def strava_login(request: Request):
     env_redirect = os.getenv("STRAVA_REDIRECT_URI")
     if env_redirect:
         redirect_uri = env_redirect
+        print(f"Using STRAVA_REDIRECT_URI from env: {redirect_uri}")
     else:
         # Detect base URL
         base_url = str(request.base_url).rstrip('/')
@@ -41,6 +59,8 @@ async def strava_login(request: Request):
         else:
             # Force https for non-local environments
             redirect_uri = f"https://{host}/api/strava/callback"
+        
+        print(f"Constructed redirect_uri: {redirect_uri} (Host: {host}, Proto: {proto})")
         
     auth_url = f"https://www.strava.com/oauth/authorize?client_id={STRAVA_CLIENT_ID}&response_type=code&redirect_uri={redirect_uri}&approval_prompt=force&scope=activity:read_all"
     return {"url": auth_url}
