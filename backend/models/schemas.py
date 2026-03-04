@@ -71,6 +71,9 @@ class DailyCheckIn(BaseModel):
     energy: Optional[int] = Field(None, ge=1, le=10)
     alignment: Optional[int] = Field(None, ge=1, le=10)
     notes: Optional[str] = None
+    # Morning planning
+    morning_activities: Optional[list[dict]] = Field(None, description="List of {time, activity, completed}")
+    intention: Optional[str] = Field(None, description="Morning intention for the day")
 
 
 # ─── Work ────────────────────────────────────────────────────────────
@@ -124,9 +127,26 @@ class BookEntry(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=10)
     reaction: Optional[str] = Field(None, description="2-3 sentence reaction")
     pages: Optional[int] = None
+    pages_read: Optional[int] = Field(0, ge=0, description="Current reading progress in pages")
     is_finished: bool = False
     status: str = "to read"  # to read, reading, read
     cover_url: Optional[str] = None
+
+
+class ReadingProgressEntry(BaseModel):
+    """Log pages read on a specific date."""
+    book_id: str
+    date: date
+    pages_read: int = Field(ge=0)
+    notes: Optional[str] = None
+
+
+class BookNote(BaseModel):
+    """A note or annotation for a specific book."""
+    book_id: str
+    date: date
+    content: str
+    pages_at_time: Optional[int] = Field(None, ge=0, description="Page number when note was written")
 
 
 class ReadingStats(BaseModel):
@@ -199,6 +219,7 @@ class TravelExpense(BaseModel):
     description: Optional[str] = None
     trip: Optional[str] = Field(None, description="Trip name for grouping")
     amount_usd: Optional[float] = Field(None, description="Auto-converted USD amount")
+    amount_vnd: Optional[float] = Field(None, description="Auto-converted VND amount")
 
 
 # ─── Social ──────────────────────────────────────────────────────────
@@ -250,6 +271,16 @@ class WeeklyReview(BaseModel):
     narrative_summary: str = ""
     patterns_noticed: list[str] = Field(default_factory=list)
     integration_question: str = ""
+
+
+class ReviewChecklist(BaseModel):
+    """Structured review checklist for weekly/monthly/quarterly periods."""
+    period: str = Field(description="weekly, monthly, or quarterly")
+    start_date: date
+    end_date: date
+    categories: dict = Field(default_factory=dict, description="Dict of category -> list of checklist items")
+    completed_items: list[str] = Field(default_factory=list, description="IDs of completed items")
+    notes: Optional[str] = None
 
 
 class ReviewRequest(BaseModel):

@@ -603,17 +603,16 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .prompt-text {
-    font-size: 20px;
-    /* Big graphic text */
+    font-size: 14px;
     font-weight: 600;
-    line-height: 1.4;
-    letter-spacing: -0.02em;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
     color: var(--text-primary);
     margin-bottom: 12px;
 }
 
 .prompt-quote {
-    font-size: 15px;
+    font-size: 13px;
     color: var(--text-secondary);
     border-left: 4px solid var(--accent);
     padding-left: 16px;
@@ -668,8 +667,8 @@ input[type="range"]::-webkit-slider-thumb {
     }
 
     .journal-col-entry {
-        position: sticky;
-        top: 100px;
+        /* Removed position:sticky which caused overlap with recent journals */
+        align-self: start;
     }
 }
 

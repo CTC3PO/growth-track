@@ -21,7 +21,7 @@ load_dotenv()
 from models.schemas import (
     DailyCheckIn, RunLog, BookEntry, JournalEntry,
     ChatMessage, ChatResponse, ReviewRequest, TravelExpense, SocialConnection,
-    WorkSession,
+    WorkSession, ReadingProgressEntry, BookNote, ReviewChecklist,
 )
 from services.firestore_service import save_document, get_documents, get_documents_by_date_range, delete_document
 from services.journal_agent import generate_journal_prompt
@@ -89,10 +89,46 @@ async def create_checkin(checkin: DailyCheckIn):
     return {"status": "saved", "id": doc_id, "message": "Daily check-in logged 🧘"}
 
 
+@app.get("/api/checkin/{date_str}")
+async def get_checkin_by_date(date_str: str):
+    """Get a check-in by its date string (YYYY-MM-DD)."""
+    checkins = get_documents("checkins", limit=1000)
+    for c in checkins:
+        if c.get("date") == date_str:
+            return c
+    return None
+
+
 @app.get("/api/checkins")
 async def get_checkins(limit: int = 30):
     """Get recent check-ins."""
     return get_documents("checkins", limit=limit)
+
+
+@app.put("/api/checkins/{checkin_id}")
+async def update_checkin(checkin_id: str, updates: dict):
+    """Update a check-in entry."""
+    checkins = get_documents("checkins", limit=1000)
+    for c in checkins:
+        if c.get("id") == checkin_id:
+            for key in ["date", "sleep_time", "wake_time", "sleep_hours", "steps",
+                        "meditation", "meditation_minutes", "journal_words",
+                        "deep_work_hours", "energy", "alignment", "notes",
+                        "morning_activities", "intention"]:
+                if key in updates:
+                    c[key] = updates[key]
+            cid = c.pop("id", checkin_id)
+            save_document("checkins", c, doc_id=cid)
+            return {"status": "updated", "id": cid}
+    raise HTTPException(status_code=404, detail="Check-in not found")
+
+
+@app.delete("/api/checkins/{checkin_id}")
+async def delete_checkin(checkin_id: str):
+    """Delete a check-in entry."""
+    if delete_document("checkins", checkin_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Check-in not found")
 
 
 # ─── Running ─────────────────────────────────────────────────────────
@@ -214,7 +250,7 @@ async def update_book(book_id: str, updates: dict):
     books = get_documents("books", limit=1000)
     for b in books:
         if b.get("id") == book_id:
-            for key in ["title", "author", "genre", "status", "is_finished", "rating", "reaction", "cover_url", "pages", "date_started", "date_finished"]:
+            for key in ["title", "author", "genre", "status", "is_finished", "rating", "reaction", "cover_url", "pages", "pages_read", "date_started", "date_finished"]:
                 if key in updates:
                     b[key] = updates[key]
             bid = b.pop("id", book_id)
@@ -252,7 +288,59 @@ async def search_books(q: str):
 @app.get("/api/books")
 async def get_books(limit: int = 50):
     """Get book entries."""
-    return get_documents("books", limit=limit)
+    books = get_documents("books", limit=limit)
+    # Enrich with total pages read from progress log
+    for b in books:
+        book_id = b.get("id")
+        if book_id:
+            progress = get_documents("reading_progress", limit=1000)
+            total = sum(p.get("pages_read", 0) for p in progress if p.get("book_id") == book_id)
+            if total > 0:
+                b["pages_read"] = total
+    return books
+
+
+@app.post("/api/books/{book_id}/progress")
+async def add_reading_progress(book_id: str, entry: ReadingProgressEntry):
+    """Log pages read for a book on a specific date."""
+    data = entry.model_dump()
+    data["book_id"] = book_id
+    doc_id = save_document("reading_progress", data)
+    # Also update the book's pages_read total
+    books = get_documents("books", limit=1000)
+    for b in books:
+        if b.get("id") == book_id:
+            current = b.get("pages_read", 0) or 0
+            b["pages_read"] = current + entry.pages_read
+            bid = b.pop("id", book_id)
+            save_document("books", b, doc_id=bid)
+            break
+    return {"status": "saved", "id": doc_id, "message": f"+{entry.pages_read} pages logged 📖"}
+
+
+@app.get("/api/books/{book_id}/progress")
+async def get_reading_progress(book_id: str):
+    """Get reading progress entries for a book."""
+    progress = get_documents("reading_progress", limit=1000)
+    book_progress = [p for p in progress if p.get("book_id") == book_id]
+    return book_progress
+
+
+@app.post("/api/books/{book_id}/notes")
+async def add_book_note(book_id: str, note: BookNote):
+    """Add a note or annotation to a book."""
+    data = note.model_dump()
+    data["book_id"] = book_id
+    doc_id = save_document("book_notes", data)
+    return {"status": "saved", "id": doc_id, "message": "Note added 📝"}
+
+
+@app.get("/api/books/{book_id}/notes")
+async def get_book_notes(book_id: str):
+    """Get notes for a specific book."""
+    notes = get_documents("book_notes", limit=1000)
+    book_notes = [n for n in notes if n.get("book_id") == book_id]
+    return book_notes
 
 
 @app.get("/api/books/stats")
@@ -303,6 +391,32 @@ async def get_journal_entries(limit: int = 20):
     return get_documents("journals", limit=limit)
 
 
+@app.put("/api/journal/{journal_id}")
+async def update_journal_entry(journal_id: str, updates: dict):
+    """Update a journal entry."""
+    journals = get_documents("journals", limit=1000)
+    for j in journals:
+        if j.get("id") == journal_id:
+            for key in ["date", "content", "prompt_used", "mood", "tags", "themes"]:
+                if key in updates:
+                    j[key] = updates[key]
+            # Recalculate word count if content changed
+            if "content" in updates:
+                j["word_count"] = len(updates["content"].split())
+            jid = j.pop("id", journal_id)
+            save_document("journals", j, doc_id=jid)
+            return {"status": "updated", "id": jid}
+    raise HTTPException(status_code=404, detail="Journal entry not found")
+
+
+@app.delete("/api/journal/{journal_id}")
+async def delete_journal_entry(journal_id: str):
+    """Delete a journal entry."""
+    if delete_document("journals", journal_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Journal entry not found")
+
+
 @app.post("/api/gratitude")
 async def create_gratitude_entry(entry: dict):
     """Save a gratitude entry."""
@@ -318,7 +432,29 @@ async def create_gratitude_entry(entry: dict):
 async def get_gratitude_entries(limit: int = 50):
     """Get recent gratitude entries."""
     return get_documents("gratitude", limit=limit)
-    return get_documents("journals", limit=limit)
+
+
+@app.put("/api/gratitude/{gratitude_id}")
+async def update_gratitude_entry(gratitude_id: str, updates: dict):
+    """Update a gratitude entry."""
+    entries = get_documents("gratitude", limit=1000)
+    for g in entries:
+        if g.get("id") == gratitude_id:
+            for key in ["date", "items", "content"]:
+                if key in updates:
+                    g[key] = updates[key]
+            gid = g.pop("id", gratitude_id)
+            save_document("gratitude", g, doc_id=gid)
+            return {"status": "updated", "id": gid}
+    raise HTTPException(status_code=404, detail="Gratitude entry not found")
+
+
+@app.delete("/api/gratitude/{gratitude_id}")
+async def delete_gratitude_entry(gratitude_id: str):
+    """Delete a gratitude entry."""
+    if delete_document("gratitude", gratitude_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Gratitude entry not found")
 
 
 @app.get("/api/journal/prompt")
@@ -441,6 +577,131 @@ async def get_quarterly_review(year: int = None, quarter: int = None, generate: 
     return generate_quarterly_review(year, quarter, generate_ai=generate)
 
 
+# ─── Review Checklists ──────────────────────────────────────────────
+
+def _generate_checklist_template(period: str) -> dict:
+    """Generate a structured checklist template based on the user's PDF categories."""
+    base_body = [
+        {"id": "body_sleep", "text": "Sleep 10:30 PM - 6:00 AM consistently", "category": "body"},
+        {"id": "body_steps", "text": "9k steps before 9 AM", "category": "body"},
+        {"id": "body_running", "text": "Running training on schedule", "category": "body"},
+        {"id": "body_gym", "text": "Gym or cross-training session(s)", "category": "body"},
+        {"id": "body_nutrition", "text": "Meal prep and mindful eating", "category": "body"},
+    ]
+    base_mind = [
+        {"id": "mind_deepwork", "text": "Deep work block (minimum 3 hours/day)", "category": "mind"},
+        {"id": "mind_reading", "text": "Reading progress (pages/books)", "category": "mind"},
+        {"id": "mind_courses", "text": "Course study (AWS/ML/DSA)", "category": "mind"},
+        {"id": "mind_journal_words", "text": "Journaling consistency", "category": "mind"},
+    ]
+    base_spirit = [
+        {"id": "spirit_meditation", "text": "Morning meditation (6:00-6:30)", "category": "spirit"},
+        {"id": "spirit_journaling", "text": "Morning journaling (6:30-7:00)", "category": "spirit"},
+        {"id": "spirit_alignment", "text": "Alignment score reflection", "category": "spirit"},
+        {"id": "spirit_gratitude", "text": "Gratitude practice", "category": "spirit"},
+        {"id": "spirit_sangha", "text": "Sangha/community activity", "category": "spirit"},
+    ]
+    base_social = [
+        {"id": "social_friends", "text": "Quality time with friends", "category": "social"},
+        {"id": "social_family", "text": "Family call (Vietnam)", "category": "social"},
+        {"id": "social_networking", "text": "Networking or professional connection", "category": "social"},
+        {"id": "social_therapy", "text": "Weekly therapy or check-in call", "category": "social"},
+    ]
+    base_career = [
+        {"id": "career_progress", "text": "Career/job progress toward goals", "category": "career"},
+        {"id": "career_budget", "text": "Budget and expense tracking", "category": "career"},
+        {"id": "career_learning", "text": "Professional development", "category": "career"},
+    ]
+
+    if period == "monthly":
+        base_body.append({"id": "body_month_km", "text": "Monthly running km target met", "category": "body"})
+        base_body.append({"id": "body_health_check", "text": "Health transformation progress", "category": "body"})
+        base_mind.append({"id": "mind_books_month", "text": "Books finished this month toward goal", "category": "mind"})
+        base_mind.append({"id": "mind_cert_progress", "text": "Certification progress review", "category": "mind"})
+        base_spirit.append({"id": "spirit_retreat", "text": "Retreat or extended practice planned", "category": "spirit"})
+        base_spirit.append({"id": "spirit_inner_peace", "text": "Inner peace score (1-10)", "category": "spirit"})
+        base_social.append({"id": "social_new_friends", "text": "New meaningful connections made", "category": "social"})
+        base_career.append({"id": "career_month_review", "text": "Monthly financial summary review", "category": "career"})
+        base_career.append({"id": "career_mentors", "text": "Mentorship progress", "category": "career"})
+    elif period == "quarterly":
+        base_body.append({"id": "body_marathon", "text": "Half-marathon/marathon progress vs plan", "category": "body"})
+        base_body.append({"id": "body_consistency", "text": "Running consistency %", "category": "body"})
+        base_mind.append({"id": "mind_graduation", "text": "Academic/graduation progress", "category": "mind"})
+        base_mind.append({"id": "mind_books_quarter", "text": "Books read vs quarterly goal (3/quarter)", "category": "mind"})
+        base_spirit.append({"id": "spirit_retreat_q", "text": "Retreat attended (1/quarter goal)", "category": "spirit"})
+        base_spirit.append({"id": "spirit_meditation_q", "text": "Meditation practice consistency", "category": "spirit"})
+        base_social.append({"id": "social_friendships", "text": "Quality friendships deepened", "category": "social"})
+        base_career.append({"id": "career_job", "text": "Job/internship status", "category": "career"})
+        base_career.append({"id": "career_certs_q", "text": "AWS certs progress (X/2)", "category": "career"})
+
+    return {
+        "body": base_body,
+        "mind": base_mind,
+        "spirit": base_spirit,
+        "social": base_social,
+        "career": base_career,
+    }
+
+
+@app.get("/api/reviews/checklist")
+async def get_checklist_template(period: str = "weekly", date_str: str = None):
+    """Get a checklist template for a given period."""
+    if period not in ("weekly", "monthly", "quarterly"):
+        raise HTTPException(400, "period must be weekly, monthly, or quarterly")
+
+    today = date.today()
+    if period == "weekly":
+        start = today - timedelta(days=today.weekday())
+        end = start + timedelta(days=6)
+    elif period == "monthly":
+        start = today.replace(day=1)
+        import calendar
+        _, last_day = calendar.monthrange(today.year, today.month)
+        end = today.replace(day=last_day)
+    else:
+        q = (today.month - 1) // 3
+        start = date(today.year, q * 3 + 1, 1)
+        end_month = q * 3 + 3
+        import calendar
+        _, last_day = calendar.monthrange(today.year, end_month)
+        end = date(today.year, end_month, last_day)
+
+    # Check if a saved checklist exists for this period
+    saved = get_documents("review_checklists", limit=100)
+    for s in saved:
+        if s.get("period") == period and s.get("start_date") == start.isoformat():
+            return s
+
+    # Generate fresh template
+    template = _generate_checklist_template(period)
+    return {
+        "period": period,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "categories": template,
+        "completed_items": [],
+        "notes": None,
+    }
+
+
+@app.post("/api/reviews/checklist")
+async def save_checklist(checklist: ReviewChecklist):
+    """Save or update a completed checklist."""
+    doc_id = f"checklist_{checklist.period}_{checklist.start_date}"
+    data = checklist.model_dump()
+    saved_id = save_document("review_checklists", data, doc_id=doc_id)
+    return {"status": "saved", "id": saved_id}
+
+
+@app.get("/api/reviews/checklists")
+async def list_checklists(period: str = None, limit: int = 20):
+    """List saved checklists, optionally filtered by period."""
+    checklists = get_documents("review_checklists", limit=limit)
+    if period:
+        checklists = [c for c in checklists if c.get("period") == period]
+    return checklists
+
+
 # ─── AI Summary ──────────────────────────────────────────────────────
 
 @app.get("/api/summary")
@@ -491,11 +752,18 @@ async def add_expense(expense: TravelExpense):
     rate = EXCHANGE_RATES_TO_USD.get(expense.currency.upper(), None)
     if rate:
         data["amount_usd"] = round(expense.amount * rate, 2)
+    # Auto-convert to VND
+    vnd_rate = EXCHANGE_RATES_TO_USD.get("VND")
+    if rate and vnd_rate and expense.currency.upper() != "VND":
+        data["amount_vnd"] = round(expense.amount * rate / vnd_rate, 0)
+    elif expense.currency.upper() == "VND":
+        data["amount_vnd"] = expense.amount
     doc_id = save_document("travel_expenses", data)
     return {
         "status": "saved",
         "id": doc_id,
         "amount_usd": data.get("amount_usd"),
+        "amount_vnd": data.get("amount_vnd"),
         "message": f"Expense logged: {expense.amount} {expense.currency} 🧳",
     }
 
@@ -507,14 +775,19 @@ async def update_expense(expense_id: str, updates: dict):
             for key in ["date", "amount", "currency", "category", "description", "trip"]:
                 if key in updates:
                     e[key] = updates[key]
-            # Auto-convert to USD
+            # Auto-convert to USD and VND
             rate = EXCHANGE_RATES_TO_USD.get(e.get("currency", "USD").upper(), None)
+            vnd_rate = EXCHANGE_RATES_TO_USD.get("VND")
             if rate and e.get("amount"):
                 e["amount_usd"] = round(float(e["amount"]) * rate, 2)
-            
+                if e.get("currency", "").upper() != "VND" and vnd_rate:
+                    e["amount_vnd"] = round(float(e["amount"]) * rate / vnd_rate, 0)
+                elif e.get("currency", "").upper() == "VND":
+                    e["amount_vnd"] = float(e["amount"])
+
             eid = e.pop("id", expense_id)
             save_document("travel_expenses", e, doc_id=eid)
-            return {"status": "updated", "id": eid, "amount_usd": e.get("amount_usd")}
+            return {"status": "updated", "id": eid, "amount_usd": e.get("amount_usd"), "amount_vnd": e.get("amount_vnd")}
     raise HTTPException(status_code=404, detail="Expense not found")
 
 @app.delete("/api/travel/expenses/{expense_id}")

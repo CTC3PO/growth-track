@@ -155,10 +155,13 @@ function renderCalendar(containerId, dataSets, monthOffset = 0) {
             if (containerId === 'run-calendar' && dateMap[dateStr][0].distance_km !== undefined) {
                 const topRun = dateMap[dateStr].sort((a, b) => b.distance_km - a.distance_km)[0];
                 const type = topRun.run_type || 'easy';
-                let color = 'var(--accent-teal, #2dd4bf)';
-                if (type === 'long') color = 'var(--accent-amber)';
-                if (type === 'tempo' || type === 'interval') color = '#eab308';
-                if (type === 'cross_train' || type === 'cross-train') color = 'var(--accent-blue)';
+                let color = 'var(--accent-teal, #2dd4bf)'; // Easy
+                if (type === 'long') color = 'var(--accent-blue, #3b82f6)';
+                if (type === 'tempo') color = 'var(--accent-orange, #f97316)';
+                if (type === 'interval') color = 'var(--accent-rose, #f43f5e)';
+                if (type === 'recovery') color = 'var(--text-muted, #94a3b8)';
+                if (type === 'race') color = '#eab308'; // Gold
+                if (type === 'cross_train' || type === 'cross-train') color = 'var(--accent-purple, #a855f7)';
                 badgeHtml = `<div class="cal-val-bubble" style="background:${color};">${topRun.distance_km}</div>`;
             } else if (containerId === 'journal-calendar' && dateMap[dateStr][0].word_count !== undefined) {
                 const totalWords = dateMap[dateStr].reduce((sum, j) => sum + (j.word_count || 0), 0);
@@ -168,8 +171,9 @@ function renderCalendar(containerId, dataSets, monthOffset = 0) {
                 const hrs = (totalMins / 60).toFixed(1).replace('.0', '');
                 badgeHtml = `<div class="cal-val-capsule" style="background:#8b5cf6;">${hrs}h</div>`;
             } else if (containerId === 'expense-calendar' && dateMap[dateStr][0].amount_usd !== undefined) {
-                const totalSpent = dateMap[dateStr].reduce((sum, e) => sum + (e.amount_usd || 0), 0);
-                badgeHtml = `<div class="cal-val-bubble" style="background:var(--accent-rose); border-radius:4px; padding:2px 4px; font-size:9px;">$${Math.round(totalSpent)}</div>`;
+                const totalVnd = dateMap[dateStr].reduce((sum, e) => sum + (e.amount_vnd || 0), 0);
+                const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
+                badgeHtml = `<div class="cal-val-bubble" style="background:var(--accent-rose); border-radius:4px; padding:2px 4px; font-size:9px;">${formatVnd(totalVnd)}</div>`;
             } else if (containerId === 'social-calendar' && dateMap[dateStr][0].name !== undefined) {
                 badgeHtml = `<div class="cal-val-bubble" style="background:var(--accent-orange); border-radius:4px; padding:2px 4px; font-size:9px;">${dateMap[dateStr].length}</div>`;
             } else if (containerId === 'reading-calendar' && dateMap[dateStr][0].title !== undefined) {
@@ -385,7 +389,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Set default dates to today
     const checkinDate = document.getElementById('checkin-date');
-    if (checkinDate) checkinDate.value = today();
+    if (checkinDate) {
+        checkinDate.value = today();
+        checkinDate.addEventListener('change', (e) => loadMorningPlanningForDate(e.target.value));
+        // Also initial load
+        loadMorningPlanningForDate(checkinDate.value);
+    }
     const runDate = document.getElementById('run-date');
     if (runDate) runDate.value = today();
     const journalDate = document.getElementById('journal-date');
@@ -449,6 +458,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (urlParams.has('strava_token')) {
         const token = urlParams.get('strava_token');
         localStorage.setItem('strava_token', token);
+        // Set expiry to 7 days from now
+        localStorage.setItem('strava_token_expiry', Date.now() + 7 * 24 * 60 * 60 * 1000);
 
         // Clean up URL without refreshing
         const newUrl = window.location.pathname + (window.location.hash || '');
@@ -464,37 +475,54 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Update Strava UI state
     const stravaBtn = document.getElementById('connect-strava-btn');
-    if (stravaBtn) {
-        if (localStorage.getItem('strava_token')) {
-            stravaBtn.textContent = 'Strava Connected ✓';
-            stravaBtn.style.background = 'var(--accent, #4CAF50)';
-            stravaBtn.disabled = true;
-            // Show connected state in the Strava card
-            const stravaStatus = document.getElementById('strava-status');
-            if (stravaStatus) {
-                stravaStatus.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--text-primary)">
-                        <span style="font-size:18px">✅</span>
-                        <span style="font-size:13px;font-weight:500">Your Strava account is connected. Click <strong>Adjust Plan</strong> below to generate your AI coaching plan.</span>
-                    </div>
-                `;
-            }
+    const stravaStatusText = document.getElementById('strava-status-text');
+    const stravaProfileLink = document.getElementById('strava-profile-link');
+    const stravaRunsCard = document.getElementById('strava-runs-card');
+
+    const activeToken = localStorage.getItem('strava_token');
+    const tokenExpiry = localStorage.getItem('strava_token_expiry');
+    const isStravaValid = activeToken && tokenExpiry && Date.now() < parseInt(tokenExpiry);
+
+    if (!isStravaValid && activeToken) {
+        // Token expired
+        localStorage.removeItem('strava_token');
+        localStorage.removeItem('strava_token_expiry');
+    }
+
+    if (stravaBtn && stravaStatusText) {
+        if (isStravaValid) {
+            stravaStatusText.innerHTML = '✅ Connected to Strava';
+            stravaBtn.style.display = 'none';
+            if (stravaProfileLink) stravaProfileLink.style.display = 'inline-block';
+            if (stravaRunsCard) stravaRunsCard.style.display = 'block';
+
+            // Auto-fetch runs
+            fetchStravaRuns(activeToken);
         } else {
+            stravaStatusText.innerHTML = 'Connect Strava';
+            stravaBtn.style.display = 'inline-block';
+            if (stravaProfileLink) stravaProfileLink.style.display = 'none';
+            if (stravaRunsCard) stravaRunsCard.style.display = 'none';
+
             stravaBtn.addEventListener('click', async () => {
                 try {
                     stravaBtn.textContent = 'Connecting...';
                     stravaBtn.disabled = true;
+                    // Reset coach plan UI
+                    const aiContainer = document.getElementById('ai-plan-container');
+                    if (aiContainer) aiContainer.innerHTML = '<div class="loading-text">Connect Strava to generate plan.</div>';
+
                     const data = await apiGet('/api/strava/login');
                     if (data.url) {
                         window.location.href = data.url;
                     } else {
                         showToast('Could not get Strava login URL');
-                        stravaBtn.textContent = 'Connect with Strava';
+                        stravaBtn.textContent = 'Connect';
                         stravaBtn.disabled = false;
                     }
                 } catch (err) {
                     showToast('Strava connection error: ' + err.message);
-                    stravaBtn.textContent = 'Connect with Strava';
+                    stravaBtn.textContent = 'Connect';
                     stravaBtn.disabled = false;
                 }
             });
@@ -505,20 +533,113 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ─── Check-In ──────────────────────────────────────────────────
 
+// Morning activity builder state
+let morningActivities = [];
+
+function renderMorningActivities() {
+    const list = document.getElementById('morning-activity-list');
+    if (!list) return;
+    list.innerHTML = morningActivities.map((a, i) => `
+        <div style="display:flex; align-items:center; gap:6px; padding:6px 8px; background:var(--bg-input); border-radius:8px;">
+            <input type="checkbox" ${a.completed ? 'checked' : ''} onchange="toggleMorningActivity(${i})" style="cursor:pointer; width:16px; height:16px; accent-color:var(--accent);">
+            <span style="font-size:12px; color:var(--text-secondary); min-width:50px; ${a.completed ? 'text-decoration:line-through; opacity:0.6;' : ''}">${a.time || '—'}</span>
+            <span style="flex:1; font-size:13px; color:var(--text-primary); ${a.completed ? 'text-decoration:line-through; opacity:0.6;' : ''}">${a.activity}</span>
+            <button type="button" onclick="morningActivities.splice(${i},1); renderMorningActivities(); autoSaveMorningPlanning();" style="background:none; border:none; color:var(--accent-rose); cursor:pointer; font-size:14px;">✕</button>
+        </div>
+    `).join('');
+}
+
+function toggleMorningActivity(index) {
+    if (morningActivities[index]) {
+        morningActivities[index].completed = !morningActivities[index].completed;
+        renderMorningActivities();
+        autoSaveMorningPlanning();
+    }
+}
+
+async function autoSaveMorningPlanning() {
+    const date = document.getElementById('checkin-date')?.value || today();
+    const intention = document.getElementById('checkin-intention')?.value || null;
+
+    // We only auto-save if there's an intention or activities
+    if (!intention && morningActivities.length === 0) return;
+
+    // Fetch existing checkin for this date to avoid overwriting other fields (sleep, steps, etc)
+    let existingData = {};
+    try {
+        const checkin = await apiGet(`/api/checkin/${date}`);
+        if (checkin) existingData = checkin;
+    } catch (err) {
+        // Not found is fine, we'll create a new one
+    }
+
+    const data = {
+        ...existingData,
+        date,
+        intention,
+        morning_activities: morningActivities.length > 0 ? morningActivities : null,
+    };
+
+    // Remove ID if it's in the body, the backend uses the URL date to determine ID or auto-generates
+    delete data.id;
+
+    try {
+        await apiPost('/api/checkin', data);
+        console.log('Morning plan auto-saved');
+        // Refresh history to show the new data point
+        loadCheckinHistory();
+    } catch (err) {
+        console.error('Auto-save failed:', err);
+    }
+}
+
+const addMorningBtn = document.getElementById('add-morning-activity-btn');
+if (addMorningBtn) {
+    addMorningBtn.addEventListener('click', () => {
+        const time = document.getElementById('morning-activity-time')?.value || '';
+        const text = document.getElementById('morning-activity-text')?.value?.trim();
+        if (!text) return;
+        morningActivities.push({ time, activity: text, completed: false });
+        renderMorningActivities();
+        autoSaveMorningPlanning();
+        const timeInput = document.getElementById('morning-activity-time');
+        const textInput = document.getElementById('morning-activity-text');
+        if (timeInput) timeInput.value = '';
+        if (textInput) textInput.value = '';
+    });
+}
+
+const intentionInput = document.getElementById('checkin-intention');
+if (intentionInput) {
+    intentionInput.addEventListener('blur', autoSaveMorningPlanning);
+}
+
+async function loadMorningPlanningForDate(dateStr) {
+    try {
+        const checkin = await apiGet(`/api/checkin/${dateStr}`);
+        if (checkin) {
+            morningActivities = checkin.morning_activities || [];
+            const intentionEl = document.getElementById('checkin-intention');
+            if (intentionEl) intentionEl.value = checkin.intention || '';
+            renderMorningActivities();
+        } else {
+            // Refresh/Reset for new day
+            morningActivities = [];
+            const intentionEl = document.getElementById('checkin-intention');
+            if (intentionEl) intentionEl.value = '';
+            renderMorningActivities();
+        }
+    } catch (err) {
+        console.error('Failed to load morning plan:', err);
+    }
+}
+
 const checkinForm = document.getElementById('checkin-form');
 if (checkinForm) {
     checkinForm.addEventListener('submit', async e => {
         e.preventDefault();
+        const editId = document.getElementById('checkin-edit-id')?.value;
         const data = {
-            date: document.getElementById('checkin-date').value,
-            sleep_hours: parseFloat(document.getElementById('checkin-sleep').value) || null,
-            steps: parseInt(document.getElementById('checkin-steps').value) || null,
-            deep_work_hours: parseFloat(document.getElementById('checkin-deepwork').value) || null,
-            journal_words: parseInt(document.getElementById('checkin-journal-words').value) || null,
-            energy: parseInt(document.getElementById('checkin-energy').value),
-            alignment: parseInt(document.getElementById('checkin-alignment').value),
-            meditation: document.getElementById('checkin-meditation').checked,
-            notes: document.getElementById('checkin-notes').value || null,
             date: document.getElementById('checkin-date')?.value,
             sleep_hours: parseFloat(document.getElementById('checkin-sleep')?.value) || null,
             steps: parseInt(document.getElementById('checkin-steps')?.value) || null,
@@ -528,14 +649,23 @@ if (checkinForm) {
             alignment: parseInt(document.getElementById('checkin-alignment')?.value),
             meditation: document.getElementById('checkin-meditation')?.checked,
             notes: document.getElementById('checkin-notes')?.value || null,
+            morning_activities: morningActivities.length > 0 ? morningActivities : null,
+            intention: document.getElementById('checkin-intention')?.value || null,
         };
 
         try {
-            const result = await apiPost('/api/checkin', data);
-            showToast('✓ Check-in saved');
-            checkinForm.reset();
-            const checkinDate = document.getElementById('checkin-date');
-            if (checkinDate) checkinDate.value = today();
+            if (editId) {
+                await fetch(`${API}/api/checkins/${editId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                showToast('✓ Check-in updated');
+            } else {
+                await apiPost('/api/checkin', data);
+                showToast('✓ Check-in saved');
+            }
+            cancelCheckinEdit();
             loadCheckinHistory();
             loadCalendar('checkin');
         } catch (err) {
@@ -553,8 +683,19 @@ async function loadCheckinHistory() {
             container.innerHTML = '<div class="loading-text">No check-ins yet. Start tracking!</div>';
             return;
         }
-        container.innerHTML = data.map(c => `
-            <div class="history-item">
+        // Store for editing
+        window._checkinData = {};
+        data.forEach(c => { window._checkinData[c.id] = c; });
+
+        container.innerHTML = data.map(c => {
+            const notesHtml = c.notes ? `<div style="font-size:12px;color:var(--text-primary);margin-top:4px;line-height:1.4;font-style:italic;">📝 ${c.notes}</div>` : '';
+            const intentionHtml = c.intention ? `<div style="font-size:12px;color:var(--accent-amber);margin-top:2px;">🎯 ${c.intention}</div>` : '';
+            const activitiesHtml = (c.morning_activities && c.morning_activities.length) ?
+                `<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">🌅 ${c.morning_activities.length} planned activities</div>` : '';
+            return `
+            <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.checkin-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.checkin-edit-btn').style.opacity='0'">
+                <button class="checkin-edit-btn" data-checkin-id="${c.id}" title="Edit"
+                    style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
                 <div>
                     <div class="history-date">${c.date || 'N/A'}</div>
                     <div style="font-size:12px;color:var(--text-secondary)">
@@ -562,18 +703,112 @@ async function loadCheckinHistory() {
                         ${c.sleep_hours ? `😴${c.sleep_hours}h` : ''}
                         ${c.steps ? `👟${c.steps.toLocaleString()}` : ''}
                     </div>
+                    ${intentionHtml}
+                    ${activitiesHtml}
+                    ${notesHtml}
                 </div>
                 <div style="text-align:right">
                     <div class="history-value">⚡${c.energy || '-'}/10</div>
                     <div style="font-size:11px;color:var(--text-secondary)">🎯${c.alignment || '-'}/10</div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
+
+        // Add edit listeners
+        container.querySelectorAll('.checkin-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const checkin = window._checkinData[btn.dataset.checkinId];
+                if (checkin) openCheckinEdit(checkin);
+            });
+        });
     } catch (err) {
         const container = document.getElementById('checkin-history');
         if (container) container.innerHTML =
             '<div class="loading-text">Could not load history</div>';
     }
+}
+
+// ─── Check-In Edit Helpers ──────────────────────────────────────
+function openCheckinEdit(c) {
+    const editId = document.getElementById('checkin-edit-id');
+    if (editId) editId.value = c.id;
+    const cDate = document.getElementById('checkin-date');
+    if (cDate) cDate.value = c.date || today();
+    const cSleep = document.getElementById('checkin-sleep');
+    if (cSleep) cSleep.value = c.sleep_hours || '';
+    const cSteps = document.getElementById('checkin-steps');
+    if (cSteps) cSteps.value = c.steps || '';
+    const cDeepwork = document.getElementById('checkin-deepwork');
+    if (cDeepwork) cDeepwork.value = c.deep_work_hours || '';
+    const cJournal = document.getElementById('checkin-journal-words');
+    if (cJournal) cJournal.value = c.journal_words || '';
+    const cEnergy = document.getElementById('checkin-energy');
+    if (cEnergy) { cEnergy.value = c.energy || 5; document.getElementById('energy-val').textContent = c.energy || 5; }
+    const cAlign = document.getElementById('checkin-alignment');
+    if (cAlign) { cAlign.value = c.alignment || 5; document.getElementById('alignment-val').textContent = c.alignment || 5; }
+    const cMed = document.getElementById('checkin-meditation');
+    if (cMed) cMed.checked = c.meditation || false;
+    const cNotes = document.getElementById('checkin-notes');
+    if (cNotes) cNotes.value = c.notes || '';
+    const cIntention = document.getElementById('checkin-intention');
+    if (cIntention) cIntention.value = c.intention || '';
+
+    // Restore morning activities
+    morningActivities = c.morning_activities || [];
+    renderMorningActivities();
+
+    const btn = document.getElementById('checkin-submit-btn');
+    if (btn) btn.textContent = 'Update Check-In 🔄';
+    const cancelBtn = document.getElementById('checkin-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    const delBtn = document.getElementById('checkin-delete-btn');
+    if (delBtn) delBtn.style.display = 'inline-flex';
+
+    document.getElementById('page-checkin')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelCheckinEdit() {
+    const form = document.getElementById('checkin-form');
+    if (form) form.reset();
+    const editId = document.getElementById('checkin-edit-id');
+    if (editId) editId.value = '';
+    const cDate = document.getElementById('checkin-date');
+    if (cDate) cDate.value = today();
+    const cIntention = document.getElementById('checkin-intention');
+    if (cIntention) cIntention.value = '';
+    morningActivities = [];
+    renderMorningActivities();
+
+    const btn = document.getElementById('checkin-submit-btn');
+    if (btn) btn.textContent = 'Save Check-In ✓';
+    const cancelBtn = document.getElementById('checkin-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const delBtn = document.getElementById('checkin-delete-btn');
+    if (delBtn) delBtn.style.display = 'none';
+}
+
+const checkinCancelBtn = document.getElementById('checkin-cancel-edit-btn');
+if (checkinCancelBtn) checkinCancelBtn.addEventListener('click', cancelCheckinEdit);
+
+const checkinDeleteBtn = document.getElementById('checkin-delete-btn');
+if (checkinDeleteBtn) {
+    checkinDeleteBtn.addEventListener('click', async () => {
+        const editId = document.getElementById('checkin-edit-id')?.value;
+        if (!editId) return;
+        if (confirm('Delete this check-in?')) {
+            try {
+                await fetch(`${API}/api/checkins/${editId}`, { method: 'DELETE' });
+                showToast('✓ Check-in deleted');
+                cancelCheckinEdit();
+                loadCheckinHistory();
+                loadCalendar('checkin');
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+    });
 }
 
 
@@ -653,6 +888,103 @@ async function loadRunHistory() {
         if (container) container.innerHTML =
             '<div class="loading-text">Could not load runs</div>';
     }
+}
+
+let stravaRuns = [];
+let showingAllStrava = false;
+
+async function fetchStravaRuns(token) {
+    const listContainer = document.getElementById('strava-runs-list');
+    const loadMoreBtn = document.getElementById('load-more-strava-btn');
+    if (!listContainer) return;
+
+    try {
+        // Try getting cached runs first for fast render
+        const cachedRuns = localStorage.getItem('strava_runs_cache');
+        if (cachedRuns) {
+            stravaRuns = JSON.parse(cachedRuns);
+            renderStravaRuns(listContainer, loadMoreBtn);
+            mergeStravaIntoCalendar();
+        }
+
+        // Fetch fresh runs
+        const data = await apiGet(`/api/strava/activities?access_token=${token}`);
+        if (data && data.runs) {
+            stravaRuns = data.runs;
+            localStorage.setItem('strava_runs_cache', JSON.stringify(stravaRuns));
+            renderStravaRuns(listContainer, loadMoreBtn);
+            mergeStravaIntoCalendar();
+        } else {
+            if (!cachedRuns) listContainer.innerHTML = '<div class="loading-text">No Strava runs found.</div>';
+        }
+    } catch (err) {
+        if (!stravaRuns.length) {
+            listContainer.innerHTML = '<div class="loading-text">Failed to load Strava runs.</div>';
+        }
+        console.error('Strava fetch error:', err);
+    }
+}
+
+function renderStravaRuns(container, loadMoreBtn) {
+    if (!stravaRuns.length) {
+        container.innerHTML = '<div class="loading-text">No Strava runs found.</div>';
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        return;
+    }
+
+    // Default to showing only recent month (roughly last 30 days) or top 3 for UI compactness
+    const displayCount = showingAllStrava ? stravaRuns.length : Math.min(3, stravaRuns.length);
+    const runsToShow = stravaRuns.slice(0, displayCount);
+
+    container.innerHTML = runsToShow.map(r => `
+        <div class="history-item" style="border-left: 3px solid #fc4c02; border-radius: 4px;">
+            <div class="history-item-left" style="padding-right: 32px;">
+                <strong>${r.date || 'N/A'}</strong>
+                <div class="item-meta" style="font-weight: 500;">${r.name || 'Strava Run'}</div>
+                <div class="item-meta">${r.moving_time_str ? r.moving_time_str : ''} • Pace: ${r.pace}/km</div>
+            </div>
+            <div class="history-item-right">
+                <div class="amount" style="color:#fc4c02">${r.distance_km} km</div>
+            </div>
+        </div>
+    `).join('');
+
+    if (loadMoreBtn) {
+        if (stravaRuns.length > 3 && !showingAllStrava) {
+            loadMoreBtn.style.display = 'block';
+            loadMoreBtn.onclick = () => {
+                showingAllStrava = true;
+                renderStravaRuns(container, loadMoreBtn);
+            };
+        } else {
+            loadMoreBtn.style.display = 'none';
+        }
+    }
+}
+
+function mergeStravaIntoCalendar() {
+    if (!window._calData || !window._calData['run-calendar']) return;
+
+    // Convert strava runs into the format run calendar expects
+    const stravaCalItems = stravaRuns.map(sr => ({
+        id: 'strava_' + sr.id,
+        date: sr.date,
+        distance_km: sr.distance_km,
+        duration_minutes: parseInt(sr.moving_time_str) || 0,
+        run_type: sr.name && sr.name.toLowerCase().includes('long') ? 'long' :
+            sr.name && sr.name.toLowerCase().includes('tempo') ? 'tempo' :
+                sr.name && sr.name.toLowerCase().includes('interval') ? 'interval' : 'easy',
+        notes: sr.name
+    }));
+
+    // Remove old strava items before merging to avoid duplication on refresh
+    window._calData['run-calendar'] = window._calData['run-calendar'].filter(r => !r.id.toString().startsWith('strava_'));
+
+    // Append strava items
+    window._calData['run-calendar'].push(...stravaCalItems);
+
+    // Re-render calendar
+    renderCalendar('run-calendar', window._calData['run-calendar'], _calState['run-calendar'] || 0);
 }
 
 // ─── Run Edit Helpers ──────────────────────────────────────────
@@ -1116,6 +1448,14 @@ async function loadBooks() {
                                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${b.author}</div>
                                 ${b.rating ? `<div style="font-size: 10px; color: var(--accent-amber); margin-top: 2px;">★ ${b.rating}/10</div>` : ''}
                                 ${status !== 'read' ? `<button class="book-status-btn" data-book-id="${b.id}" data-next-status="${status === 'to read' ? 'reading' : 'read'}" style="margin-top: 6px; width: 100%; padding: 4px 6px; font-size: 10px; border: 1px solid var(--border); background: var(--bg-input); border-radius: 6px; cursor: pointer; color: var(--text-primary); font-weight: 500;">${status === 'to read' ? '📖 Start Reading' : '✅ Mark Read'}</button>` : ''}
+                                
+                                ${status === 'reading' ? `
+                                    <div style="margin-top:8px; display:flex; gap:4px; align-items:center;" onclick="event.stopPropagation()">
+                                        <input type="number" class="book-progress-input" placeholder="Pages..." data-book-id="${b.id}" style="width:100%; padding:4px; font-size:10px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary)">
+                                        <button class="book-log-btn" data-book-id="${b.id}" style="padding:4px; font-size:10px; border-radius:4px; border:none; background:var(--accent); color:#fff; cursor:pointer;" title="Log progress">➕</button>
+                                    </div>
+                                ` : ''}
+                                ${status !== 'to read' ? `<button class="book-notes-toggle-btn" data-book-id="${b.id}" style="margin-top:4px; width:100%; padding:4px; font-size:10px; border-radius:4px; border:1px dashed var(--border); background:transparent; color:var(--text-secondary); cursor:pointer;">📝 Notes</button>` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -1149,6 +1489,56 @@ async function loadBooks() {
                     loadReadingStats();
                 } catch (err) {
                     showToast('Error updating book', 'error');
+                }
+            });
+        });
+
+        // Log Progress buttons
+        container.querySelectorAll('.book-log-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const bookId = btn.dataset.bookId;
+                const input = document.querySelector(`.book-progress-input[data-book-id="${bookId}"]`);
+                if (!input || !input.value) return;
+                const pages = parseInt(input.value);
+                if (pages <= 0) return;
+
+                try {
+                    await apiPost(`/api/books/${bookId}/progress`, {
+                        date: today(),
+                        pages_read: pages
+                    });
+                    showToast(`Logged ${pages} pages read`);
+                    input.value = '';
+                    loadCalendar('reading'); // refresh calendar showing the read activity
+                } catch (err) {
+                    showToast('Error logging progress: ' + err.message, 'error');
+                }
+            });
+        });
+
+        // Notes toggle buttons
+        container.querySelectorAll('.book-notes-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const bookId = btn.dataset.bookId;
+                const book = window._booksData[bookId];
+                if (!book) return;
+
+                // simple prompt for notes for now
+                const newNote = prompt(`Notes for ${book.title}\nCurrent notes: ${book.reaction || 'None'}\n\nEnter new note to append:`);
+                if (newNote) {
+                    const updatedReaction = book.reaction ? book.reaction + '\n\n' + newNote : newNote;
+                    fetch(`${API}/api/books/${bookId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reaction: updatedReaction })
+                    }).then(() => {
+                        showToast('Note saved');
+                        loadBooks(); // refresh
+                    }).catch(err => {
+                        showToast('Failed to save note', 'error');
+                    });
                 }
             });
         });
@@ -1721,6 +2111,7 @@ const journalForm = document.getElementById('journal-form');
 if (journalForm) {
     journalForm.addEventListener('submit', async e => {
         e.preventDefault();
+        const editId = document.getElementById('journal-edit-id')?.value;
         const content = document.getElementById('journal-content')?.value;
         const data = {
             date: document.getElementById('journal-date')?.value,
@@ -1731,8 +2122,21 @@ if (journalForm) {
         };
 
         try {
-            const result = await apiPost('/api/journal', data);
-            showToast(`✓ Entry saved (${result.word_count} words)`);
+            if (editId) {
+                await fetch(`${API}/api/journal/${editId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                showToast('✓ Entry updated');
+                // Reset edit state
+                document.getElementById('journal-edit-id').value = '';
+                const submitBtn = document.querySelector('#journal-form button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Save Entry 📝';
+            } else {
+                const result = await apiPost('/api/journal', data);
+                showToast(`✓ Entry saved (${result.word_count} words)`);
+            }
             journalForm.reset();
             const journalDate = document.getElementById('journal-date');
             if (journalDate) journalDate.value = today();
@@ -1759,19 +2163,30 @@ async function loadJournalHistory() {
             container.innerHTML = '<div class="loading-text">No entries yet. Start writing!</div>';
             return;
         }
+        // Store for editing
+        window._journalData = {};
+        data.forEach(j => { window._journalData[j.id] = j; });
+
         container.innerHTML = data.map(j => {
             const themesHtml = (j.themes && j.themes.length) ?
                 j.themes.map(t => `<span class="pill theme-pill" data-static="true" style="font-size:10px; padding:2px 6px; margin-left:6px; background:var(--accent-light); color:var(--accent-dark); border:none; display:inline-block; vertical-align:middle; cursor:default;">${t}</span>`).join('') : '';
 
+            const isLong = j.content.length > 200;
+            const shortContent = isLong ? j.content.substring(0, 200) : j.content;
+
             return `
-            <div class="history-item" style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <div class="history-item-left" style="width: 100%;">
+            <div class="history-item" style="display:flex; justify-content:space-between; align-items:flex-start; position:relative;" onmouseover="this.querySelector('.journal-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.journal-edit-btn').style.opacity='0'">
+                <button class="journal-edit-btn" data-journal-id="${j.id}" title="Edit"
+                    style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
+                <div class="history-item-left" style="width: 100%; padding-right:32px;">
                     <div style="display:flex; align-items:center; flex-wrap:wrap;">
                         <strong>${j.date || 'N/A'}</strong>
                         ${themesHtml}
                     </div>
-                    <div class="item-meta" style="margin-top:4px;color:var(--text-primary);line-height:1.5;">
-                        ${j.content.length > 200 ? j.content.substring(0, 200) + '...' : j.content}
+                    <div class="item-meta journal-content-preview" data-journal-id="${j.id}" style="margin-top:4px;color:var(--text-primary);line-height:1.5;">
+                        <span class="journal-short-text">${shortContent}${isLong ? '...' : ''}</span>
+                        ${isLong ? `<span class="journal-full-text" style="display:none;">${j.content}</span>` : ''}
+                        ${isLong ? `<button class="journal-expand-btn" data-journal-id="${j.id}" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:12px; font-weight:600; margin-left:4px;">see more</button>` : ''}
                     </div>
                 </div>
                 <div class="history-item-right" style="min-width:60px">
@@ -1780,6 +2195,33 @@ async function loadJournalHistory() {
             </div>
             `;
         }).join('');
+
+        // Expand/collapse listeners
+        container.querySelectorAll('.journal-expand-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preview = btn.closest('.journal-content-preview');
+                const shortText = preview.querySelector('.journal-short-text');
+                const fullText = preview.querySelector('.journal-full-text');
+                if (fullText.style.display === 'none') {
+                    shortText.style.display = 'none';
+                    fullText.style.display = 'inline';
+                    btn.textContent = 'see less';
+                } else {
+                    shortText.style.display = 'inline';
+                    fullText.style.display = 'none';
+                    btn.textContent = 'see more';
+                }
+            });
+        });
+
+        // Edit listeners
+        container.querySelectorAll('.journal-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const journal = window._journalData[btn.dataset.journalId];
+                if (journal) openJournalEdit(journal);
+            });
+        });
     } catch (err) {
         const container = document.getElementById('journal-history');
         if (container) container.innerHTML =
@@ -1788,6 +2230,36 @@ async function loadJournalHistory() {
 
     // Also load gratitude alongside journals
     loadGratitudeHistory();
+}
+
+// ─── Journal Edit Helpers ──────────────────────────────────────
+function openJournalEdit(j) {
+    // Create hidden field if not present
+    let editId = document.getElementById('journal-edit-id');
+    if (!editId) {
+        editId = document.createElement('input');
+        editId.type = 'hidden';
+        editId.id = 'journal-edit-id';
+        document.getElementById('journal-form').prepend(editId);
+    }
+    editId.value = j.id;
+    const jDate = document.getElementById('journal-date');
+    if (jDate) jDate.value = j.date || today();
+    const jContent = document.getElementById('journal-content');
+    if (jContent) jContent.value = j.content || '';
+    const journalWc = document.getElementById('journal-wc');
+    if (journalWc) journalWc.textContent = `${j.word_count || 0} words`;
+
+    // Set themes
+    selectedThemes = j.themes || [];
+    document.querySelectorAll('.theme-pill').forEach(p => {
+        p.classList.toggle('active', selectedThemes.includes(p.dataset.theme));
+    });
+
+    const submitBtn = document.querySelector('#journal-form button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = 'Update Entry 🔄';
+
+    document.querySelector('.journal-col-entry')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ─── Gratitude ─────────────────────────────────────────────────
@@ -1822,18 +2294,60 @@ async function loadGratitudeHistory() {
             container.innerHTML = '<div class="loading-text">No gratitude logged yet.</div>';
             return;
         }
+        // Store for editing
+        window._gratitudeData = {};
+        data.forEach(g => { window._gratitudeData[g.id] = g; });
 
         // Group by user typed list or bullet points
         container.innerHTML = data.map(g => {
             const listItems = (g.content || '').split('\n').filter(l => l.trim()).map(l => `<li style="margin-bottom: 4px;">${l.replace(/^- /, '')}</li>`).join('');
             return `
-            <div class="history-item" style="display:block; padding: 12px 16px; border-bottom: 1px solid var(--border);">
+            <div class="history-item" style="display:block; padding: 12px 16px; border-bottom: 1px solid var(--border); position:relative;" onmouseover="this.querySelector('.gratitude-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.gratitude-edit-btn').style.opacity='0'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-size:12px; color:var(--text-secondary);">${g.date || ''}</span>
+                    <div style="display:flex; gap:4px;">
+                        <button class="gratitude-edit-btn" data-gratitude-id="${g.id}" title="Edit"
+                            style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
+                        <button class="gratitude-delete-btn" data-gratitude-id="${g.id}" title="Delete"
+                            style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--accent-rose); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">🗑</button>
+                    </div>
+                </div>
                 <ul style="margin: 0; padding-left: 20px; color: var(--text-primary); line-height: 1.6;">
                     ${listItems}
                 </ul>
             </div>
             `;
         }).join('');
+
+        // Edit listeners
+        container.querySelectorAll('.gratitude-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const g = window._gratitudeData[btn.dataset.gratitudeId];
+                if (g) {
+                    document.getElementById('gratitude-list').value = g.content || '';
+                    // Switch to gratitude tab
+                    document.querySelectorAll('.j-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelector('[data-jtab="gratitude"]')?.classList.add('active');
+                    document.querySelectorAll('.j-section').forEach(s => s.style.display = 'none');
+                    document.getElementById('j-sec-gratitude').style.display = 'block';
+                }
+            });
+        });
+        container.querySelectorAll('.gratitude-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (confirm('Delete this gratitude entry?')) {
+                    try {
+                        await fetch(`${API}/api/gratitude/${btn.dataset.gratitudeId}`, { method: 'DELETE' });
+                        showToast('✓ Gratitude deleted');
+                        loadGratitudeHistory();
+                    } catch (err) {
+                        showToast('Error: ' + err.message, 'error');
+                    }
+                }
+            });
+        });
     } catch (err) {
         const container = document.getElementById('gratitude-history-list');
         if (container) container.innerHTML =
@@ -1946,6 +2460,11 @@ async function loadReviewData() {
             if (expenseData && expenseData.total_usd !== undefined) {
                 const catFinancialSpend = document.getElementById('cat-financial-spend');
                 if (catFinancialSpend) catFinancialSpend.textContent = `$${expenseData.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                // VND total
+                const totalVnd = (expenseData.expenses || []).reduce((sum, e) => sum + (e.amount_vnd || 0), 0);
+                const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
+                const catFinancialSpendVnd = document.getElementById('cat-financial-spend-vnd');
+                if (catFinancialSpendVnd) catFinancialSpendVnd.textContent = `${formatVnd(totalVnd)} VND`;
                 const topExpCat = Object.entries(expenseData.by_category || {}).sort((a, b) => b[1] - a[1])[0];
                 const catFinancialTop = document.getElementById('cat-financial-top');
                 if (catFinancialTop) catFinancialTop.textContent = topExpCat ? topExpCat[0] : '--';
@@ -2050,6 +2569,147 @@ async function loadReview(period) {
 
 // Make loadReview available globally
 window.loadReview = loadReview;
+
+// ─── Review Checklists ─────────────────────────────────────────
+
+let currentChecklistData = null;
+
+const loadChecklistBtn = document.getElementById('load-checklist-btn');
+if (loadChecklistBtn) {
+    loadChecklistBtn.addEventListener('click', async () => {
+        const contentDiv = document.getElementById('review-checklist-content');
+        const itemsDiv = document.getElementById('review-checklist-items');
+        if (!contentDiv || !itemsDiv) return;
+
+        // Get current period from active tab
+        const activePeriodTab = document.querySelector('.review-period-tabs .period-tab.active');
+        const period = activePeriodTab?.dataset.period || 'weekly';
+
+        // Toggle visibility
+        if (contentDiv.style.display !== 'none' && currentChecklistData) {
+            contentDiv.style.display = 'none';
+            loadChecklistBtn.textContent = 'Open Checklist';
+            return;
+        }
+
+        itemsDiv.innerHTML = '<div class="loading-text"><div class="spinner"></div> Loading checklist...</div>';
+        contentDiv.style.display = 'block';
+        loadChecklistBtn.textContent = 'Close';
+
+        try {
+            const data = await apiGet(`/api/reviews/checklist?period=${period}`);
+            currentChecklistData = data;
+
+            const categories = data.categories || {};
+            const completedItems = data.completed_items || [];
+
+            itemsDiv.innerHTML = Object.entries(categories).map(([category, items]) => `
+                <div style="background:var(--bg-input); border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:14px; font-weight:700; margin-bottom:8px; color:var(--text-primary); text-transform:capitalize;">
+                        ${getCategoryIcon(category)} ${category}
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        ${items.map((item, idx) => {
+                const itemId = `${category}::${item}`;
+                const isChecked = completedItems.includes(itemId);
+                return `
+                                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--text-primary); padding:4px 0;">
+                                    <input type="checkbox" class="checklist-item" data-item-id="${itemId}" ${isChecked ? 'checked' : ''}
+                                        style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
+                                    <span style="${isChecked ? 'text-decoration:line-through; opacity:0.6;' : ''}">${item}</span>
+                                </label>
+                            `;
+            }).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            // Add strike-through toggle on check
+            itemsDiv.querySelectorAll('.checklist-item').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const label = cb.closest('label');
+                    const span = label.querySelector('span');
+                    if (cb.checked) {
+                        span.style.textDecoration = 'line-through';
+                        span.style.opacity = '0.6';
+                    } else {
+                        span.style.textDecoration = 'none';
+                        span.style.opacity = '1';
+                    }
+                });
+            });
+        } catch (err) {
+            itemsDiv.innerHTML = '<div class="loading-text">Could not load checklist</div>';
+        }
+    });
+}
+
+function getCategoryIcon(cat) {
+    const icons = { body: '🏃', mind: '🧠', spirit: '✨', social: '🤝', career: '💼', financial: '💰' };
+    return icons[cat.toLowerCase()] || '✅';
+}
+
+const saveChecklistBtn = document.getElementById('save-checklist-btn');
+if (saveChecklistBtn) {
+    saveChecklistBtn.addEventListener('click', async () => {
+        if (!currentChecklistData) return;
+
+        const completedItems = [];
+        document.querySelectorAll('.checklist-item:checked').forEach(cb => {
+            completedItems.push(cb.dataset.itemId);
+        });
+
+        const activePeriodTab = document.querySelector('.review-period-tabs .period-tab.active');
+        const period = activePeriodTab?.dataset.period || 'weekly';
+
+        try {
+            await apiPost('/api/reviews/checklist', {
+                period: period,
+                start_date: currentChecklistData.start_date || today(),
+                end_date: currentChecklistData.end_date || today(),
+                categories: currentChecklistData.categories || {},
+                completed_items: completedItems,
+                notes: ''
+            });
+            showToast('✓ Checklist saved');
+            loadSavedChecklists();
+        } catch (err) {
+            showToast('Error saving checklist: ' + err.message, 'error');
+        }
+    });
+}
+
+async function loadSavedChecklists() {
+    const listDiv = document.getElementById('saved-checklists-list');
+    if (!listDiv) return;
+    try {
+        const activePeriodTab = document.querySelector('.review-period-tabs .period-tab.active');
+        const period = activePeriodTab?.dataset.period || 'weekly';
+        const data = await apiGet(`/api/reviews/checklists?period=${period}`);
+        const checklists = data.checklists || data || [];
+        if (!checklists.length) {
+            listDiv.innerHTML = '';
+            return;
+        }
+        listDiv.innerHTML = `
+            <div style="font-size:12px; color:var(--text-secondary); margin-top:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Saved Checklists</div>
+            ${checklists.slice(0, 5).map(c => {
+            const total = Object.values(c.categories || {}).reduce((sum, items) => sum + items.length, 0);
+            const done = (c.completed_items || []).length;
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+                        <span style="font-size:13px; color:var(--text-primary);">${c.period} — ${c.start_date || ''}</span>
+                        <span style="font-size:12px; font-weight:600; color:${pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent-amber)' : 'var(--accent-rose)'}">${pct}% (${done}/${total})</span>
+                    </div>
+                `;
+        }).join('')}
+        `;
+    } catch (e) { listDiv.innerHTML = ''; }
+}
+
+// Load saved checklists on review tab activation
+try { loadSavedChecklists(); } catch (e) { }
 
 
 // ─── Travel / Expenses ─────────────────────────────────────────
@@ -2174,25 +2834,35 @@ async function loadExpenses() {
                 summaryDiv.innerHTML = '<div class="loading-text">No expenses logged this month</div>';
             } else {
                 const total = currentMonthExpenses.reduce((sum, e) => sum + (e.amount_usd || 0), 0);
+                const totalVnd = currentMonthExpenses.reduce((sum, e) => sum + (e.amount_vnd || 0), 0);
+                const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
 
                 // Recalculate categories for the month
                 const cats = {};
+                const catsVnd = {};
                 currentMonthExpenses.forEach(e => {
                     const cat = e.category || 'other';
                     cats[cat] = (cats[cat] || 0) + (e.amount_usd || 0);
+                    catsVnd[cat] = (catsVnd[cat] || 0) + (e.amount_vnd || 0);
                 });
 
                 summaryDiv.innerHTML = `
                     <div class="stat-row" style="margin-bottom: 8px;">
                         <span class="stat-label" style="font-weight: 600; color: var(--text-primary);">Total Monthly Spend</span>
-                        <span class="stat-value" style="font-size: 16px; font-weight: 700; color: var(--accent-rose);">$${total.toFixed(2)}</span>
+                        <div style="text-align:right;">
+                            <span class="stat-value" style="font-size: 16px; font-weight: 700; color: var(--accent-rose);">$${total.toFixed(2)}</span>
+                            <div style="font-size:12px; color:var(--text-secondary);">${formatVnd(totalVnd)} VND</div>
+                        </div>
                     </div>
                 ` + Object.entries(cats)
                         .sort((a, b) => b[1] - a[1]) // Sort categories by amount
                         .map(([cat, amount]) => `
                         <div class="stat-row">
                             <span class="stat-label" style="text-transform: capitalize;">${cat}</span>
-                            <span class="stat-value">$${amount.toFixed(2)}</span>
+                            <div style="text-align:right;">
+                                <span class="stat-value">$${amount.toFixed(2)}</span>
+                                <div style="font-size:11px; color:var(--text-secondary);">${formatVnd(catsVnd[cat] || 0)} VND</div>
+                            </div>
                         </div>
                     `).join('');
             }
@@ -2204,20 +2874,25 @@ async function loadExpenses() {
             if (expenses.length === 0) {
                 historyDiv.innerHTML = '<div class="loading-text">No expenses logged yet</div>';
             } else {
-                historyDiv.innerHTML = expenses.slice(0, 20).map(e => `
+                historyDiv.innerHTML = expenses.slice(0, 20).map(e => {
+                    const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
+                    const vndDisplay = e.amount_vnd ? `<div class="item-meta">${formatVnd(e.amount_vnd)} VND</div>` : '';
+                    return `
                     <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.expense-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.expense-edit-btn').style.opacity='0'">
                         <button class="expense-edit-btn" data-expense-id="${e.id}" title="Edit"
                             style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
                         <div class="history-item-left" style="padding-right: 32px;">
-                            <strong>${e.title}</strong>
+                            <strong>${e.description || 'Expense'}</strong>
                             <div class="item-meta">${e.date} · ${e.category}</div>
                         </div>
                         <div class="history-item-right">
                             <div class="history-amount">${e.amount} ${e.currency}</div>
                             ${e.amount_usd ? `<div class="item-meta">≈ $${e.amount_usd.toFixed(2)}</div>` : ''}
+                            ${vndDisplay}
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
 
                 // Store data and add edit listeners
                 window._expenseData = {};

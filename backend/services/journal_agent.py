@@ -91,39 +91,62 @@ def generate_journal_prompt(
 
     context_str = "\n".join(context_parts) if context_parts else "No specific context available."
 
-    # Choose tradition instruction
+    # Build tradition-specific instructions
     if tradition == "thich_nhat_hanh":
-        tradition_instruction = """You are a mindfulness guide deeply rooted in Thich Nhat Hanh's teachings.
-Your prompts should incorporate high-level principles: mindful breathing, present moment awareness, 
-interbeing, compassion, impermanence, and walking meditation. Focus on profound existential reflection, 
-not daily metrics."""
+        tradition_instruction = """You are a mindfulness guide in the Plum Village tradition (Thich Nhat Hanh). 
+Focus on mindful breathing, present moment awareness, interbeing, and compassion. 
+Your tone should be soft, poetic, and deeply present."""
     elif tradition == "stoicism":
-        tradition_instruction = """You are a Stoic philosophy guide drawing from Marcus Aurelius, Epictetus, and Seneca.
-Your prompts should incorporate high-level principles: dichotomy of control, memento mori, obstacle is the way,
-virtue ethics, amor fati. Focus on existential strength and psychological resilience, not daily metrics."""
+        tradition_instruction = """You are a Stoic guide (Aurelius, Epictetus, Seneca). 
+Focus on the dichotomy of control, memento mori, virtue, and resilience. 
+Your tone should be clear, strong, and logically grounding."""
     else:  # blended
-        tradition_instruction = """You are a contemplative guide blending Thich Nhat Hanh's mindfulness with Stoic philosophy.
-Weave high-level themes naturally (present moment, interbeing, dichotomy of control, memento mori).
-Focus on broad, profound existential concepts rather than addressing specific daily physical habits or routines."""
+        tradition_instruction = """You are a contemplative guide blending Plum Village mindfulness with Stoic philosophy. 
+Weave together present-moment awareness with the inner strength of virtue. 
+Balance soft compassion with rigorous internal clarity."""
 
-    system_prompt = f"""{tradition_instruction}
+    system_instruction = f"""{tradition_instruction}
 
-Generate a single journal prompt that is deeply personal, context-aware, and invites genuine reflection.
-The prompt should be 2-4 sentences. Include a relevant quote from the tradition.
+Generate a single, profound journal prompt (2-4 sentences).
+
+CRITICAL CONSTRAINTS:
+1. THEMATIC FOCUS: Always center the prompt around one of these pillars:
+   - BODY (Vitality, movement, sleep, physical presence)
+   - MIND (Deep work, intellectual pursuit, clarity, focus)
+   - SPIRIT (Inner peace, alignment, meditation, interbeing)
+   - CHECKLIST GOALS (Long-term growth, consistency, becoming who you want to be)
+
+2. AVOID MUNDANE SPECIFICS: Do NOT mention specific names of shops, brands, or trivial daily logistics (e.g., avoid "Bach Hoa Xanh", "supermarket", "expense category"). Instead, elevate these to themes like "nourishment", "intentional consumption", or "stewardship of resources".
+
+3. DEPTH OVER DATA: Use the provided context as a silent guide to the user's state, but do not recite the data back to them.
+
+4. BLEND TEACHINGS: If 'blended', naturally combine Stoic resilience with Thich Nhat Hanh's tenderness.
 
 Respond in JSON with these fields:
 - "prompt": the journal prompt text (2-4 sentences)
-- "tradition": which tradition this draws from ("thich_nhat_hanh", "stoicism", or "blended")
-- "context_reason": one sentence explaining why this prompt was chosen for this moment
-- "related_quote": a relevant quote from the tradition
-- "quote_source": who said/wrote the quote"""
+- "tradition": "thich_nhat_hanh", "stoicism", or "blended"
+- "context_reason": one sentence explaining the thematic link chosen
+- "related_quote": a relevant quote from the chosen tradition
+- "quote_source": author of the quote"""
 
-    user_prompt = f"""Generate a journal prompt for someone with this current context:
+    # Add monthly checklist goals as static context reference
+    checklist_goals = """
+Monthly Life Integration Checklist Items:
+- Body: 9k steps before 9 AM, Sleep 10:30 PM - 6:00 AM, Running training on schedule, Gym/Nutrition.
+- Mind: Deep work block (3h+), Reading progress, Course study (AWS/ML/DSA), Journaling.
+- Spirit: Morning meditation (6:00-6:30), Alignment reflection, Gratitude, Sangha/Community.
+- Social: Quality time with Vietnam family, friends, Therapy, Networking.
+- Career: Financial summary review, job progress, professional development.
+"""
+
+    user_prompt = f"""Generate a profound prompt for a user with this current state:
 
 {context_str}
 
-Make the prompt specific to their situation, not generic. It should feel like it was written
-just for them, right now."""
+REFERENCE CHECKLIST GOALS:
+{checklist_goals}
+
+Elevate their current context into a reflection on Body, Mind, Spirit, or their long-term growth. Ensure the prompt feels broad and timeless, yet resonant with their current energy and alignment."""
 
     try:
         result = generate_json(user_prompt, system_instruction=system_prompt)

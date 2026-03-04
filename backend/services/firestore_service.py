@@ -73,7 +73,17 @@ def _get_firestore_client():
         _FIRESTORE_CLIENT = firestore.client()
         return _FIRESTORE_CLIENT
     except Exception as e:
-        _LOGGER.error(f"❌ Firestore Connection Error: {e}")
+        _LOGGER.warning(f"⚠️ Firebase Admin init failed: {e}. Trying direct google-cloud-firestore client...")
+        try:
+            from google.cloud import firestore as gc_firestore
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
+            if project_id:
+                _FIRESTORE_CLIENT = gc_firestore.Client(project=project_id)
+                _LOGGER.info(f"🔥 Successfully connected to Firestore using gcloud user credentials for project: {project_id}")
+                return _FIRESTORE_CLIENT
+        except Exception as fallback_e:
+            _LOGGER.error(f"❌ Both Firebase Admin and google-cloud-firestore failed: {fallback_e}")
+            
         return None
 
 
@@ -172,6 +182,12 @@ def get_documents(collection: str, limit: int = 100) -> list[dict]:
     if db:
         prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
         full_collection = f"{prefix}_{collection}"
+        
+        # Support both 'journal' and 'journals' queries for older data since user used "journal" before
+        if collection == "journals":
+            # Just querying journals
+            pass
+            
         docs = db.collection(full_collection).order_by(
             "created_at", direction="DESCENDING"
         ).limit(limit).get()
@@ -222,6 +238,8 @@ def migrate_local_to_firestore():
         print("ℹ️ No local_data directory found to migrate.")
         return
 
+    prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
+    
     prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
     
     for file_path in _LOCAL_DATA_DIR.glob("*.json"):
