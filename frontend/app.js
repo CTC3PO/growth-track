@@ -3827,9 +3827,10 @@ function setupActivityPlannerListeners() {
             e.preventDefault();
             const btn = addForm.querySelector('button[type="submit"]');
             btn.disabled = true;
-            btn.textContent = 'Adding...';
+            const editingId = addForm.dataset.editTaskId;
+            btn.textContent = editingId ? 'Updating...' : 'Adding...';
 
-            const newTask = {
+            const taskData = {
                 name: document.getElementById('task-name').value,
                 time_slot: document.getElementById('task-time-slot').value,
                 category: document.getElementById('task-category').value,
@@ -3839,19 +3840,23 @@ function setupActivityPlannerListeners() {
             };
 
             try {
-                const res = await apiPost('/api/work/tasks', newTask);
-                newTask.id = res.id;
-                workTasks.push(newTask);
+                if (editingId) {
+                    await apiPut(`/api/work/tasks/${editingId}`, taskData);
+                    delete addForm.dataset.editTaskId;
+                } else {
+                    await apiPost('/api/work/tasks', taskData);
+                }
 
                 // Clear inputs
                 document.getElementById('task-name').value = '';
                 document.getElementById('task-time-slot').value = '';
 
-                renderWorkTasks();
-                showToast(res.message);
+                // Reload from backend
+                await loadWorkTasks();
+                showToast(editingId ? 'Task updated' : 'Task added');
             } catch (err) {
                 console.error(err);
-                showToast('Failed to add task', 'error');
+                showToast('Failed to save task', 'error');
             } finally {
                 btn.disabled = false;
                 btn.textContent = '+ Add';
@@ -3930,7 +3935,9 @@ function renderWorkTasks() {
         // Added numeric input for logging Pomodoros explicitly
         let actionButtons = '';
         if (task.completed) {
-            actionButtons = `<span style="font-size: 11px; color: #10b981; font-weight: 600;">✓ Completed</span>`;
+            actionButtons = `
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #34d399, #10b981); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">✓</div>
+            `;
         } else {
             actionButtons = `
                 <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
@@ -3939,7 +3946,10 @@ function renderWorkTasks() {
                         <input type="number" id="pomo-input-${task.id}" min="1" max="20" placeholder="1" style="width:40px; height:24px; padding:0 4px; font-size:12px; border-radius:4px; border:1px solid #d1d5db; text-align:center;">
                         <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="markTaskDone('${task.id}')">Mark as Done</button>
                     </div>
-                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto; width:100%;" onclick="openPomodoro('${task.id}')">▶ Focus Timer</button>
+                    <div style="display:flex; gap: 6px;">
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="editTask('${task.id}')">✏️ Edit</button>
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="openPomodoro('${task.id}')">▶ Focus</button>
+                    </div>
                 </div>
             `;
         }
@@ -3951,8 +3961,7 @@ function renderWorkTasks() {
                     <div class="tiimo-task-left-bar ${catClass}"></div>
                     
                     <div class="tiimo-task-content">
-                        <div class="tiimo-checkbox ${task.completed ? 'checked' : ''}"></div>
-                        <div class="tiimo-task-text-group">
+                        <div class="tiimo-task-text-group" style="margin-left: 0;">
                             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                 <div style="font-size:16px; font-weight:800; color:var(--text-primary); letter-spacing:-0.01em;">${task.name}</div>
                                 <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:${catBg}; color:${catColor}; text-transform:capitalize; white-space:nowrap;">${emoji} ${task.category}</span>
@@ -3973,6 +3982,25 @@ function renderWorkTasks() {
 }
 
 // Make accessible to onclick
+window.editTask = function (taskId) {
+    const task = workTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // Populate the form
+    document.getElementById('task-name').value = task.name;
+    document.getElementById('task-time-slot').value = task.time_slot || '';
+    document.getElementById('task-category').value = task.category || 'others';
+
+    // Set editing state
+    const form = document.getElementById('add-task-form');
+    form.dataset.editTaskId = taskId;
+    const btn = form.querySelector('button[type="submit"]');
+    if (btn) btn.innerHTML = 'Update';
+
+    // Scroll to form
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
 window.markTaskDone = async function (taskId) {
     const task = workTasks.find(t => t.id === taskId);
     if (!task) return;
