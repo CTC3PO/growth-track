@@ -157,7 +157,7 @@ REFERENCE CHECKLIST GOALS:
 Elevate their current context into a reflection on Body, Mind, Spirit, or their long-term growth. Ensure the prompt feels broad and timeless, yet resonant with their current energy and alignment."""
 
     try:
-        result = generate_json(user_prompt, system_instruction=system_prompt)
+        result = generate_json(user_prompt, system_instruction=system_instruction)
         return result
     except Exception as e:
         # Fallback to a static prompt if AI fails
