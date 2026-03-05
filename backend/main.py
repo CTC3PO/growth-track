@@ -511,6 +511,8 @@ async def get_journal_prompt(tradition: str = "blended"):
             latest = recent_checkins[0]
             context["energy"] = latest.get("energy")
             context["alignment"] = latest.get("alignment")
+            context["sleep_hours"] = latest.get("sleep_hours")
+            context["steps"] = latest.get("steps")
             context["meditation_streak"] = sum(
                 1 for c in recent_checkins if c.get("meditation")
             )
@@ -523,14 +525,16 @@ async def get_journal_prompt(tradition: str = "blended"):
 
         recent_journals = get_documents("journals", limit=1)
         if recent_journals:
-            last_journal_date = recent_journals[0].get("date", "")
+            last = recent_journals[0]
+            context["last_journal_mood"] = last.get("mood")
+            context["last_journal_themes"] = last.get("themes", [])
+            last_journal_date = last.get("date", "")
             if last_journal_date:
                 try:
                     from datetime import datetime
                     last_date = datetime.fromisoformat(last_journal_date).date()
                     gap = (date.today() - last_date).days
-                    if gap > 1:
-                        context["journal_gap_days"] = gap
+                    context["journal_gap_days"] = gap
                 except Exception:
                     pass
 
