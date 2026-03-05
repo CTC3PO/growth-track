@@ -105,3 +105,25 @@ Please visit `http://localhost:8080/` and verify the latest changes on the **Wor
 - [x] **Backend**: Call `/api/journal/prompt` and verify the `context_data` field contains real tracking data.
 - [x] **Frontend**: Navigate to the Journal tab and confirm that mini-badges (e.g., 💤 Sleep, 👣 Steps) appear below the AI prompt.
 - [x] **Logic**: Verify that the generated prompt references the activity context (e.g., "I see you walked 10k steps today...").
+
+---
+
+# Phase 4.1 — Creative AI Prompt Remixing
+
+## Changes Made
+
+### 4.1A. Creative Mix Engine (Backend)
+- **Weekly Analytics**: Implemented a new data aggregation layer in `main.py` that calculates 7-day trends for running distance, average sleep, total steps, social frequency, and deep work hours.
+- **AI Remixing Logic**: Updated `journal_agent.py` with a "Mix Mode". It takes 3 random seed prompts from the template library and combines them with these weekly activity patterns to generate a "Creative Insight" prompt.
+- **Extended API**: The `/api/journal/prompt` endpoint now supports `mode=mix` and `seed_prompts` query parameters.
+
+### 4.1B. "Mix" Tab & UI (Frontend)
+- **Dedicated "Mix" Tab**: Added a purple-themed `Spiral` icon tab to the Journal section.
+- **Remix & Reflect Card**: A new interactive card that uses AI to bridge timeless philosophical templates with your actual weekly data.
+- **Weekly Trend Badges**: Added specific badges (e.g., 🧪 Weekly Trend, 🏃 Weekly Run) that appear when the AI uses long-term patterns for reflection.
+- **One-Click Integration**: Added a "Use This Prompt" button that prepends the mixed prompt to your active journal entry with one tap.
+
+## Verification
+- [x] **Mixed Logic**: Verified that prompts now creatively bridge templates (e.g., Stoicism) with actual data (e.g., "Given your high work hours but low sleep this week, how can you apply Marcus Aurelius's focus on essentialism...?")
+- [x] **UI state**: Confirmed the "Mix" tab correctly triggers the `mode=mix` API call with random seed prompts.
+- [x] **Pattern Badges**: Confirmed badges appear only when backend pattern data is actually present.
