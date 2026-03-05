@@ -7,24 +7,31 @@ const API = window.location.hostname === 'localhost' || window.location.hostname
 
 // ─── Navigation ────────────────────────────────────────────────
 
+function navigateToPage(page) {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (btn) btn.classList.add('active');
+    const pageEl = document.getElementById(`page-${page}`);
+    if (pageEl) pageEl.classList.add('active');
+
+    // Persist active tab
+    localStorage.setItem('activeTab', page);
+
+    // Load data for each page on switch
+    if (page === 'review') loadReviewData();
+    if (page === 'reading') { loadReadingStats(); loadBooks(); loadCalendar('reading'); }
+    if (page === 'journal') { loadJournalPrompt(); loadJournalHistory(); loadCalendar('journal'); }
+    if (page === 'checkin') { loadCheckinHistory(); loadCalendar('checkin'); }
+    if (page === 'running') { loadRunHistory(); loadCalendar('running'); }
+    if (page === 'work') { loadWorkData(); loadCalendar('work'); }
+    if (page === 'travel') { initCurrencySelectors(); loadExpenses(); loadCalendar('travel'); }
+    if (page === 'social') { loadSocialData(); loadCalendar('social'); }
+}
+
 document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
-        const page = btn.dataset.page;
-        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        const pageEl = document.getElementById(`page-${page}`);
-        if (pageEl) pageEl.classList.add('active');
-
-        // Load data for each page on switch
-        if (page === 'review') loadReviewData();
-        if (page === 'reading') { loadReadingStats(); loadBooks(); loadCalendar('reading'); }
-        if (page === 'journal') { loadJournalPrompt(); loadJournalHistory(); loadCalendar('journal'); }
-        if (page === 'checkin') { loadCheckinHistory(); loadCalendar('checkin'); }
-        if (page === 'running') { loadRunHistory(); loadCalendar('running'); }
-        if (page === 'work') { loadWorkData(); loadCalendar('work'); }
-        if (page === 'travel') { initCurrencySelectors(); loadExpenses(); loadCalendar('travel'); }
-        if (page === 'social') { loadSocialData(); loadCalendar('social'); }
+        navigateToPage(btn.dataset.page);
     });
 });
 
@@ -275,6 +282,12 @@ async function loadCalendar(type) {
 // ─── Initialize ────────────────────────────────────────────────
 
 window.addEventListener('DOMContentLoaded', () => {
+
+    // Restore active tab from localStorage (persist across reloads)
+    const savedTab = localStorage.getItem('activeTab');
+    if (savedTab) {
+        navigateToPage(savedTab);
+    }
 
     // Simple routing to the auth page
     const authTrigger = document.getElementById('auth-trigger');
@@ -1946,9 +1959,9 @@ const templatePrompts = [
 
 let currentTradition = 'blended';
 
-document.querySelectorAll('.pill').forEach(pill => {
+document.querySelectorAll('.pill[data-tradition]').forEach(pill => {
     pill.addEventListener('click', () => {
-        document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.pill[data-tradition]').forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
         currentTradition = pill.dataset.tradition;
         loadJournalPrompt();
@@ -3001,10 +3014,10 @@ if (workForm) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                showToast('✓ Deep Work updated');
+                showToast('✓ Work session updated');
             } else {
                 await apiPost('/api/work', data);
-                showToast('✓ Deep Work logged');
+                showToast('✓ Work session logged');
             }
 
             cancelWorkEdit();
@@ -3057,7 +3070,7 @@ async function loadWorkData() {
                 `;
             }).join('');
         } else {
-            container.innerHTML = '<div class="loading-text">No deep work sessions yet!</div>';
+            container.innerHTML = '<div class="loading-text">No work sessions yet!</div>';
         }
 
         // Today UI
@@ -3083,7 +3096,7 @@ async function loadWorkData() {
 
     } catch (err) {
         const container = document.getElementById('work-history');
-        if (container) container.innerHTML = '<div class="loading-text">Could not load deep work history</div>';
+        if (container) container.innerHTML = '<div class="loading-text">Could not load work history</div>';
     }
 }
 
@@ -3134,7 +3147,7 @@ if (workDeleteBtn) {
     workDeleteBtn.addEventListener('click', async () => {
         const editId = document.getElementById('work-edit-id')?.value;
         if (!editId) return;
-        if (confirm('Delete this deep work session?')) {
+        if (confirm('Delete this work session?')) {
             try {
                 await fetch(`${API}/api/work/${editId}`, { method: 'DELETE' });
                 showToast('✓ Session deleted');
