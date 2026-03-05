@@ -479,6 +479,7 @@
                 <button class="period-tab j-tab active" data-jtab="random-prompt">🎲 Random</button>
                 <button class="period-tab j-tab" data-jtab="gratitude">🙏 Gratitude</button>
                 <button class="period-tab j-tab" data-jtab="ai-prompt">✨ Daily AI</button>
+                <button class="period-tab j-tab" data-jtab="mix">🌀 Mix</button>
                 <button class="period-tab j-tab" data-jtab="prompt-list">📜 All Prompts</button>
             </div>
 
@@ -520,6 +521,25 @@
                                     style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.2s;"
                                     onmouseover="this.style.background='rgba(0,0,0,0.05)'"
                                     onmouseout="this.style.background='none'">🔊</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mix & Reflect -->
+                    <div id="j-sec-mix" class="j-section" style="display: none;">
+                        <div class="card" style="border-left: 4px solid #8b5cf6;">
+                            <div class="card-header" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="icon">🌀</span>
+                                    <h3>Mix & Reflect</h3>
+                                </div>
+                                <button class="btn btn-secondary" id="new-mix-btn"
+                                    style="padding: 4px 8px; font-size: 12px; height: auto;">Remix</button>
+                            </div>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Blending
+                                classic prompts with your weekly activity patterns for deeper creative insights.</p>
+                            <div id="mix-prompt-area" style="min-height: 80px;">
+                                <div class="loading-text">Click 'Remix' to start...</div>
                             </div>
                         </div>
                     </div>

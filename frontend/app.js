@@ -2010,6 +2010,7 @@ document.querySelectorAll('.j-tab').forEach(tab => {
         if (targetElement) targetElement.style.display = 'block';
 
         if (tab.dataset.jtab === 'prompt-list') loadPromptList();
+        if (tab.dataset.jtab === 'mix') loadMixPrompt();
         if (tab.dataset.jtab === 'random-prompt') {
             const randomPromptArea = document.getElementById('random-prompt-area');
             if (randomPromptArea && randomPromptArea.innerHTML.includes('Click \'Draw Another\'')) {
@@ -2144,6 +2145,98 @@ async function loadJournalPrompt() {
         `;
     }
 }
+
+// Creative Mix Prompt Logic
+async function loadMixPrompt() {
+    const area = document.getElementById('mix-prompt-area');
+    if (!area) return;
+    area.innerHTML = '<div class="spinner"></div> Mixing patterns and templates...';
+
+    // Pick 3 random seed prompts from the template library
+    const seeds = [];
+    if (typeof templatePrompts !== 'undefined' && templatePrompts.length > 0) {
+        for (let i = 0; i < 3; i++) {
+            seeds.push(templatePrompts[Math.floor(Math.random() * templatePrompts.length)]);
+        }
+    }
+    const seedParam = encodeURIComponent(seeds.join('||'));
+
+    try {
+        const prompt = await apiGet(`/api/journal/prompt?tradition=${currentTradition}&mode=mix&seed_prompts=${seedParam}`);
+
+        // Build weekly pattern badges
+        let contextBadges = '';
+        if (prompt.context_data && prompt.context_data.weekly_stats) {
+            const w = prompt.context_data.weekly_stats;
+            const activeBadges = [];
+            if (w.total_km > 0) activeBadges.push('🏃 Weekly Run');
+            if (w.avg_sleep > 0) activeBadges.push('💤 Weekly Sleep');
+            if (w.total_steps > 0) activeBadges.push('👣 Weekly Steps');
+            if (w.social_count > 0) activeBadges.push('🤝 Social Pattern');
+            if (w.work_hours > 0) activeBadges.push('💻 Work Trend');
+
+            if (activeBadges.length) {
+                contextBadges = `
+                    <div class="context-badge-container">
+                        <div style="font-size: 10px; color: var(--text-muted); width: 100%; margin-bottom: 4px; font-weight: 700;">WEEKLY TRENDS INTEGRATED:</div>
+                        ${activeBadges.map(b => `<span class="context-badge active">${b}</span>`).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        area.innerHTML = `
+            <div class="prompt-card">
+                <p class="prompt-text" style="font-size: 18px; line-height: 1.6;">"${prompt.prompt}"</p>
+                ${prompt.related_quote ? `
+                    <div class="prompt-quote" style="margin: 16px 0; padding: 12px; border-left: 2px solid var(--accent); background: var(--bg-secondary); border-radius: 0 8px 8px 0;">
+                        <span style="font-style: italic;">"${prompt.related_quote}"</span>
+                        <div class="prompt-source" style="margin-top: 4px; font-weight: 700; font-size: 11px;">— ${prompt.quote_source || 'Unknown'}</div>
+                    </div>
+                ` : ''}
+                <div class="prompt-context" style="font-size: 12px; color: var(--text-muted); font-style: italic;">Remix Insight: ${prompt.context_reason || ''}</div>
+                ${contextBadges}
+                <div style="margin-top: 16px; display: flex; gap: 8px;">
+                    <button class="btn btn-secondary fill-journal-btn" style="flex: 1; font-size: 12px; height: 32px;">📝 Use This Prompt</button>
+                    <button class="btn btn-secondary copy-remix-btn" style="flex: 1; font-size: 12px; height: 32px;">📋 Copy</button>
+                </div>
+            </div>
+        `;
+
+        // Bind use/copy buttons
+        const fillBtn = area.querySelector('.fill-journal-btn');
+        if (fillBtn) {
+            fillBtn.onclick = () => {
+                const jInput = document.getElementById('journal-content');
+                if (jInput) {
+                    jInput.value = `"${prompt.prompt}"\n\n` + jInput.value;
+                    jInput.focus();
+                    showToast("Prompt added to journal!");
+                }
+            };
+        }
+        const copyBtn = area.querySelector('.copy-remix-btn');
+        if (copyBtn) {
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(prompt.prompt);
+                showToast("Copied to clipboard!");
+            };
+        }
+
+    } catch (err) {
+        area.innerHTML = `<div class="loading-text" style="color: var(--accent-rose)">Error remixing: ${err.message}</div>`;
+    }
+}
+
+// Global listener for Refresh/Remix buttons in Journal Page
+document.addEventListener('click', e => {
+    if (e.target.id === 'new-mix-btn') {
+        loadMixPrompt();
+    }
+    if (e.target.id === 'new-prompt-btn') {
+        loadJournalPrompt();
+    }
+});
 
 // Journal Themes Selection
 let selectedThemes = [];

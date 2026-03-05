@@ -501,7 +501,7 @@ async def delete_gratitude_entry(gratitude_id: str):
 
 
 @app.get("/api/journal/prompt")
-async def get_journal_prompt(tradition: str = "blended"):
+async def get_journal_prompt(tradition: str = "blended", mode: str = "daily", seed_prompts: str = ""):
     """Generate a context-aware journal prompt."""
     # Gather context from recent data
     context = {}
@@ -558,10 +558,25 @@ async def get_journal_prompt(tradition: str = "blended"):
 
         import calendar
         context["day_of_week"] = calendar.day_name[date.today().weekday()]
+        if mode == "mix":
+            # Aggregate weekly context
+            weekly_checkins = get_documents("checkins", limit=7)
+            weekly_runs = get_documents("runs", limit=10)
+            weekly_social = get_documents("social_connections", limit=15)
+            weekly_work = get_documents("work", limit=20)
+            
+            context["weekly_stats"] = {
+                "total_km": round(sum(r.get("distance_km", 0) for r in weekly_runs), 1),
+                "avg_sleep": round(sum(c.get("sleep_hours", 0) for c in weekly_checkins) / len(weekly_checkins), 1) if weekly_checkins else 0,
+                "total_steps": sum(c.get("steps", 0) for c in weekly_checkins),
+                "social_count": len(weekly_social),
+                "work_hours": round(sum(w.get("duration_minutes", 0) for w in weekly_work) / 60, 1)
+            }
+            context["seed_prompts"] = seed_prompts.split("||") if seed_prompts else []
     except Exception:
         pass
 
-    prompt_data = generate_journal_prompt(tradition=tradition, context=context)
+    prompt_data = generate_journal_prompt(tradition=tradition, context=context, mode=mode)
     return {**prompt_data, "context_data": context}
 
 
