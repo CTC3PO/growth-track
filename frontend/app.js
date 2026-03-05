@@ -3936,7 +3936,7 @@ function renderWorkTasks() {
         let actionButtons = '';
         if (task.completed) {
             actionButtons = `
-                <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #34d399, #10b981); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">✓</div>
+                <div style="font-size: 28px; font-weight: 700; color: #10b981; margin-right: 8px;">✓</div>
             `;
         } else {
             actionButtons = `
