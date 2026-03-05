@@ -35,14 +35,17 @@ Login/Auth is **deferred** to a future stage per user request.
 - Update `app.js` social form submit handler to include duration.
 - Update backend `main.py` `SocialConnection` model and `update_social` to accept `duration_minutes`.
 
-### 2B. Work Tab — Tiimo-Style Activity Planner
-- Add a daily activity planner section in the Work tab HTML (`index.html`).
-  - Task list with: task name, time slot, category, checkbox for completion.
-  - "Add Task" button.
-  - Daily summary showing total hours by category.
-- Add a Pomodoro timer component next to each task (start/pause/reset, 25-min default).
-- Wire to backend: Create new API endpoints `POST /api/work/tasks`, `GET /api/work/tasks`, `PUT /api/work/tasks/{id}` in `main.py`, or store tasks as part of the existing work session model.
-- Add corresponding JS logic in `app.js` (within the Work section).
+### 2B. Work Tab — Tiimo-Style Activity Planner (Combined View)
+- **Combine "Log Work" and "Today's Plan"**: Merge the traditional manual "Log Work" form with the new "Today's Plan" activity planner, as they serve the same function.
+- **Graphic Task List & Dial Checkboxes**: 
+  - Refine the UI to be highly graphic, clean, and inspired by the Tiimo screenshots.
+  - **Spacing & Layout**: Spread the tasks/activities out vertically. Place the scheduled time visually distinct and bold the task name.
+- **Custom Pomodoro Tracking per Task**: 
+  - Inside each task card, add an input field to manually record how many Pomodoros (e.g., 4, 5) were completed for that specific task.
+  - Use a separate "Mark as Done" button on the task card to complete it.
+- **Auto-Log to Work History**: 
+  - Instead of logging a set 25 minutes on checkoff, the app will read the custom Pomodoro input (multiplying by 25 mins) and log *that* specific duration when "Mark as Done" is clicked.
+- **Global Pomodoro Timer**: Keep the main Pomodoro timer separate but assignable to a task (when you click Focus, it remembers what task you are timing).
 
 ---
 

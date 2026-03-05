@@ -2,7 +2,7 @@ import json
 from datetime import date, timedelta
 from typing import List, Dict
 
-async def generate_work_insights(sessions: List[Dict]) -> str:
+def generate_work_insights(sessions: List[Dict]) -> str:
     """Analyze work sessions and return AI-generated insights."""
     from services.gemini_service import generate_text
 
@@ -46,7 +46,7 @@ async def generate_work_insights(sessions: List[Dict]) -> str:
     """
 
     try:
-        insight = await generate_text(prompt)
+        insight = generate_text(prompt)
         return insight
     except Exception as e:
         return f"Could not generate insights at this time. (Error: {str(e)})"

@@ -1437,4 +1437,460 @@ input[type="range"]::-webkit-slider-thumb {
     color: var(--text-muted);
     text-align: center;
     margin-top: 2px;
+
+
+    /* =========================================
+   TIIMO-STYLE ACTIVITY PLANNER
+   ========================================= */
+
+    .tiimo-task-item {
+        display: flex;
+        align-items: center;
+        background: white;
+        padding: 12px 16px;
+        border-radius: 16px;
+        margin-bottom: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .tiimo-task-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .tiimo-task-left-bar {
+        position: absolute;
+        left: 0;
+        top: 12px;
+        bottom: 12px;
+        width: 4px;
+        border-radius: 0 4px 4px 0;
+        background-color: #8b5cf6;
+        /* default */
+    }
+
+    .tiimo-task-content {
+        flex: 1;
+        padding-left: 8px;
+        /* space from the left bar */
+    }
+
+    .tiimo-task-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 2px;
+    }
+
+    .tiimo-task-meta {
+        font-size: 12px;
+        color: #6b7280;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .tiimo-task-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .tiimo-icon-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .tiimo-checkbox {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid #d1d5db;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .tiimo-checkbox.checked {
+        background-color: #10b981;
+        border-color: #10b981;
+        color: white;
+    }
+
+    .tiimo-checkbox.checked::after {
+        content: "✓";
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .tiimo-task-item.completed .tiimo-task-title {
+        text-decoration: line-through;
+        color: #9ca3af;
+    }
+
+    /* Category Colors for left bar */
+    .cat-school {
+        background-color: #fbbf24;
+    }
+
+    .cat-dsa {
+        background-color: #3b82f6;
+    }
+
+    .cat-courses {
+        background-color: #10b981;
+    }
+
+    .cat-job {
+        background-color: #8b5cf6;
+    }
+
+    .cat-others {
+        background-color: #9ca3af;
+    }
+
+    .cat-bg-school {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+
+    .cat-bg-dsa {
+        background-color: #dbeafe;
+        color: #2563eb;
+    }
+
+    .cat-bg-courses {
+        background-color: #d1fae5;
+        color: #059669;
+    }
+
+    .tiimo-task-item {
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+        margin-bottom: 24px;
+        position: relative;
+    }
+
+    /* Flex row to put time on left, card on right */
+    .tiimo-task-row {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    /* Left side: Time and Timeline line */
+    .tiimo-task-time-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 80px;
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    /* Vertical line connecting tasks - stretches down */
+    .tiimo-task-time-col::after {
+        content: "";
+        position: absolute;
+        top: 24px;
+        /* Start below the dot */
+        bottom: -40px;
+        /* Extend to the next task */
+        width: 2px;
+        background-color: #e5e7eb;
+        z-index: 0;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    /* The actual time text */
+    .tiimo-task-time-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #4b5563;
+        text-align: center;
+        margin-bottom: 4px;
+        font-variant-numeric: tabular-nums;
+        z-index: 1;
+        background: #fdfdfc;
+        /* Match page bg so line doesn't cut through */
+        padding: 2px 0;
+    }
+
+    /* The dot below the time */
+    .tiimo-task-time-dot {
+        width: 10px;
+        height: 10px;
+        background-color: #d1d5db;
+        /* Default gray dot */
+        border-radius: 50%;
+        z-index: 1;
+        /* To make it look like a hollow ring on the line, we can add a border */
+        border: 2px solid white;
+        box-shadow: 0 0 0 1px #d1d5db;
+        background-color: white;
+    }
+
+    /* The Card Container - Right side */
+    .tiimo-task-card {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid rgba(0, 0, 0, 0.02);
+        /* Slight definition */
+    }
+
+    .tiimo-task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Left Color Bar inside the card */
+    .tiimo-task-left-bar {
+        position: absolute;
+        left: 0;
+        top: 16px;
+        bottom: 16px;
+        width: 4px;
+        border-radius: 0 4px 4px 0;
+        background-color: #8b5cf6;
+    }
+
+    .tiimo-task-content {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding-left: 12px;
+    }
+
+    .tiimo-task-text-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        margin-left: 16px;
+    }
+
+    .tiimo-task-title {
+        font-size: 16px;
+        /* larger */
+        font-weight: 800;
+        /* much bolder */
+        color: #111827;
+        margin-bottom: 4px;
+        letter-spacing: -0.01em;
+    }
+
+    .tiimo-task-meta {
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .tiimo-task-actions {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-left: auto;
+    }
+
+    .tiimo-icon-circle {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .tiimo-checkbox {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid #111827;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        background: transparent;
+    }
+
+    .tiimo-checkbox.checked {
+        background-color: #111827;
+        border-color: #111827;
+        color: white;
+    }
+
+    .tiimo-checkbox.checked::after {
+        content: "✓";
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .tiimo-task-item.completed .tiimo-task-title {
+        text-decoration: line-through;
+        color: #9ca3af;
+    }
+
+    /* Category Colors for left bar */
+    .cat-school {
+        background-color: #fbbf24;
+    }
+
+    .cat-dsa {
+        background-color: #3b82f6;
+    }
+
+    .cat-courses {
+        background-color: #10b981;
+    }
+
+    .cat-job {
+        background-color: #8b5cf6;
+    }
+
+    .cat-others {
+        background-color: #9ca3af;
+    }
+
+    .cat-bg-school {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+
+    .cat-bg-dsa {
+        background-color: #dbeafe;
+        color: #2563eb;
+    }
+
+    .cat-bg-courses {
+        background-color: #d1fae5;
+        color: #059669;
+    }
+
+    .cat-bg-job {
+        background-color: #ede9fe;
+        color: #7c3aed;
+    }
+
+    .cat-bg-others {
+        background-color: #f3f4f6;
+        color: #4b5563;
+    }
+
+    /* Pomodoro Specifics */
+    .tiimo-pomodoro {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 16px;
+        background: #fafaf9;
+        border-radius: 24px;
+        margin-top: 16px;
+    }
+
+    .tiimo-pomodoro-title {
+        font-family: 'Georgia', serif;
+        /* Tiimo uses serif for some headers */
+        font-size: 24px;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+
+    .tiimo-pomodoro-time {
+        font-size: 13px;
+        color: #4b5563;
+        margin-bottom: 24px;
+    }
+
+    .tiimo-pomodoro-ring {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: conic-gradient(#8b5cf6 0%, #e5e7eb 0%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 24px;
+        position: relative;
+        box-shadow: inset 0 0 0 20px #e5e7eb;
+        /* Track background via shadow hack */
+    }
+
+    /* We use a pseudo element for the inner circle */
+    .tiimo-pomodoro-ring::before {
+        content: "";
+        position: absolute;
+        inset: 20px;
+        background-color: #fafaf9;
+        /* match parent background */
+        border-radius: 50%;
+    }
+
+    .tiimo-pomodoro-icon {
+        font-size: 48px;
+        position: relative;
+        /* over the pseudo element */
+        z-index: 1;
+    }
+
+    .tiimo-pomodoro-timer {
+        font-family: 'Georgia', serif;
+        font-size: 48px;
+        color: #111827;
+        margin-bottom: 16px;
+        line-height: 1;
+    }
+
+    .tiimo-pomodoro-controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .tiimo-pomodoro-btn {
+        background: black;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 24px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        min-width: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tiimo-pomodoro-btn.secondary {
+        background: transparent;
+        color: black;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 8px;
+        min-width: auto;
+    }
 }

@@ -21,7 +21,7 @@ load_dotenv()
 from models.schemas import (
     DailyCheckIn, RunLog, BookEntry, JournalEntry,
     ChatMessage, ChatResponse, ReviewRequest, TravelExpense, SocialConnection,
-    WorkSession, ReadingProgressEntry, BookNote, ReviewChecklist,
+    WorkSession, WorkTask, ReadingProgressEntry, BookNote, ReviewChecklist,
 )
 from services.firestore_service import save_document, get_documents, get_documents_by_date_range, delete_document
 from services.journal_agent import generate_journal_prompt
@@ -218,8 +218,51 @@ async def get_work_insights():
     if not sessions:
         return {"insight": "Not enough data yet. Log some work sessions to get insights!"}
 
-    insight = await generate_work_insights(sessions)
+    insight = generate_work_insights(sessions)
     return {"insight": insight}
+
+
+# ─── Work Tasks (Activity Planner) ───────────────────────────────────
+
+@app.post("/api/work/tasks")
+async def create_work_task(task: WorkTask):
+    """Create a new work task for the daily planner."""
+    doc_id = save_document("work_tasks", task.model_dump())
+    return {"status": "saved", "id": doc_id, "message": f"Task added: {task.name} ✅"}
+
+
+@app.get("/api/work/tasks")
+async def get_work_tasks(date_str: str = None, limit: int = 50):
+    """Get work tasks, optionally filtered by date."""
+    tasks = get_documents("work_tasks", limit=limit)
+    if date_str:
+        tasks = [t for t in tasks if t.get("date") == date_str]
+    # Sort by order then time_slot
+    tasks.sort(key=lambda t: (t.get("order", 0), t.get("time_slot", "")))
+    return tasks
+
+
+@app.put("/api/work/tasks/{task_id}")
+async def update_work_task(task_id: str, updates: dict):
+    """Update a work task (toggle completion, edit fields)."""
+    tasks = get_documents("work_tasks", limit=1000)
+    for t in tasks:
+        if t.get("id") == task_id:
+            for key in ["name", "time_slot", "category", "completed", "duration_minutes", "order", "date"]:
+                if key in updates:
+                    t[key] = updates[key]
+            tid = t.pop("id", task_id)
+            save_document("work_tasks", t, doc_id=tid)
+            return {"status": "updated", "id": tid}
+    raise HTTPException(status_code=404, detail="Task not found")
+
+
+@app.delete("/api/work/tasks/{task_id}")
+async def delete_work_task(task_id: str):
+    """Delete a work task."""
+    if delete_document("work_tasks", task_id):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Task not found")
 
 
 # ─── Reading ─────────────────────────────────────────────────────────
@@ -857,7 +900,7 @@ async def update_social(social_id: str, updates: dict):
     connections = get_documents("social", limit=1000)
     for c in connections:
         if c.get("id") == social_id:
-            for key in ["date", "name", "category", "context", "location", "notes", "follow_up"]:
+            for key in ["date", "name", "category", "context", "location", "notes", "follow_up", "duration_minutes"]:
                 if key in updates:
                     c[key] = updates[key]
             cid = c.pop("id", social_id)

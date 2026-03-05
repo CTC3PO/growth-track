@@ -86,6 +86,17 @@ class WorkSession(BaseModel):
     notes: Optional[str] = None
 
 
+class WorkTask(BaseModel):
+    """Tiimo-style daily activity planner task."""
+    date: date
+    name: str
+    time_slot: Optional[str] = Field(None, description="e.g. '09:00-10:30'")
+    category: WorkCategory = WorkCategory.OTHERS
+    completed: bool = False
+    duration_minutes: Optional[int] = Field(None, ge=0)
+    order: Optional[int] = Field(0, description="Display order")
+
+
 # ─── Running ─────────────────────────────────────────────────────────
 
 class RunLog(BaseModel):
@@ -244,6 +255,7 @@ class SocialConnection(BaseModel):
     location: Optional[str] = None
     notes: Optional[str] = None
     follow_up: Optional[str] = Field(None, description="Any follow-up planned")
+    duration_minutes: Optional[int] = Field(None, ge=0, description="Duration of interaction in minutes")
 
 
 # ─── Reviews ─────────────────────────────────────────────────────────

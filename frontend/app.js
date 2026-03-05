@@ -97,6 +97,30 @@ async function apiPost(endpoint, data) {
 }
 
 
+async function apiPut(endpoint, data) {
+    console.log(`[API PUT] ${endpoint}`, data);
+    const headers = { 'Content-Type': 'application/json' };
+    try {
+        const res = await fetch(`${API}${endpoint}`, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`[API PUT ERROR] ${endpoint}: ${res.status} ${text}`);
+            throw new Error(text);
+        }
+        const result = await res.json();
+        console.log(`[API PUT SUCCESS] ${endpoint}`, result);
+        return result;
+    } catch (err) {
+        console.error(`[API PUT FAIL] ${endpoint}: ${err.message}`);
+        throw err;
+    }
+}
+
+
 // ─── Calendar Widget ──────────────────────────────────────────
 
 const _calState = {};  // store month offsets per calendar
@@ -3049,6 +3073,9 @@ async function loadWorkData() {
                 catCounts[c] = (catCounts[c] || 0) + (w.duration_minutes || 0);
 
                 let hrStr = '';
+                let pomoCount = Math.floor((w.duration_minutes || 0) / 25);
+                let pomoStr = pomoCount > 0 ? `<div style="font-size: 11px; color: #8b5cf6; margin-top: 2px;">🍅 x ${pomoCount}</div>` : '';
+
                 if (w.duration_minutes >= 60) {
                     hrStr = `${Math.floor(w.duration_minutes / 60)}h ${w.duration_minutes % 60}m`;
                 } else {
@@ -3063,8 +3090,9 @@ async function loadWorkData() {
                             <strong>${(w.category || 'Work').toUpperCase()}</strong>
                             <div class="item-meta">${w.date} · ${w.notes || ''}</div>
                         </div>
-                        <div class="history-item-right" style="padding-right: 32px;">
+                        <div class="history-item-right" style="padding-right: 32px; text-align: right;">
                             <div class="history-amount">${hrStr}</div>
+                            ${pomoStr}
                         </div>
                     </div>
                 `;
@@ -3077,7 +3105,13 @@ async function loadWorkData() {
         const todayHrs = Math.floor(todayMins / 60);
         const todayRemMins = todayMins % 60;
         const workTodayTotal = document.getElementById('work-today-total');
-        if (workTodayTotal) workTodayTotal.textContent = `${todayHrs}h ${todayRemMins}m`;
+
+        let totalPomoCount = Math.floor(todayMins / 25);
+        let totalPomoStr = totalPomoCount > 0 ? `<div style="font-size: 13px; color: #8b5cf6; margin-top: 4px; font-weight: 600;">🍅 x ${totalPomoCount} Pomodoros</div>` : '';
+
+        if (workTodayTotal) {
+            workTodayTotal.innerHTML = `${todayHrs}h ${todayRemMins}m ${totalPomoStr}`;
+        }
 
         const topCat = Object.keys(catCounts).sort((a, b) => catCounts[b] - catCounts[a])[0];
         const workTodayTop = document.getElementById('work-today-top');
@@ -3188,20 +3222,49 @@ if (btnWorkInsights) {
 
 // ─── Social ────────────────────────────────────────────────────
 
+const SOCIAL_EMOJIS = {
+    friend: '👫',
+    acquaintance: '👋',
+    professional: '💼',
+    colleague: '🏢',
+    family: '👨‍👩‍👧',
+    social_event: '🎉',
+    travel_buddy: '✈️',
+    mentor: '🎓',
+    other: '👤'
+};
+
+// Helper to get string value from an element
+function getStringValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : null;
+}
+
+// Helper to get number value from an element
+function getNumberValue(id) {
+    const el = document.getElementById(id);
+    return el ? parseFloat(el.value) : 0;
+}
+
 const socialForm = document.getElementById('social-form');
 if (socialForm) {
     socialForm.addEventListener('submit', async e => {
         e.preventDefault();
         const editId = document.getElementById('social-edit-id')?.value;
         const data = {
-            date: document.getElementById('social-date')?.value,
-            name: document.getElementById('social-name')?.value,
-            category: document.getElementById('social-category')?.value,
-            context: document.getElementById('social-context')?.value || null,
-            location: document.getElementById('social-location')?.value || null,
-            notes: document.getElementById('social-notes')?.value || null,
-            follow_up: document.getElementById('social-followup')?.value || null,
+            name: getStringValue('social-name'),
+            category: getStringValue('social-category'),
+            context: getStringValue('social-context'),
+            location: getStringValue('social-location'),
+            date: getStringValue('social-date') || new Date().toISOString().split('T')[0],
+            notes: getStringValue('social-notes'),
+            follow_up: getStringValue('social-follow-up')
         };
+
+        const duration = getNumberValue('social-duration');
+        if (duration > 0) {
+            data.duration_minutes = duration;
+        }
 
         try {
             if (editId) {
@@ -3223,6 +3286,22 @@ if (socialForm) {
         }
     });
 }
+
+// Event listener for social category change to show/hide duration
+document.getElementById('social-category')?.addEventListener('change', (e) => {
+    const category = e.target.value;
+    const durationField = document.getElementById('social-duration-field');
+    if (durationField) {
+        // Show duration for 'social_event' and 'travel_buddy'
+        if (category === 'social_event' || category === 'travel_buddy') {
+            durationField.style.display = 'block';
+        } else {
+            durationField.style.display = 'none';
+            document.getElementById('social-duration').value = ''; // Clear value if hidden
+        }
+    }
+});
+
 
 async function loadSocialData() {
     try {
@@ -3262,18 +3341,23 @@ async function loadSocialData() {
             if (connections.length === 0) {
                 historyDiv.innerHTML = '<div class="loading-text">No connections logged yet</div>';
             } else {
-                historyDiv.innerHTML = connections.slice(0, 20).map(c => `
+                historyDiv.innerHTML = connections.slice(0, 20).map(c => {
+                    const emoji = SOCIAL_EMOJIS[c.category] || SOCIAL_EMOJIS['friend'];
+                    const durText = c.duration_minutes ? `&bull; ${c.duration_minutes}m` : '';
+                    return `
                     <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.social-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.social-edit-btn').style.opacity='0'">
                         <button class="social-edit-btn" data-social-id="${c.id}" title="Edit"
                             style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
                         <div class="history-item-left" style="padding-right: 32px;">
-                            <strong>${c.name}</strong>
-                            <div class="item-meta">${c.date}${c.location ? ' · ' + c.location : ''}${c.context ? ' · ' + c.context : ''}</div>
-                            <span class="category-badge">${(c.category || 'friend').replace('_', ' ')}</span>
+                            <strong>${emoji} ${c.name}</strong>
+                            <div class="item-meta">
+                                ${c.category.replace('_', ' ')} &bull; ${formatDateDisplay(c.date)} ${durText}
+                            </div>
                             ${c.follow_up ? `<div class="item-meta" style="margin-top:4px;color:var(--text-primary)">↳ ${c.follow_up}</div>` : ''}
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
 
                 // Store data and add edit listeners
                 window._socialData = {};
@@ -3311,6 +3395,11 @@ function openSocialEdit(c) {
     if (sNotes) sNotes.value = c.notes || '';
     const sFollowup = document.getElementById('social-followup');
     if (sFollowup) sFollowup.value = c.follow_up || '';
+    if (c.follow_up) document.getElementById('social-follow-up').value = c.follow_up;
+    if (c.duration_minutes) document.getElementById('social-duration').value = c.duration_minutes;
+
+    // Trigger category change to show/hide duration
+    document.getElementById('social-category').dispatchEvent(new Event('change'));
 
     const btn = document.getElementById('social-submit-btn');
     if (btn) btn.textContent = 'Update Connection 🔄';
@@ -3336,6 +3425,14 @@ function cancelSocialEdit() {
     if (cancelBtn) cancelBtn.style.display = 'none';
     const delBtn = document.getElementById('social-delete-btn');
     if (delBtn) delBtn.style.display = 'none';
+
+    // Hide duration by default
+    document.getElementById('social-duration').value = '';
+    const catSelect = document.getElementById('social-category');
+    if (catSelect) {
+        catSelect.value = 'friend';
+        catSelect.dispatchEvent(new Event('change'));
+    }
 }
 
 const socialCancelBtn = document.getElementById('social-cancel-edit-btn');
@@ -3700,9 +3797,382 @@ document.getElementById('speak-prompt-btn')?.addEventListener('click', () => {
     };
 
     document.getElementById('speak-prompt-btn').textContent = '⏸';
+    document.getElementById('speak-prompt-btn').textContent = '⏸';
     window.speechSynthesis.speak(utterance);
     showToast('🔊 Reading prompt aloud...');
 });
+
+
+// ─── Phase 2: Activity Planner ──────────────────────────────────────
+
+let workTasks = [];
+let todayDate = new Date().toISOString().split('T')[0];
+
+let pomoInterval = null;
+let pomoTimeRemaining = 25 * 60; // 25 mins
+let pomoActiveTaskId = null;
+let isPomoRunning = false;
+
+function setupActivityPlannerListeners() {
+    // Set date label
+    const dateLabel = document.getElementById('planner-date-label');
+    if (dateLabel) {
+        dateLabel.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+
+    // Add Task Form
+    const addForm = document.getElementById('add-task-form');
+    if (addForm) {
+        addForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = addForm.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+
+            const newTask = {
+                name: document.getElementById('task-name').value,
+                time_slot: document.getElementById('task-time-slot').value,
+                category: document.getElementById('task-category').value,
+                date: todayDate,
+                completed: false,
+                order: workTasks.length
+            };
+
+            try {
+                const res = await apiPost('/api/work/tasks', newTask);
+                newTask.id = res.id;
+                workTasks.push(newTask);
+
+                // Clear inputs
+                document.getElementById('task-name').value = '';
+                document.getElementById('task-time-slot').value = '';
+
+                renderWorkTasks();
+                showToast(res.message);
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to add task', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '+ Add';
+            }
+        });
+    }
+
+    // Pomo Controls
+    document.getElementById('pomo-start-btn')?.addEventListener('click', togglePomodoro);
+    document.getElementById('pomo-pause-btn')?.addEventListener('click', togglePomodoro);
+    document.getElementById('pomo-reset-btn')?.addEventListener('click', () => resetPomodoro(pomoActiveTaskId));
+}
+
+async function loadWorkTasks() {
+    const listDiv = document.getElementById('task-list');
+    if (!listDiv) return;
+
+    try {
+        const tasks = await apiGet(`/api/work/tasks?date_str=${todayDate}`);
+        workTasks = tasks || [];
+        renderWorkTasks();
+    } catch (err) {
+        console.error("Failed to load work tasks:", err);
+        listDiv.innerHTML = '<div class="loading-text" style="color:red">Failed to load tasks</div>';
+    }
+}
+
+// Make sure these get called when opening Work tab
+document.querySelector('.nav-item[onclick="switchTab(\'work\')"]')?.addEventListener('click', () => {
+    loadWorkTasks();
+    setupActivityPlannerListeners();
+});
+// Also run on init in case Work is default
+document.addEventListener('DOMContentLoaded', () => {
+    setupActivityPlannerListeners();
+    loadWorkTasks();
+});
+
+
+function renderWorkTasks() {
+    const listDiv = document.getElementById('task-list');
+    if (!listDiv) return;
+
+    if (workTasks.length === 0) {
+        listDiv.innerHTML = '<div class="loading-text" style="font-size: 13px;">No tasks yet — add one above!</div>';
+        renderDailySummary();
+        return;
+    }
+
+    // Sort by order roughly
+    workTasks.sort((a, b) => a.order - b.order);
+
+    listDiv.innerHTML = '';
+    workTasks.forEach(task => {
+        const catClass = `cat-${task.category}`;
+        const item = document.createElement('div');
+        item.className = `tiimo-task-item ${task.completed ? 'completed' : ''}`;
+
+        // Emoticon via category mapping reused roughly
+        let emoji = '📦';
+        if (task.category === 'school') emoji = '🎓';
+        if (task.category === 'dsa') emoji = '💻';
+        if (task.category === 'courses') emoji = '📚';
+        if (task.category === 'job') emoji = '💼';
+
+        // Ensure no stray dots are rendered if no time slot is provided, but keep layout spacing
+        let timeLabelHtml = `
+            <div class="tiimo-task-time-col">
+                ${task.time_slot ? `<div class="tiimo-task-time-label">${task.time_slot}</div><div class="tiimo-task-time-dot"></div>` : ''}
+            </div>
+        `;
+
+        // Added numeric input for logging Pomodoros explicitly
+        let actionButtons = '';
+        if (task.completed) {
+            actionButtons = `<span style="font-size: 11px; color: #10b981; font-weight: 600;">✓ Completed</span>`;
+        } else {
+            actionButtons = `
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">🍅</span>
+                        <input type="number" id="pomo-input-${task.id}" min="1" max="20" placeholder="1" style="width:40px; height:24px; padding:0 4px; font-size:12px; border-radius:4px; border:1px solid #d1d5db; text-align:center;">
+                        <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="markTaskDone('${task.id}')">Mark as Done</button>
+                    </div>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto; width:100%;" onclick="openPomodoro('${task.id}')">▶ Focus Timer</button>
+                </div>
+            `;
+        }
+
+        item.innerHTML = `
+            <div class="tiimo-task-row">
+                ${timeLabelHtml}
+                <div class="tiimo-task-card">
+                    <div class="tiimo-task-left-bar ${catClass}"></div>
+                    
+                    <div class="tiimo-task-content">
+                        <div class="tiimo-checkbox ${task.completed ? 'checked' : ''}"></div>
+                        <div class="tiimo-task-text-group">
+                            <div class="tiimo-task-title">${task.name}</div>
+                            <div class="tiimo-task-meta">
+                                <span style="text-transform: capitalize;">${task.category}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tiimo-task-actions">
+                        ${actionButtons}
+                    </div>
+                </div>
+            </div>
+        `;
+        listDiv.appendChild(item);
+    });
+
+    renderDailySummary();
+}
+
+// Make accessible to onclick
+window.markTaskDone = async function (taskId) {
+    const task = workTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // Grab custom Pomodoro count
+    const pomoInput = document.getElementById(`pomo-input-${taskId}`);
+    let pomoCount = 1; // Default
+    if (pomoInput && pomoInput.value) {
+        pomoCount = parseInt(pomoInput.value, 10);
+        if (isNaN(pomoCount) || pomoCount < 1) pomoCount = 1;
+    }
+
+    // Optistic UI
+    task.completed = true;
+    renderWorkTasks();
+
+    try {
+        await apiPut(`/api/work/tasks/${taskId}`, { completed: true });
+
+        // Auto-log to Work History
+        const durationToLog = pomoCount * 25;
+        const sessionData = {
+            duration_minutes: durationToLog,
+            category: task.category,
+            date: task.date, // defaults to today
+            notes: `Completed task: ${task.name} (${pomoCount} pomodoros)`
+        };
+
+        await apiPost('/api/work', sessionData);
+        showToast(`Task marked done & logged (${durationToLog}m)`);
+
+        // If the work tab has calendar/stats loaded, we should refresh them
+        if (typeof loadWorkData === 'function') {
+            loadWorkData();
+        }
+        if (typeof loadCalendar === 'function') {
+            loadCalendar('work');
+        }
+
+    } catch (err) {
+        console.error(err);
+        task.completed = false; // revert
+        renderWorkTasks();
+        showToast('Failed to update task', 'error');
+    }
+};
+
+window.openPomodoro = function (taskId) {
+    const task = workTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    pomoActiveTaskId = taskId;
+    resetPomodoro(); // Reset timer if switching tasks
+
+    const container = document.getElementById('pomodoro-container');
+    const label = document.getElementById('pomodoro-task-label');
+
+    label.textContent = `🍅 Focusing on: ${task.name}`;
+    container.style.display = 'block';
+
+    // Scroll to timer
+    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+
+function renderDailySummary() {
+    const summaryDiv = document.getElementById('daily-summary-bars');
+    if (!summaryDiv) return;
+
+    if (workTasks.length === 0) {
+        summaryDiv.innerHTML = '<div class="loading-text" style="font-size: 12px;">Complete tasks to see your summary</div>';
+        return;
+    }
+
+    const counts = {};
+    let totalCompleted = 0;
+
+    workTasks.forEach(t => {
+        if (t.completed) {
+            counts[t.category] = (counts[t.category] || 0) + 1;
+            totalCompleted++;
+        }
+    });
+
+    if (totalCompleted === 0) {
+        summaryDiv.innerHTML = '<div class="loading-text" style="font-size: 12px;">0 tasks completed. Let\'s get to work!</div>';
+        return;
+    }
+
+    summaryDiv.innerHTML = '';
+
+    // Display each category that has completions
+    Object.keys(counts).forEach(cat => {
+        const count = counts[cat];
+        const pct = Math.round((count / totalCompleted) * 100);
+
+        let emoji = '📦';
+        if (cat === 'school') emoji = '🎓';
+        if (cat === 'dsa') emoji = '💻';
+        if (cat === 'courses') emoji = '📚';
+        if (cat === 'job') emoji = '💼';
+
+        const barHtml = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                <span style="font-size: 12px; font-weight: 500; text-transform: capitalize; color: var(--text-primary);">${emoji} ${cat}</span>
+                <span style="font-size: 11px; color: var(--text-secondary);">${count} tasks (${pct}%)</span>
+            </div>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar cat-${cat}" style="width: ${pct}%"></div>
+            </div>
+        `;
+
+        const wrap = document.createElement('div');
+        wrap.style.marginBottom = '6px';
+        wrap.innerHTML = barHtml;
+        summaryDiv.appendChild(wrap);
+    });
+}
+
+// ─── Pomodoro Logic ──────────────────────────────────────────────────
+
+function updatePomodoroDisplay() {
+    const display = document.getElementById('pomodoro-display');
+    const mins = Math.floor(pomoTimeRemaining / 60);
+    const secs = pomoTimeRemaining % 60;
+    display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function togglePomodoro() {
+    const startBtn = document.getElementById('pomo-start-btn');
+    const pauseBtn = document.getElementById('pomo-pause-btn');
+
+    if (isPomoRunning) {
+        // Pause
+        clearInterval(pomoInterval);
+        isPomoRunning = false;
+        startBtn.style.display = 'block';
+        pauseBtn.style.display = 'none';
+        startBtn.innerHTML = '▶ Resume';
+    } else {
+        // Start
+        isPomoRunning = true;
+        startBtn.style.display = 'none';
+        pauseBtn.style.display = 'block';
+
+        pomoInterval = setInterval(() => {
+            pomoTimeRemaining--;
+            updatePomodoroDisplay();
+
+            if (pomoTimeRemaining <= 0) {
+                clearInterval(pomoInterval);
+                isPomoRunning = false;
+                startBtn.style.display = 'block';
+                pauseBtn.style.display = 'none';
+                startBtn.innerHTML = '▶ Start';
+                showToast("Pomodoro finished! Take a break.");
+                playChime();
+
+                // Prompt to mark task complete
+                if (pomoActiveTaskId) {
+                    const t = workTasks.find(x => x.id === pomoActiveTaskId);
+                    if (t && !t.completed) {
+                        if (confirm(`Pomodoro done! Mark "${t.name}" as complete?`)) {
+                            // If they confirm, automatically trigger the done flow
+                            window.markTaskDone(t.id);
+                        }
+                    }
+                }
+            }
+        }, 1000);
+    }
+}
+
+function resetPomodoro() {
+    clearInterval(pomoInterval);
+    isPomoRunning = false;
+    pomoTimeRemaining = 25 * 60;
+    updatePomodoroDisplay();
+
+    const startBtn = document.getElementById('pomo-start-btn');
+    const pauseBtn = document.getElementById('pomo-pause-btn');
+    startBtn.style.display = 'block';
+    startBtn.innerHTML = '▶ Start';
+    pauseBtn.style.display = 'none';
+}
+
+function playChime() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1.5);
+    } catch (e) {
+        console.log("Audio not supported or blocked");
+    }
+}
 
 // Pre-load voices
 if (window.speechSynthesis) {
