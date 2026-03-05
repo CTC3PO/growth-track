@@ -3954,7 +3954,7 @@ function renderWorkTasks() {
                         <div class="tiimo-checkbox ${task.completed ? 'checked' : ''}"></div>
                         <div class="tiimo-task-text-group">
                             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                <div style="font-size:16px; font-weight:800; color:#111827; letter-spacing:-0.01em;">${task.name}</div>
+                                <div style="font-size:16px; font-weight:800; color:var(--text-primary); letter-spacing:-0.01em;">${task.name}</div>
                                 <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:${catBg}; color:${catColor}; text-transform:capitalize; white-space:nowrap;">${emoji} ${task.category}</span>
                             </div>
                         </div>
