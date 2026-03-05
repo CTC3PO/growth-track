@@ -541,15 +541,16 @@ async def get_journal_prompt(tradition: str = "blended"):
             if book_title:
                 context["books_reading"] = book_title
 
-        recent_travel = get_documents("travel_expenses", limit=5)
-        if recent_travel:
-            # check if there's a recent trip expense
-            for expense in recent_travel:
-                trip_name = expense.get("trip")
-                if trip_name:
-                    context["is_traveling"] = True
-                    context["city"] = trip_name
-                    break
+        recent_social = get_documents("social_connections", limit=5)
+        if recent_social:
+            latest = recent_social[0]
+            context["recent_social_connection"] = latest.get("person", "")
+            context["recent_social_activity"] = latest.get("activity", "")
+            
+        recent_work = get_documents("work", limit=5)
+        if recent_work:
+            work_hours = sum(w.get("duration_minutes", 0) for w in recent_work) / 60
+            context["recent_work_hours"] = round(work_hours, 1)
 
         import calendar
         context["day_of_week"] = calendar.day_name[date.today().weekday()]

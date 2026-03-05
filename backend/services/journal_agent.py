@@ -86,6 +86,14 @@ def generate_journal_prompt(
         context_parts.append(f"Currently traveling in: {context.get('city', 'another city')}")
     if context.get("mood"):
         context_parts.append(f"Current mood: {context['mood']}/10")
+    if context.get("recent_social_connection"):
+        context_parts.append(f"Recently connected with: {context['recent_social_connection']} ({context.get('recent_social_activity', 'socializing')})")
+    if context.get("recent_work_hours"):
+        context_parts.append(f"Recent deep work logged: {context['recent_work_hours']} hours")
+    if context.get("books_reading"):
+        context_parts.append(f"Currently reading: {context['books_reading']}")
+    if context.get("recent_run_km"):
+        context_parts.append(f"Recent running distance: {context['recent_run_km']} km")
     if context.get("day_of_week"):
         context_parts.append(f"Day: {context['day_of_week']}")
 

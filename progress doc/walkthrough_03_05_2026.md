@@ -83,3 +83,18 @@ Please visit `http://localhost:8080/` and verify the latest changes on the **Wor
     * Click **▶ Focus Timer** on a different task.
     * Does the global timer update to say `🍅 Focusing on: [Task Name]`?
     * Hit **Start**, wait a few seconds, then hit the reset loop icon. Does it work independent of logging?
+
+---
+
+# Phase 4 — AI & Journal Refinements
+
+## Changes Made
+
+### 4A. AI Prompt — Cross-Tab Context
+- **Backend (`main.py`)**: Updated `GET /api/journal/prompt` to fetch the 5 most recent social connections and the 5 most recent work sessions. It extracts the most recent social connection/activity and calculates the recent work hours, adding these to the context object.
+- **Travel Expenses**: Removed the fetching of travel expenses from the context as requested.
+- **AI Agent (`journal_agent.py`)**: Updated the `generate_journal_prompt` function to parse `recent_social_connection`, `recent_social_activity`, and `recent_work_hours` from the context dictionary and include them in the `user_prompt` so the AI can use this broader context for higher-level reflective prompts.
+
+## Verification
+- Analyzed the codebase to ensure `main.py` correctly requests `social_connections` and `work` collections.
+- Verified `journal_agent.py` processes the newly passed context keys properly and avoids referencing the removed travel entities.
