@@ -3912,10 +3912,13 @@ function renderWorkTasks() {
 
         // Emoticon via category mapping reused roughly
         let emoji = '📦';
-        if (task.category === 'school') emoji = '🎓';
-        if (task.category === 'dsa') emoji = '💻';
-        if (task.category === 'courses') emoji = '📚';
-        if (task.category === 'job') emoji = '💼';
+        let catBg = '#e5e7eb';
+        let catColor = '#4b5563';
+
+        if (task.category === 'school') { emoji = '🎓'; catBg = '#fef3c7'; catColor = '#d97706'; }
+        if (task.category === 'dsa') { emoji = '💻'; catBg = '#dbeafe'; catColor = '#2563eb'; }
+        if (task.category === 'courses') { emoji = '📚'; catBg = '#d1fae5'; catColor = '#059669'; }
+        if (task.category === 'job') { emoji = '💼'; catBg = '#ede9fe'; catColor = '#7c3aed'; }
 
         // Ensure no stray dots are rendered if no time slot is provided, but keep layout spacing
         let timeLabelHtml = `
@@ -3950,9 +3953,9 @@ function renderWorkTasks() {
                     <div class="tiimo-task-content">
                         <div class="tiimo-checkbox ${task.completed ? 'checked' : ''}"></div>
                         <div class="tiimo-task-text-group">
-                            <div class="tiimo-task-title">${task.name}</div>
-                            <div class="tiimo-task-meta">
-                                <span style="text-transform: capitalize;">${task.category}</span>
+                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <div style="font-size:16px; font-weight:800; color:#111827; letter-spacing:-0.01em;">${task.name}</div>
+                                <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:${catBg}; color:${catColor}; text-transform:capitalize; white-space:nowrap;">${emoji} ${task.category}</span>
                             </div>
                         </div>
                     </div>
