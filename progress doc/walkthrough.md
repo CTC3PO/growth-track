@@ -1,31 +1,25 @@
-# Frontend Phase 3 — Walkthrough (03/04/2026)
+# Phase 4 — AI & Journal Refinements (03/05/2026)
 
 ## Summary
 
-Implemented Phase 3 (Agent D) to overhaul the Strava Integration UI, completing the implementation plan.
+Completed Phase 4 of the implementation plan, focusing on deepening the AI's awareness of daily activities and improving the user interface for journal prompts.
 
 ## Changes Made
 
-### Agent D — Strava UI Overhaul
+### AI Prompt Engine
+- **Bug Fix**: Resolved a variable name mismatch in `journal_agent.py` that caused AI prompts to consistently default to a static fallback.
+- **Context Enrichment**: Expanded the telemetry data passed to the AI to include:
+  - **Daily Vitals**: Sleep hours and step counts from the most recent check-in.
+  - **Journal History**: Mood and themes from the previous entry to maintain narrative continuity.
+  - **Temporal Context**: Days elapsed since the last journal entry.
+- **Simplified Instructions**: Removed deprecated travel-related context logic.
 
-| Feature | Files Changed | Status |
-|---------|-------------|--------|
-| **Minimal Connected state** (slim pill style at top of `page-running`) | `index.html` | ✅ |
-| **Persistent Strava Login** (7-day API token cache via `localStorage`) | `app.js` | ✅ |
-| **Strava Runs Card** (showing recent month, with "See more runs" pull-down) | `index.html`, `app.js` | ✅ |
-| **Calendar Sync** (Strava runs merged into the Run history calendar) | `app.js` | ✅ |
-| **Color-Coded Run Calendar** (Easy=green, Long=blue, Tempo=orange, Interval=red, Recovery=gray, Race=gold) | `app.js` | ✅ |
+### Frontend UI Enhancements
+- **Integrated Data Badges**: Implemented mini-badges (e.g., 💤 Sleep, 👣 Steps, 🤝 Social) in the Journal tab that light up when specific data points are used by the AI. This provides transparency and reinforces the integration between tabs.
+- **API Extension**: Updated the prompt endpoint to return the raw `context_data` for UI rendering.
 
 ## Verification
 
-- ✅ Run tab `Connect Strava` correctly authenticates and persists session across page loads.
-- ✅ The Strava Runs card successfully fetches top runs, caching them briefly in localStorage.
-- ✅ Older runs successfully load when clicking "See more runs".
-- ✅ Color coded bubbles populate the running calendar appropriately.
-- ✅ Verified `apiGet('/api/strava/activities')` handles the data extraction perfectly.
-
-### Screenshots
-
-````carousel
-![Strava runs and minimal connect bar](/Users/chautran/.gemini/antigravity/brain/8da4b43e-a8c9-4676-8d2f-05d8e4df1e99/running_tab_top_with_strava_bar_1772610214545.png)
-````
+- ✅ Verified AI prompts now reference specific daily activities (e.g., "Great job on those 12k steps today...").
+- ✅ Confirmed "Integrated Data" badges appear correctly below the prompt card.
+- ✅ Successfully pushed all Phase 4 changes to the `master` branch.

@@ -634,6 +634,33 @@ input[type="range"]::-webkit-slider-thumb {
     font-style: italic;
 }
 
+.context-badge-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.context-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.context-badge.active {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    border-color: var(--accent);
+}
+
 /* ─── Review Section ─────────────────────────────────────────── */
 
 .review-narrative {

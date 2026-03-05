@@ -2093,6 +2093,31 @@ async function loadJournalPrompt() {
 
     try {
         const prompt = await apiGet(`/api/journal/prompt?tradition=${currentTradition}`);
+
+        // Build context badges
+        let contextBadges = '';
+        if (prompt.context_data) {
+            const ctx = prompt.context_data;
+            const activeBadges = [];
+
+            if (ctx.sleep_hours) activeBadges.push('💤 Sleep');
+            if (ctx.steps) activeBadges.push('👣 Steps');
+            if (ctx.last_journal_mood) activeBadges.push('🎭 Last Mood');
+            if (ctx.last_journal_themes && ctx.last_journal_themes.length) activeBadges.push('🏷 Themes');
+            if (ctx.journal_gap_days > 1) activeBadges.push('⏳ Gap');
+            if (ctx.recent_social_connection) activeBadges.push('🤝 Social');
+            if (ctx.recent_work_hours > 0) activeBadges.push('💻 Work');
+            if (ctx.recent_run_km > 0) activeBadges.push('🏃 Running');
+
+            if (activeBadges.length) {
+                contextBadges = `
+                    <div class="context-badge-container">
+                        ${activeBadges.map(b => `<span class="context-badge active">${b}</span>`).join('')}
+                    </div>
+                `;
+            }
+        }
+
         area.innerHTML = `
             <div class="prompt-card">
                 <p class="prompt-text">"${prompt.prompt}"</p>
@@ -2103,6 +2128,7 @@ async function loadJournalPrompt() {
                     </div>
                 ` : ''}
                 <div class="prompt-context">${prompt.context_reason || ''}</div>
+                ${contextBadges}
             </div>
         `;
     } catch (err) {

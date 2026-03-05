@@ -93,8 +93,15 @@ Please visit `http://localhost:8080/` and verify the latest changes on the **Wor
 ### 4A. AI Prompt — Cross-Tab Context
 - **Backend (`main.py`)**: Updated `GET /api/journal/prompt` to fetch the 5 most recent social connections and the 5 most recent work sessions. It extracts the most recent social connection/activity and calculates the recent work hours, adding these to the context object.
 - **Travel Expenses**: Removed the fetching of travel expenses from the context as requested.
-- **AI Agent (`journal_agent.py`)**: Updated the `generate_journal_prompt` function to parse `recent_social_connection`, `recent_social_activity`, and `recent_work_hours` from the context dictionary and include them in the `user_prompt` so the AI can use this broader context for higher-level reflective prompts.
+- **Refined AI Prompt Engine**: Fixed a variable name bug (`system_prompt` vs `system_instruction`) that caused prompts to default to a static fallback.
+- **Deepened AI Context**: AI journal prompts now integrate a broader range of daily data:
+    - Sleep hours and step counts from the current day.
+    - Mood and themes from the last journal entry.
+    - Continuity from previous journal topics.
+- **Improved UI Transparency**: Added "Integrated Data" badges to the journal tab, showing exactly which logs were used to personalize the AI prompt.
+- **Travel Cleanup**: Removed obsolete travel/city context from the AI engine.
 
-## Verification
-- Analyzed the codebase to ensure `main.py` correctly requests `social_connections` and `work` collections.
-- Verified `journal_agent.py` processes the newly passed context keys properly and avoids referencing the removed travel entities.
+### Verification Plan
+- [x] **Backend**: Call `/api/journal/prompt` and verify the `context_data` field contains real tracking data.
+- [x] **Frontend**: Navigate to the Journal tab and confirm that mini-badges (e.g., 💤 Sleep, 👣 Steps) appear below the AI prompt.
+- [x] **Logic**: Verify that the generated prompt references the activity context (e.g., "I see you walked 10k steps today...").

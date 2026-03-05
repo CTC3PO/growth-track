@@ -561,8 +561,8 @@ async def get_journal_prompt(tradition: str = "blended"):
     except Exception:
         pass
 
-    prompt = generate_journal_prompt(tradition=tradition, context=context)
-    return prompt
+    prompt_data = generate_journal_prompt(tradition=tradition, context=context)
+    return {**prompt_data, "context_data": context}
 
 
 @app.post("/api/journal/transcribe")
