@@ -3019,9 +3019,9 @@ if (expenseDeleteBtn) {
 
 // ─── Work (Pomodoro) ───────────────────────────────────────────
 
-const workForm = document.getElementById('work-form');
-if (workForm) {
-    workForm.addEventListener('submit', async e => {
+const workEditForm = document.getElementById('work-edit-form');
+if (workEditForm) {
+    workEditForm.addEventListener('submit', async e => {
         e.preventDefault();
         const editId = document.getElementById('work-edit-id')?.value;
         const data = {
@@ -3044,6 +3044,22 @@ if (workForm) {
                 showToast('✓ Work session logged');
             }
 
+            cancelWorkEdit();
+            loadWorkData();
+            loadCalendar('work');
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    });
+
+    document.getElementById('work-delete-btn')?.addEventListener('click', async () => {
+        const editId = document.getElementById('work-edit-id')?.value;
+        if (!editId) return;
+        if (!confirm('Delete this work session?')) return;
+
+        try {
+            await fetch(`${API}/api/work/${editId}`, { method: 'DELETE' });
+            showToast('✓ Session deleted');
             cancelWorkEdit();
             loadWorkData();
             loadCalendar('work');
@@ -3144,24 +3160,30 @@ function openWorkEdit(w) {
     if (workDuration) workDuration.value = w.duration_minutes || '';
     const workCat = document.getElementById('work-category');
     if (workCat) workCat.value = w.category || 'coding';
-    const workNotes = document.getElementById('work-notes');
     if (workNotes) workNotes.value = w.notes || '';
 
     const btn = document.getElementById('work-submit-btn');
-    if (btn) btn.textContent = 'Update Session 🔄';
-    const cancelBtn = document.getElementById('work-cancel-edit-btn');
-    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
-    const delBtn = document.getElementById('work-delete-btn');
-    if (delBtn) delBtn.style.display = 'inline-flex';
+    if (btn) btn.innerHTML = 'Save Changes';
 
-    document.getElementById('page-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const deleteBtn = document.getElementById('work-delete-btn');
+    if (deleteBtn) deleteBtn.style.display = 'block';
+
+    const form = document.getElementById('work-edit-form');
+    if (form) form.style.display = 'block';
+
+    // Scroll to form
+    form?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function cancelWorkEdit() {
-    const form = document.getElementById('work-form');
-    if (form) form.reset();
     const editId = document.getElementById('work-edit-id');
     if (editId) editId.value = '';
+
+    const form = document.getElementById('work-edit-form');
+    if (form) {
+        form.reset();
+        form.style.display = 'none';
+    }
     const workDate = document.getElementById('work-date');
     if (workDate) workDate.value = today();
 
@@ -3935,9 +3957,7 @@ function renderWorkTasks() {
         // Added numeric input for logging Pomodoros explicitly
         let actionButtons = '';
         if (task.completed) {
-            actionButtons = `
-                <div style="font-size: 28px; font-weight: 700; color: #10b981; margin-right: 8px;">✓</div>
-            `;
+            actionButtons = ''; // Checkmark moved to left of title
         } else {
             actionButtons = `
                 <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
@@ -3947,8 +3967,7 @@ function renderWorkTasks() {
                         <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="markTaskDone('${task.id}')">Mark as Done</button>
                     </div>
                     <div style="display:flex; gap: 6px;">
-                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="editTask('${task.id}')">✏️ Edit</button>
-                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="openPomodoro('${task.id}')">▶ Focus</button>
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto; width:100%;" onclick="openPomodoro('${task.id}')">▶ Focus Timer</button>
                     </div>
                 </div>
             `;
@@ -3963,7 +3982,9 @@ function renderWorkTasks() {
                     <div class="tiimo-task-content">
                         <div class="tiimo-task-text-group" style="margin-left: 0;">
                             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                ${task.completed ? '<div style="font-size: 22px; font-weight: 800; color: #10b981; margin-right: 4px;">✓</div>' : ''}
                                 <div style="font-size:16px; font-weight:800; color:var(--text-primary); letter-spacing:-0.01em;">${task.name}</div>
+                                <button onclick="editTask('${task.id}')" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:14px; padding:0 4px; display:inline-flex; align-items:center; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-secondary)'" title="Edit Task">✏️</button>
                                 <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:${catBg}; color:${catColor}; text-transform:capitalize; white-space:nowrap;">${emoji} ${task.category}</span>
                             </div>
                         </div>

@@ -992,6 +992,48 @@
                     <span class="icon">📋</span>
                     <h3>Recent Sessions</h3>
                 </div>
+
+                <!-- Hidden Edit Form for Recent Sessions -->
+                <form id="work-edit-form"
+                    style="display: none; margin-bottom: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,0.02);">
+                    <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Edit Session</div>
+                    <input type="hidden" id="work-edit-id">
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Duration (mins)</label>
+                            <input type="number" id="work-duration" min="0" step="5">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Category</label>
+                            <select id="work-category">
+                                <option value="school">🎓 School</option>
+                                <option value="dsa">💻 DSA</option>
+                                <option value="courses">📚 Courses</option>
+                                <option value="job">💼 Job</option>
+                                <option value="others">📦 Others</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Date</label>
+                            <input type="date" id="work-date">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Notes</label>
+                            <input type="text" id="work-notes">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="submit" class="btn btn-primary" id="work-submit-btn" style="flex:1;">Save
+                            Changes</button>
+                        <button type="button" class="btn" id="work-delete-btn"
+                            style="background: #ef4444; color: white; padding: 0 16px;">🗑</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelWorkEdit()"
+                            style="padding: 0 16px;">Cancel</button>
+                    </div>
+                </form>
+
                 <div id="work-history" class="history-list-container"></div>
             </div>
         </div>
