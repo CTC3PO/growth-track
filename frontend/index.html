@@ -97,136 +97,132 @@
         <!-- ═══ RUNNING PAGE ═══ -->
         <div id="page-running" class="page active">
 
-            <!-- Top Row: Daily Log + Calendar side-by-side on desktop -->
-            <div class="run-top-grid span-all">
+            <!-- Daily Log Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Daily Log</h3>
+                </div>
+                <form id="checkin-form">
+                    <input type="hidden" id="checkin-edit-id">
 
-                <!-- Daily Log Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Daily Log</h3>
+                    <!-- Daily fields first -->
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="checkin-date" name="checkin-date" required>
                     </div>
-                    <form id="checkin-form">
-                        <input type="hidden" id="checkin-edit-id">
-
-                        <!-- Daily fields first -->
+                    <div class="form-row">
                         <div class="form-group">
-                            <label>Date</label>
-                            <input type="date" id="checkin-date" name="checkin-date" required>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>😴 Sleep (hours)</label>
-                                <input type="number" id="checkin-sleep" step="0.5" min="0" max="24" placeholder="7.5">
-                            </div>
-                            <div class="form-group">
-                                <label>👟 Steps</label>
-                                <input type="number" id="checkin-steps" min="0" placeholder="9000">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>⚡ Energy (1-10)</label>
-                                <input type="range" id="checkin-energy" min="1" max="10" value="5">
-                                <span id="energy-val" style="font-size:12px;color:var(--text-secondary)">5</span>
-                            </div>
-                            <div class="form-group">
-                                <label>🎯 Alignment (1-10)</label>
-                                <input type="range" id="checkin-alignment" min="1" max="10" value="5">
-                                <span id="alignment-val" style="font-size:12px;color:var(--text-secondary)">5</span>
-                            </div>
-                        </div>
-
-                        <!-- Exercises & Run Section (below daily log) -->
-                        <div class="card"
-                            style="border-left: 4px solid var(--accent-blue); margin: 16px 0; padding: 16px;">
-                            <div class="card-header" style="margin-bottom: 12px;">
-                                <span class="icon">💪</span>
-                                <h3 style="font-size: 16px;">Exercises & Run</h3>
-                            </div>
-                            <!-- Run fields -->
-                            <div class="form-row" style="margin-bottom: 10px;">
-                                <div class="form-group">
-                                    <label>🏃 Distance (km)</label>
-                                    <input type="number" id="run-distance" step="0.1" min="0" placeholder="10.5">
-                                </div>
-                                <div class="form-group">
-                                    <label>Duration (min)</label>
-                                    <input type="number" id="run-duration" step="1" min="0" placeholder="55">
-                                </div>
-                                <div class="form-group">
-                                    <label>Type</label>
-                                    <select id="run-type">
-                                        <option value="">No run</option>
-                                        <option value="easy">Easy</option>
-                                        <option value="tempo">Tempo</option>
-                                        <option value="interval">Interval</option>
-                                        <option value="long">Long Run</option>
-                                        <option value="recovery">Recovery</option>
-                                        <option value="race">Race</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <!-- Other exercises -->
-                            <div id="exercises-container">
-                                <label
-                                    style="font-size: 13px; font-weight: 500; color: var(--text-secondary); display:block; margin-bottom:6px;">Other
-                                    Exercises</label>
-                                <div id="exercise-list"
-                                    style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
-                                <div style="display:flex; gap:6px;">
-                                    <select id="exercise-type" style="flex: 1;">
-                                        <option value="walking">Walking</option>
-                                        <option value="biking">Biking</option>
-                                        <option value="strength">Strength Training</option>
-                                        <option value="yoga">Yoga</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                    <input type="number" id="exercise-duration" placeholder="Min" style="width: 70px;">
-                                    <button type="button" id="add-exercise-btn" class="btn btn-secondary"
-                                        style="width:auto; padding:6px 12px; font-size:12px;">+ Add</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-row" style="align-items: center;">
-                            <div class="form-group toggle-group" style="margin-bottom: 0;">
-                                <input type="checkbox" id="checkin-meditation" class="toggle">
-                                <label for="checkin-meditation"
-                                    style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
-                                    🧘 Meditated today
-                                </label>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0; flex: 1;">
-                                <input type="number" id="checkin-meditation-mins" min="0" placeholder="Duration (min)"
-                                    style="display: none;">
-                            </div>
+                            <label>😴 Sleep (hours)</label>
+                            <input type="number" id="checkin-sleep" step="0.5" min="0" max="24" placeholder="7.5">
                         </div>
                         <div class="form-group">
-                            <label>Notes</label>
-                            <textarea id="checkin-notes" rows="2" placeholder="How was your day?"></textarea>
+                            <label>👟 Steps</label>
+                            <input type="number" id="checkin-steps" min="0" placeholder="9000">
                         </div>
-                        <div style="display:flex; gap:8px; margin-top:8px;">
-                            <button type="submit" class="btn btn-primary" id="checkin-submit-btn" style="flex:1;">Save
-                                Log ✓</button>
-                            <button type="button" class="btn" id="checkin-delete-btn"
-                                style="display:none; background: #ef4444; color: white; padding: 0 16px;"
-                                title="Delete Entry">🗑</button>
-                            <button type="button" class="btn btn-secondary" id="checkin-cancel-edit-btn"
-                                style="display:none; padding:8px 16px;">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Activity Calendar -->
-                <div class="card">
-                    <div class="card-header">
-                        <span class="icon">📅</span>
-                        <h3>Activity Calendar</h3>
                     </div>
-                    <div id="run-calendar"></div>
-                </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>⚡ Energy (1-10)</label>
+                            <input type="range" id="checkin-energy" min="1" max="10" value="5">
+                            <span id="energy-val" style="font-size:12px;color:var(--text-secondary)">5</span>
+                        </div>
+                        <div class="form-group">
+                            <label>🎯 Alignment (1-10)</label>
+                            <input type="range" id="checkin-alignment" min="1" max="10" value="5">
+                            <span id="alignment-val" style="font-size:12px;color:var(--text-secondary)">5</span>
+                        </div>
+                    </div>
 
-            </div><!-- /run-top-grid -->
+                    <!-- Exercises & Run Section (below daily log) -->
+                    <div class="card" style="border-left: 4px solid var(--accent-blue); margin: 16px 0; padding: 16px;">
+                        <div class="card-header" style="margin-bottom: 12px;">
+                            <span class="icon">💪</span>
+                            <h3 style="font-size: 16px;">Exercises & Run</h3>
+                        </div>
+                        <!-- Run fields -->
+                        <div class="form-row" style="margin-bottom: 10px;">
+                            <div class="form-group">
+                                <label>🏃 Distance (km)</label>
+                                <input type="number" id="run-distance" step="0.1" min="0" placeholder="10.5">
+                            </div>
+                            <div class="form-group">
+                                <label>Duration (min)</label>
+                                <input type="number" id="run-duration" step="1" min="0" placeholder="55">
+                            </div>
+                            <div class="form-group">
+                                <label>Type</label>
+                                <select id="run-type">
+                                    <option value="">No run</option>
+                                    <option value="easy">Easy</option>
+                                    <option value="tempo">Tempo</option>
+                                    <option value="interval">Interval</option>
+                                    <option value="long">Long Run</option>
+                                    <option value="recovery">Recovery</option>
+                                    <option value="race">Race</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Other exercises -->
+                        <div id="exercises-container">
+                            <label
+                                style="font-size: 13px; font-weight: 500; color: var(--text-secondary); display:block; margin-bottom:6px;">Other
+                                Exercises</label>
+                            <div id="exercise-list"
+                                style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
+                            <div style="display:flex; gap:6px;">
+                                <select id="exercise-type" style="flex: 1;">
+                                    <option value="walking">Walking</option>
+                                    <option value="biking">Biking</option>
+                                    <option value="strength">Strength Training</option>
+                                    <option value="yoga">Yoga</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <input type="number" id="exercise-duration" placeholder="Min" style="width: 70px;">
+                                <button type="button" id="add-exercise-btn" class="btn btn-secondary"
+                                    style="width:auto; padding:6px 12px; font-size:12px;">+ Add</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="align-items: center;">
+                        <div class="form-group toggle-group" style="margin-bottom: 0;">
+                            <input type="checkbox" id="checkin-meditation" class="toggle">
+                            <label for="checkin-meditation"
+                                style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
+                                🧘 Meditated today
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                            <input type="number" id="checkin-meditation-mins" min="0" placeholder="Duration (min)"
+                                style="display: none;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="checkin-notes" rows="2" placeholder="How was your day?"></textarea>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="submit" class="btn btn-primary" id="checkin-submit-btn" style="flex:1;">Save
+                            Log ✓</button>
+                        <button type="button" class="btn" id="checkin-delete-btn"
+                            style="display:none; background: #ef4444; color: white; padding: 0 16px;"
+                            title="Delete Entry">🗑</button>
+                        <button type="button" class="btn btn-secondary" id="checkin-cancel-edit-btn"
+                            style="display:none; padding:8px 16px;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Activity Calendar -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📅</span>
+                    <h3>Activity Calendar</h3>
+                </div>
+                <div id="run-calendar"></div>
+            </div>
+
+
 
             <div class="card span-all">
                 <div class="card-header">
