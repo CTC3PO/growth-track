@@ -114,7 +114,7 @@ async def update_checkin(checkin_id: str, updates: dict):
             for key in ["date", "sleep_time", "wake_time", "sleep_hours", "steps",
                         "meditation", "meditation_minutes", "journal_words",
                         "deep_work_hours", "energy", "alignment", "notes",
-                        "morning_activities", "intention"]:
+                        "morning_activities", "intention", "exercises"]:
                 if key in updates:
                     c[key] = updates[key]
             cid = c.pop("id", checkin_id)
@@ -367,6 +367,11 @@ async def get_reading_progress(book_id: str):
     progress = get_documents("reading_progress", limit=1000)
     book_progress = [p for p in progress if p.get("book_id") == book_id]
     return book_progress
+
+@app.get("/api/reading_progress")
+async def get_all_reading_progress(limit: int = 100):
+    """Get all reading progress entries."""
+    return get_documents("reading_progress", limit=limit)
 
 
 @app.post("/api/books/{book_id}/notes")
@@ -712,7 +717,14 @@ async def get_checklist_template(period: str = "weekly", date_str: str = None):
     if period not in ("weekly", "monthly", "quarterly"):
         raise HTTPException(400, "period must be weekly, monthly, or quarterly")
 
-    today = date.today()
+    if date_str:
+        try:
+            today = date.fromisoformat(date_str)
+        except ValueError:
+            today = date.today()
+    else:
+        today = date.today()
+
     if period == "weekly":
         start = today - timedelta(days=today.weekday())
         end = start + timedelta(days=6)

@@ -1583,6 +1583,18 @@ input[type="range"]::-webkit-slider-thumb {
         background-color: #8b5cf6;
     }
 
+    .cat-daily_task {
+        background-color: #64748b;
+    }
+
+    .cat-social {
+        background-color: #ec4899;
+    }
+
+    .cat-fun {
+        background-color: #f97316;
+    }
+
     .cat-others {
         background-color: #9ca3af;
     }
@@ -1600,6 +1612,26 @@ input[type="range"]::-webkit-slider-thumb {
     .cat-bg-courses {
         background-color: #d1fae5;
         color: #059669;
+    }
+
+    .cat-bg-job {
+        background-color: #ede9fe;
+        color: #7c3aed;
+    }
+
+    .cat-bg-daily_task {
+        background-color: #f1f5f9;
+        color: #475569;
+    }
+
+    .cat-bg-social {
+        background-color: #fdf2f8;
+        color: #db2777;
+    }
+
+    .cat-bg-fun {
+        background-color: #fff7ed;
+        color: #ea580c;
     }
 
     .tiimo-task-item {
@@ -1798,6 +1830,18 @@ input[type="range"]::-webkit-slider-thumb {
         background-color: #8b5cf6;
     }
 
+    .cat-daily_task {
+        background-color: #64748b;
+    }
+
+    .cat-social {
+        background-color: #ec4899;
+    }
+
+    .cat-fun {
+        background-color: #f97316;
+    }
+
     .cat-others {
         background-color: #9ca3af;
     }
@@ -1820,6 +1864,21 @@ input[type="range"]::-webkit-slider-thumb {
     .cat-bg-job {
         background-color: #ede9fe;
         color: #7c3aed;
+    }
+
+    .cat-bg-daily_task {
+        background-color: #f1f5f9;
+        color: #475569;
+    }
+
+    .cat-bg-social {
+        background-color: #fdf2f8;
+        color: #db2777;
+    }
+
+    .cat-bg-fun {
+        background-color: #fff7ed;
+        color: #ea580c;
     }
 
     .cat-bg-others {

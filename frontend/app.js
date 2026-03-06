@@ -4211,6 +4211,9 @@ function renderWorkTasks() {
         if (task.category === 'dsa') { emoji = '💻'; catBg = '#dbeafe'; catColor = '#2563eb'; }
         if (task.category === 'courses') { emoji = '📚'; catBg = '#d1fae5'; catColor = '#059669'; }
         if (task.category === 'job') { emoji = '💼'; catBg = '#ede9fe'; catColor = '#7c3aed'; }
+        if (task.category === 'daily_task') { emoji = '✅'; catBg = '#f1f5f9'; catColor = '#475569'; }
+        if (task.category === 'social') { emoji = '🤝'; catBg = '#fdf2f8'; catColor = '#db2777'; }
+        if (task.category === 'fun') { emoji = '🎉'; catBg = '#fff7ed'; catColor = '#ea580c'; }
 
         // Ensure no stray dots are rendered if no time slot is provided, but keep layout spacing
         let timeLabelHtml = `
@@ -4388,6 +4391,9 @@ function renderDailySummary() {
         if (cat === 'dsa') emoji = '💻';
         if (cat === 'courses') emoji = '📚';
         if (cat === 'job') emoji = '💼';
+        if (cat === 'daily_task') emoji = '✅';
+        if (cat === 'social') emoji = '🤝';
+        if (cat === 'fun') emoji = '🎉';
 
         const barHtml = `
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
