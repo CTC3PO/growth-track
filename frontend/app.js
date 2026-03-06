@@ -4588,7 +4588,7 @@ function renderYearProgress() {
 
                 html += `<div style="font-size: 13px; font-weight: ${fw}; color: ${wColor}; background: ${wBg}; padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; display:flex; justify-content:space-between; align-items:center; transition: all 0.2s;">
                     <span>Week ${w} · ${formattedDate}</span>
-                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px; height:auto; border: ${isCurrentW ? 'none' : ''}; color: ${isCurrentW ? '#000' : ''}" onclick="openChecklistModal('weekly', '${formattedDate}')">Weekly Review</button>
+                    <button class="btn btn-secondary" style="background: ${isCurrentW ? 'transparent' : ''}; padding:4px 10px; font-size:11px; height:auto; border: ${isCurrentW ? 'none' : ''}; color: ${isCurrentW ? '#000' : ''}" onclick="openChecklistModal('weekly', '${formattedDate}')">Weekly Review</button>
                 </div>`;
 
                 weekStart.setDate(weekStart.getDate() + 7);
