@@ -22,8 +22,7 @@ function navigateToPage(page) {
     if (page === 'review') loadReviewData();
     if (page === 'reading') { loadReadingStats(); loadBooks(); loadCalendar('reading'); }
     if (page === 'journal') { loadJournalPrompt(); loadJournalHistory(); loadCalendar('journal'); }
-    if (page === 'checkin') { loadCheckinHistory(); loadCalendar('checkin'); }
-    if (page === 'running') { loadRunHistory(); loadCalendar('running'); }
+    if (page === 'running') { loadRunHistory(); loadCheckinHistory(); loadCalendar('running'); }
     if (page === 'work') { loadWorkData(); loadCalendar('work'); }
     if (page === 'travel') { initCurrencySelectors(); loadExpenses(); loadCalendar('travel'); }
     if (page === 'social') { loadSocialData(); loadCalendar('social'); }
@@ -490,8 +489,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (convertTo) convertTo.addEventListener('change', runConversion);
 
     // Initial load
+    // Initial load — checkin data now lives on the running tab
     loadCheckinHistory();
-    loadCalendar('checkin');
 
     // Defer loading summary slightly so it doesn't block main UI render
     setTimeout(() => { if (typeof loadDailySummary === 'function') loadDailySummary(); }, 500);
@@ -756,7 +755,6 @@ if (checkinForm) {
             }
             cancelCheckinEdit();
             loadCheckinHistory();
-            loadCalendar('checkin');
         } catch (err) {
             showToast('Error: ' + err.message, 'error');
         }
@@ -867,7 +865,7 @@ function openCheckinEdit(c) {
     const delBtn = document.getElementById('checkin-delete-btn');
     if (delBtn) delBtn.style.display = 'inline-flex';
 
-    document.getElementById('page-checkin')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('page-running')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function cancelCheckinEdit() {
@@ -914,7 +912,6 @@ if (checkinDeleteBtn) {
                 showToast('✓ Check-in deleted');
                 cancelCheckinEdit();
                 loadCheckinHistory();
-                loadCalendar('checkin');
             } catch (err) {
                 showToast('Error: ' + err.message, 'error');
             }
