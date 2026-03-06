@@ -543,20 +543,16 @@ window.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('strava_token_expiry');
     }
 
-    if (stravaBtn && stravaStatusText) {
+    if (stravaBtn) {
         if (isStravaValid) {
-            stravaStatusText.innerHTML = '✅ Connected to Strava';
             stravaBtn.style.display = 'none';
             if (stravaProfileLink) stravaProfileLink.style.display = 'inline-block';
-            if (stravaRunsCard) stravaRunsCard.style.display = 'block';
 
             // Auto-fetch runs
             fetchStravaRuns(activeToken);
         } else {
-            stravaStatusText.innerHTML = 'Connect Strava';
             stravaBtn.style.display = 'inline-block';
             if (stravaProfileLink) stravaProfileLink.style.display = 'none';
-            if (stravaRunsCard) stravaRunsCard.style.display = 'none';
 
             stravaBtn.addEventListener('click', async () => {
                 try {

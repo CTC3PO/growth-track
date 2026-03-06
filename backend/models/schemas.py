@@ -75,6 +75,9 @@ class DailyCheckIn(BaseModel):
     morning_activities: Optional[list[dict]] = Field(None, description="List of {time, activity, completed}")
     intention: Optional[str] = Field(None, description="Morning intention for the day")
 
+    # Exercises (e.g., walking, biking, strength training) in addition to running
+    exercises: Optional[list[dict]] = Field(None, description="List of {type: str, duration_minutes: int}")
+
 
 # ─── Work ────────────────────────────────────────────────────────────
 
