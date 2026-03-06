@@ -428,7 +428,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const checkinDate = document.getElementById('checkin-date');
     if (checkinDate) {
         checkinDate.value = today();
-        checkinDate.addEventListener('change', (e) => loadMorningPlanningForDate(e.target.value));
+        checkinDate.addEventListener('change', (e) => {
+            loadMorningPlanningForDate(e.target.value);
+            if (typeof loadDailySummary === 'function') loadDailySummary();
+        });
         // Also initial load
         loadMorningPlanningForDate(checkinDate.value);
     }
@@ -469,6 +472,15 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Meditation duration toggle visibility
+    const medCheckbox = document.getElementById('checkin-meditation');
+    const medDuration = document.getElementById('checkin-meditation-mins');
+    if (medCheckbox && medDuration) {
+        medCheckbox.addEventListener('change', (e) => {
+            medDuration.style.display = e.target.checked ? 'block' : 'none';
+        });
+    }
+
     // Currency converter live update
     const convertAmount = document.getElementById('convert-amount');
     if (convertAmount) convertAmount.addEventListener('input', runConversion);
@@ -480,6 +492,12 @@ window.addEventListener('DOMContentLoaded', () => {
     // Initial load
     loadCheckinHistory();
     loadCalendar('checkin');
+
+    // Defer loading summary slightly so it doesn't block main UI render
+    setTimeout(() => { if (typeof loadDailySummary === 'function') loadDailySummary(); }, 500);
+
+    // Render year progress for Summary
+    setTimeout(() => { if (typeof renderYearProgress === 'function') renderYearProgress(); }, 600);
 
     // Attempt global load for default routing setup
     initCurrencySelectors();
@@ -646,6 +664,38 @@ if (addMorningBtn) {
     });
 }
 
+// Exercises activity builder state
+let dailyExercises = [];
+
+function renderExercises() {
+    const list = document.getElementById('exercise-list');
+    if (!list) return;
+    list.innerHTML = dailyExercises.map((e, i) => `
+        <div style="display:flex; align-items:center; gap:6px; padding:6px 8px; background:var(--bg-input); border-radius:8px;">
+            <span style="font-size:12px; color:var(--text-secondary); min-width:60px; text-transform:capitalize;">${e.type}</span>
+            <span style="flex:1; font-size:13px; color:var(--text-primary);">${e.duration_minutes} min</span>
+            <button type="button" onclick="dailyExercises.splice(${i},1); renderExercises();" style="background:none; border:none; color:var(--accent-rose); cursor:pointer; font-size:14px;">✕</button>
+        </div>
+    `).join('');
+}
+
+const addExerciseBtn = document.getElementById('add-exercise-btn');
+if (addExerciseBtn) {
+    addExerciseBtn.addEventListener('click', () => {
+        const typeSelect = document.getElementById('exercise-type');
+        const type = typeSelect ? typeSelect.options[typeSelect.selectedIndex].text : '';
+        const durInput = document.getElementById('exercise-duration');
+        const duration = durInput ? parseInt(durInput.value) : 0;
+
+        if (!type || !duration || isNaN(duration) || duration <= 0) return;
+
+        dailyExercises.push({ type, duration_minutes: duration });
+        renderExercises();
+
+        if (durInput) durInput.value = '';
+    });
+}
+
 const intentionInput = document.getElementById('checkin-intention');
 if (intentionInput) {
     intentionInput.addEventListener('blur', autoSaveMorningPlanning);
@@ -685,6 +735,8 @@ if (checkinForm) {
             energy: parseInt(document.getElementById('checkin-energy')?.value),
             alignment: parseInt(document.getElementById('checkin-alignment')?.value),
             meditation: document.getElementById('checkin-meditation')?.checked,
+            meditation_minutes: parseInt(document.getElementById('checkin-meditation-mins')?.value) || null,
+            exercises: dailyExercises.length > 0 ? dailyExercises : null,
             notes: document.getElementById('checkin-notes')?.value || null,
             morning_activities: morningActivities.length > 0 ? morningActivities : null,
             intention: document.getElementById('checkin-intention')?.value || null,
@@ -736,9 +788,10 @@ async function loadCheckinHistory() {
                 <div>
                     <div class="history-date">${c.date || 'N/A'}</div>
                     <div style="font-size:12px;color:var(--text-secondary)">
-                        ${c.meditation ? '🧘' : ''}
+                        ${c.meditation ? `🧘${c.meditation_minutes ? c.meditation_minutes + 'm' : ''}` : ''}
                         ${c.sleep_hours ? `😴${c.sleep_hours}h` : ''}
                         ${c.steps ? `👟${c.steps.toLocaleString()}` : ''}
+                        ${c.exercises && c.exercises.length ? `💪${c.exercises.length} activities` : ''}
                     </div>
                     ${intentionHtml}
                     ${activitiesHtml}
@@ -786,7 +839,14 @@ function openCheckinEdit(c) {
     const cAlign = document.getElementById('checkin-alignment');
     if (cAlign) { cAlign.value = c.alignment || 5; document.getElementById('alignment-val').textContent = c.alignment || 5; }
     const cMed = document.getElementById('checkin-meditation');
-    if (cMed) cMed.checked = c.meditation || false;
+    const cMedMins = document.getElementById('checkin-meditation-mins');
+    if (cMed) {
+        cMed.checked = c.meditation || false;
+        if (cMedMins) {
+            cMedMins.value = c.meditation_minutes || '';
+            cMedMins.style.display = c.meditation ? 'block' : 'none';
+        }
+    }
     const cNotes = document.getElementById('checkin-notes');
     if (cNotes) cNotes.value = c.notes || '';
     const cIntention = document.getElementById('checkin-intention');
@@ -795,6 +855,10 @@ function openCheckinEdit(c) {
     // Restore morning activities
     morningActivities = c.morning_activities || [];
     renderMorningActivities();
+
+    // Restore exercises
+    dailyExercises = c.exercises || [];
+    renderExercises();
 
     const btn = document.getElementById('checkin-submit-btn');
     if (btn) btn.textContent = 'Update Check-In 🔄';
@@ -815,8 +879,18 @@ function cancelCheckinEdit() {
     if (cDate) cDate.value = today();
     const cIntention = document.getElementById('checkin-intention');
     if (cIntention) cIntention.value = '';
+
+    const cMedMins = document.getElementById('checkin-meditation-mins');
+    if (cMedMins) {
+        cMedMins.value = '';
+        cMedMins.style.display = 'none';
+    }
+
     morningActivities = [];
     renderMorningActivities();
+
+    dailyExercises = [];
+    renderExercises();
 
     const btn = document.getElementById('checkin-submit-btn');
     if (btn) btn.textContent = 'Save Check-In ✓';
@@ -846,6 +920,78 @@ if (checkinDeleteBtn) {
             }
         }
     });
+}
+
+
+// ─── Daily Summary Dashboard ───────────────────────────────────
+
+async function loadDailySummary() {
+    const summaryContainer = document.getElementById('daily-summary-metrics');
+    if (!summaryContainer) return;
+
+    const dateStr = document.getElementById('checkin-date')?.value || today();
+
+    try {
+        summaryContainer.innerHTML = '<div class="loading-text">Loading today\'s activity...</div>';
+
+        const [runs, readingProgress, work, social, expenses] = await Promise.all([
+            apiGet(`/api/runs?limit=100`),
+            apiGet(`/api/reading_progress?limit=100`).catch(() => []),
+            apiGet(`/api/work?limit=100`),
+            apiGet(`/api/social?limit=100`),
+            apiGet(`/api/travel/expenses?limit=100`)
+        ]);
+
+        const todaysRuns = runs.filter(r => r.date === dateStr);
+        const todaysReading = readingProgress.filter(r => r.date === dateStr);
+        const todaysWork = work.filter(w => w.date === dateStr);
+        const todaysSocial = social.filter(s => s.date === dateStr);
+        const todaysExpenses = expenses.filter(e => e.date === dateStr);
+
+        const totalKm = todaysRuns.reduce((sum, r) => sum + (r.distance_km || 0), 0).toFixed(1);
+        const totalRunMins = todaysRuns.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
+
+        const totalPages = todaysReading.reduce((sum, r) => sum + (r.pages_read || 0), 0);
+
+        const totalWorkMins = todaysWork.reduce((sum, w) => sum + (w.duration_minutes || 0), 0);
+        const workHours = (totalWorkMins / 60).toFixed(1);
+
+        const socialCount = todaysSocial.length;
+
+        const totalSpendObj = todaysExpenses.reduce((sum, e) => {
+            const cur = e.currency || 'USD';
+            if (!sum[cur]) sum[cur] = 0;
+            sum[cur] += parseFloat(e.amount || 0);
+            return sum;
+        }, {});
+        const spendStr = Object.keys(totalSpendObj).map(c => `${c} ${totalSpendObj[c].toLocaleString()}`).join(', ') || '0';
+
+        summaryContainer.innerHTML = `
+            <div class="metric-card" style="cursor:pointer;" onclick="navigateToPage('running')">
+                <div class="metric-value">${totalKm} km</div>
+                <div class="metric-label">Run (${totalRunMins}m)</div>
+            </div>
+            <div class="metric-card" style="cursor:pointer;" onclick="navigateToPage('reading')">
+                <div class="metric-value">${totalPages}</div>
+                <div class="metric-label">Pages Read</div>
+            </div>
+            <div class="metric-card" style="cursor:pointer;" onclick="navigateToPage('work')">
+                <div class="metric-value">${workHours} h</div>
+                <div class="metric-label">Work</div>
+            </div>
+            <div class="metric-card" style="cursor:pointer;" onclick="navigateToPage('social')">
+                <div class="metric-value">${socialCount}</div>
+                <div class="metric-label">Social</div>
+            </div>
+            <div class="metric-card" style="cursor:pointer;" onclick="navigateToPage('travel')">
+                <div class="metric-value" style="font-size:14px;">${spendStr}</div>
+                <div class="metric-label">Expenses</div>
+            </div>
+        `;
+    } catch (err) {
+        summaryContainer.innerHTML = '<div class="loading-text" style="color:var(--accent-rose)">Failed to load summary</div>';
+        console.error('Summary load error:', err);
+    }
 }
 
 
@@ -4349,4 +4495,197 @@ function playChime() {
 if (window.speechSynthesis) {
     window.speechSynthesis.getVoices();
     window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+// ─── Summary Tab: Year Progress & Checklists ───────────────
+
+let showPastPeriods = false;
+const pastPeriodsBtn = document.getElementById('toggle-past-periods-btn');
+if (pastPeriodsBtn) {
+    pastPeriodsBtn.addEventListener('click', () => {
+        showPastPeriods = !showPastPeriods;
+        pastPeriodsBtn.textContent = showPastPeriods ? 'Show Current Only' : 'View All Periods';
+        renderYearProgress();
+    });
+}
+
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+}
+
+function renderYearProgress() {
+    const container = document.getElementById('year-progress-container');
+    if (!container) return;
+
+    const todayDate = new Date();
+    const currentYear = todayDate.getFullYear();
+    const currentMonth = todayDate.getMonth(); // 0-11
+    const currentQuarter = Math.floor(currentMonth / 3); // 0-3
+    const currentWeek = getWeekNumber(todayDate);
+
+    let html = '';
+
+    // Render Quarters
+    for (let q = 0; q < 4; q++) {
+        // Hide past if not requested. Hide FUTURE completely unless it's the current quarter.
+        if (!showPastPeriods && q < currentQuarter) continue;
+        if (!showPastPeriods && q > currentQuarter) continue;
+
+        const isCurrentQ = q === currentQuarter;
+        const qOpacity = isCurrentQ ? '1' : (q < currentQuarter ? '0.6' : '0.8');
+        const qColor = isCurrentQ ? 'var(--text-primary)' : 'var(--text-secondary)';
+
+        html += `<div class="quarter-block" style="opacity: ${qOpacity}; margin-bottom: 12px; border-left: 2px solid var(--border); padding-left: 12px;">`;
+        html += `<div style="font-weight: 600; color: ${qColor}; margin-bottom: 8px; font-size: 14px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Quarter ${q + 1}</span>
+            <button class="btn btn-secondary" style="padding:2px 8px; font-size:11px; height:auto;" onclick="openChecklistModal('quarterly', '${currentYear}-Q${q + 1}')">Q${q + 1} Review</button>
+        </div>`;
+
+        // Render Months
+        for (let m = q * 3; m < q * 3 + 3; m++) {
+            if (!showPastPeriods && m < currentMonth) continue;
+            if (!showPastPeriods && m > currentMonth) continue;
+
+            const isCurrentM = m === currentMonth;
+            const mOpacity = isCurrentM ? '1' : (m < currentMonth ? '0.6' : '0.8');
+            const mBg = isCurrentM ? 'var(--bg-input)' : 'transparent';
+            const mColor = isCurrentM ? 'var(--accent-blue)' : 'var(--text-primary)';
+            const monthName = new Date(currentYear, m).toLocaleString('default', { month: 'long' });
+
+            html += `<div class="month-block" style="opacity: ${mOpacity}; background: ${mBg}; padding: 8px; border-radius: 8px; margin-bottom: 4px;">`;
+            html += `<div style="font-weight: 500; font-size: 13px; color: ${mColor}; display:flex; justify-content:space-between; align-items:center;">
+                <span style="cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="toggleMonthWeeks(${m})">
+                    <span style="font-size:10px;">${isCurrentM ? '▼' : '▶'}</span> ${monthName}
+                </span>
+                <button class="btn btn-secondary" style="padding:2px 8px; font-size:11px; height:auto;" onclick="openChecklistModal('monthly', '${currentYear}-${String(m + 1).padStart(2, '0')}-01')">Month Review</button>
+            </div>`;
+
+            // Weeks (hidden by default unless current month)
+            const displayWeeks = isCurrentM ? 'block' : 'none';
+            html += `<div id="weeks-for-month-${m}" style="display: ${displayWeeks}; margin-top: 8px; padding-left: 16px; border-left: 1px dotted var(--border);">`;
+
+            // Simple approximation of weeks for the month
+            const firstDay = new Date(currentYear, m, 1);
+            const lastDay = new Date(currentYear, m + 1, 0);
+            let weekStart = new Date(firstDay);
+            // Move back to Monday
+            weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1);
+
+            while (weekStart <= lastDay) {
+                const w = getWeekNumber(weekStart);
+                if (w > 53) break; // edge case
+
+                const isCurrentW = w === currentWeek;
+                const wColor = isCurrentW ? 'var(--accent-amber)' : 'var(--text-secondary)';
+                const wBg = isCurrentW ? 'rgba(245, 158, 11, 0.1)' : 'transparent';
+
+                const formattedDate = weekStart.toISOString().split('T')[0];
+
+                html += `<div style="font-size: 12px; color: ${wColor}; background: ${wBg}; padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>Week ${w} · ${formattedDate}</span>
+                    <button class="btn btn-secondary" style="padding:2px 8px; font-size:10px; height:auto;" onclick="openChecklistModal('weekly', '${formattedDate}')">Weekly Review</button>
+                </div>`;
+
+                weekStart.setDate(weekStart.getDate() + 7);
+            }
+
+            html += `</div>`; // end weeks
+            html += `</div>`; // end month
+        }
+        html += `</div>`; // end quarter
+    }
+
+    container.innerHTML = html;
+}
+
+window.toggleMonthWeeks = function (m) {
+    const el = document.getElementById(`weeks-for-month-${m}`);
+    if (el) {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+let activeChecklist = null;
+
+window.openChecklistModal = async function (period, dateStr) {
+    const modal = document.getElementById('checklist-modal');
+    const titleEl = document.getElementById('checklist-modal-title');
+    const formContainer = document.getElementById('checklist-modal-form-container');
+
+    if (!modal || !titleEl || !formContainer) return;
+
+    modal.style.display = 'flex';
+    titleEl.textContent = `${period.charAt(0).toUpperCase() + period.slice(1)} Review - ${dateStr}`;
+    formContainer.innerHTML = '<div class="loading-text">Loading checklist...</div>';
+
+    try {
+        const data = await apiGet(`/api/reviews/checklist?period=${period}&date_str=${dateStr}`);
+        activeChecklist = data;
+
+        let formHtml = '';
+
+        // Render categories
+        ['body', 'mind', 'spirit', 'social', 'career'].forEach(cat => {
+            if (data.categories[cat] && data.categories[cat].length) {
+                formHtml += `<div style="margin-bottom: 12px;">
+                    <h4 style="font-size: 14px; margin-bottom: 8px; text-transform: capitalize; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 4px;">${cat}</h4>
+                    <div style="display:flex; flex-direction:column; gap:8px;">`;
+
+                data.categories[cat].forEach(item => {
+                    const isChecked = data.completed_items.includes(item.id) ? 'checked' : '';
+                    formHtml += `
+                        <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:13px; font-weight:normal; text-transform:none; color:var(--text-primary); margin:0;">
+                            <input type="checkbox" class="checklist-item-cb" data-id="${item.id}" ${isChecked} style="margin-top:2px;">
+                            <span>${item.text}</span>
+                        </label>
+                    `;
+                });
+
+                formHtml += `</div></div>`;
+            }
+        });
+
+        // Notes
+        formHtml += `<div class="form-group" style="margin-top: 16px;">
+            <label>Reflection Notes</label>
+            <textarea id="checklist-notes" rows="3" placeholder="What went well? What could be better?">${data.notes || ''}</textarea>
+        </div>`;
+
+        formContainer.innerHTML = formHtml;
+    } catch (err) {
+        formContainer.innerHTML = `<div class="loading-text" style="color:var(--accent-rose)">Failed to load checklist: ${err.message}</div>`;
+    }
+}
+
+const submitChecklistBtn = document.getElementById('submit-checklist-btn');
+if (submitChecklistBtn) {
+    submitChecklistBtn.addEventListener('click', async () => {
+        if (!activeChecklist) return;
+
+        // Gather completed items
+        const checkedBoxes = document.querySelectorAll('.checklist-item-cb:checked');
+        const completed_items = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+
+        const notes = document.getElementById('checklist-notes')?.value || null;
+
+        activeChecklist.completed_items = completed_items;
+        activeChecklist.notes = notes;
+
+        try {
+            submitChecklistBtn.textContent = 'Saving...';
+            submitChecklistBtn.disabled = true;
+            await apiPost('/api/reviews/checklist', activeChecklist);
+            showToast('✓ Checklist saved successfully');
+            document.getElementById('checklist-modal').style.display = 'none';
+        } catch (err) {
+            showToast('Error saving checklist: ' + err.message, 'error');
+        } finally {
+            submitChecklistBtn.textContent = 'Save Checklist ✓';
+            submitChecklistBtn.disabled = false;
+        }
+    });
 }
