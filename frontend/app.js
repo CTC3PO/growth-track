@@ -529,9 +529,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Update Strava UI state
     const stravaBtn = document.getElementById('connect-strava-btn');
-    const stravaStatusText = document.getElementById('strava-status-text');
     const stravaProfileLink = document.getElementById('strava-profile-link');
-    const stravaRunsCard = document.getElementById('strava-runs-card');
+    const stravaConnectedPill = document.getElementById('strava-connected-pill');
 
     const activeToken = localStorage.getItem('strava_token');
     const tokenExpiry = localStorage.getItem('strava_token_expiry');
@@ -547,12 +546,14 @@ window.addEventListener('DOMContentLoaded', () => {
         if (isStravaValid) {
             stravaBtn.style.display = 'none';
             if (stravaProfileLink) stravaProfileLink.style.display = 'inline-block';
+            if (stravaConnectedPill) stravaConnectedPill.style.display = 'inline-block';
 
             // Auto-fetch runs
             fetchStravaRuns(activeToken);
         } else {
             stravaBtn.style.display = 'inline-block';
             if (stravaProfileLink) stravaProfileLink.style.display = 'none';
+            if (stravaConnectedPill) stravaConnectedPill.style.display = 'none';
 
             stravaBtn.addEventListener('click', async () => {
                 try {
