@@ -4581,14 +4581,14 @@ function renderYearProgress() {
 
                 const isCurrentW = w === currentWeek;
                 const wColor = isCurrentW ? '#000000' : 'var(--text-secondary)';
-                const wBg = isCurrentW ? '#84cc16' : 'transparent';
+                const wBg = isCurrentW ? 'var(--accent)' : 'transparent';
                 const fw = isCurrentW ? '600' : 'normal';
 
                 const formattedDate = weekStart.toISOString().split('T')[0];
 
                 html += `<div style="font-size: 13px; font-weight: ${fw}; color: ${wColor}; background: ${wBg}; padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; display:flex; justify-content:space-between; align-items:center; transition: all 0.2s;">
                     <span>Week ${w} · ${formattedDate}</span>
-                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px; height:auto; background: ${isCurrentW ? 'rgba(0,0,0,0.1)' : ''}; border: ${isCurrentW ? 'none' : ''}; color: ${isCurrentW ? '#000' : ''}" onclick="openChecklistModal('weekly', '${formattedDate}')">Weekly Review</button>
+                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px; height:auto; border: ${isCurrentW ? 'none' : ''}; color: ${isCurrentW ? '#000' : ''}" onclick="openChecklistModal('weekly', '${formattedDate}')">Weekly Review</button>
                 </div>`;
 
                 weekStart.setDate(weekStart.getDate() + 7);
