@@ -128,6 +128,31 @@
                         </div>
                     </div>
 
+                    <!-- Exercises Section -->
+                    <div class="card"
+                        style="border-left: 4px solid var(--accent-blue); margin-bottom: 16px; padding: 16px;">
+                        <div class="card-header" style="margin-bottom: 12px;">
+                            <span class="icon">💪</span>
+                            <h3 style="font-size: 16px;">Other Exercises</h3>
+                        </div>
+                        <div id="exercises-container">
+                            <div id="exercise-list"
+                                style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
+                            <div style="display:flex; gap:6px;">
+                                <select id="exercise-type" style="flex: 1;">
+                                    <option value="walking">Walking</option>
+                                    <option value="biking">Biking</option>
+                                    <option value="strength">Strength Training</option>
+                                    <option value="yoga">Yoga</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <input type="number" id="exercise-duration" placeholder="Min" style="width: 70px;">
+                                <button type="button" id="add-exercise-btn" class="btn btn-secondary"
+                                    style="width:auto; padding:6px 12px; font-size:12px;">+ Add</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Evening Check-In -->
                     <div class="form-group">
                         <label>Date</label>
@@ -175,12 +200,18 @@
                             <span id="alignment-val" style="font-size:12px;color:var(--text-secondary)">5</span>
                         </div>
                     </div>
-                    <div class="form-group toggle-group">
-                        <input type="checkbox" id="checkin-meditation" class="toggle">
-                        <label for="checkin-meditation"
-                            style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
-                            🧘 Meditated today
-                        </label>
+                    <div class="form-row" style="align-items: center;">
+                        <div class="form-group toggle-group" style="margin-bottom: 0;">
+                            <input type="checkbox" id="checkin-meditation" class="toggle">
+                            <label for="checkin-meditation"
+                                style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
+                                🧘 Meditated today
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                            <input type="number" id="checkin-meditation-mins" min="0" placeholder="Duration (min)"
+                                style="display: none;">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Notes</label>
@@ -687,62 +718,8 @@
             </div><!-- end .journal-layout -->
         </div>
 
-        <!-- ═══ REVIEW PAGE ═══ -->
+        <!-- ═══ SUMMARY PAGE (Replaces Review) ═══ -->
         <div id="page-review" class="page">
-
-            <!-- Period selector -->
-            <div class="span-all">
-                <div class="review-period-tabs">
-                    <button class="period-tab active" data-period="weekly">This Week</button>
-                    <button class="period-tab" data-period="monthly">This Month</button>
-                    <button class="period-tab" data-period="quarterly">Quarter</button>
-                </div>
-            </div>
-
-            <!-- AI Insights -->
-            <div class="span-all" style="margin-bottom: 20px;">
-                <div class="card" style="border-left: 4px solid var(--accent); padding: 20px; margin-bottom: 0;">
-                    <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="icon">✨</span>
-                            <h3 style="font-size: 16px;">AI Summary & Insights</h3>
-                        </div>
-                        <button id="generate-insights-btn" class="btn btn-primary"
-                            style="padding: 6px 12px; font-size: 12px; width: auto; height: auto;">Generate
-                            Insights</button>
-                    </div>
-                    <div id="ai-insights-content"
-                        style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
-                        Click generate to analyze your tracking data for this period and receive actionable insights
-                        from the AI.
-                    </div>
-                </div>
-            </div>
-
-            <!-- Review Checklist -->
-            <div class="span-all" style="margin-bottom: 20px;">
-                <div class="card" style="border-left: 4px solid var(--accent-amber); padding: 20px; margin-bottom: 0;">
-                    <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="icon">✅</span>
-                            <h3 style="font-size: 16px;">Review Checklist</h3>
-                        </div>
-                        <button id="load-checklist-btn" class="btn btn-secondary"
-                            style="padding: 6px 12px; font-size: 12px; width: auto; height: auto;">Open
-                            Checklist</button>
-                    </div>
-                    <div id="review-checklist-content" style="display:none;">
-                        <div id="review-checklist-items" style="display:flex; flex-direction:column; gap:12px;"></div>
-                        <div style="margin-top:12px; display:flex; gap:8px;">
-                            <button id="save-checklist-btn" class="btn btn-primary" style="flex:1;">Save Checklist
-                                ✓</button>
-                        </div>
-                    </div>
-                    <div id="saved-checklists-list" style="margin-top:8px;"></div>
-                </div>
-            </div>
 
             <!-- Global Streaks -->
             <div class="span-all">
@@ -755,6 +732,18 @@
                         days
                     </div>
                 </div>
+            </div>
+
+            <div class="card span-all" style="border-left: 4px solid var(--accent-blue);">
+                <div class="card-header">
+                    <span class="icon">📅</span>
+                    <h3>Year Progress</h3>
+                </div>
+                <div id="year-progress-container" style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- Rendered by JS -->
+                </div>
+                <button id="toggle-past-periods-btn" class="btn btn-secondary"
+                    style="margin-top: 16px; width: 100%;">Show Past Periods</button>
             </div>
 
             <!-- Quick metrics row -->
@@ -771,7 +760,7 @@
                 </div> <!-- End metrics-grid -->
 
                 <!-- Body -->
-                <div class="card" style="margin-bottom: 12px;">
+                <div class="card" style="margin-bottom: 12px; border-left: 4px solid var(--accent-amber);">
                     <div class="card-header" style="margin-bottom: 12px;">
                         <span class="icon">🏃</span>
                         <h3 style="font-size: 16px;">Body</h3>
@@ -792,7 +781,7 @@
                 </div>
 
                 <!-- Mind -->
-                <div class="card" style="margin-bottom: 12px;">
+                <div class="card" style="margin-bottom: 12px; border-left: 4px solid var(--accent-blue);">
                     <div class="card-header" style="margin-bottom: 12px;">
                         <span class="icon">🧠</span>
                         <h3 style="font-size: 16px;">Mind</h3>
@@ -820,7 +809,7 @@
                 </div>
 
                 <!-- Spirit -->
-                <div class="card" style="margin-bottom: 12px;">
+                <div class="card" style="margin-bottom: 12px; border-left: 4px solid var(--accent-teal);">
                     <div class="card-header" style="margin-bottom: 12px;">
                         <span class="icon">✨</span>
                         <h3 style="font-size: 16px;">Spirit</h3>
@@ -890,7 +879,27 @@
                 </div>
             </div> <!-- End span-all for metrics -->
 
-        </div> <!-- ═══ END REVIEW PAGE ═══ -->
+        </div> <!-- ═══ END SUMMARY PAGE ═══ -->
+
+        <!-- Checklist Modal -->
+        <div id="checklist-modal"
+            style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:16px; backdrop-filter: blur(4px);">
+            <div class="card"
+                style="width:100%; max-width:500px; max-height:85vh; overflow-y:auto; position:relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; position:sticky; top:0; background:var(--bg-card); padding-bottom:12px; border-bottom:1px solid var(--border); z-index:10;">
+                    <h3 id="checklist-modal-title" style="margin:0;">Review</h3>
+                    <button onclick="document.getElementById('checklist-modal').style.display='none'"
+                        style="background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-secondary);">✕</button>
+                </div>
+                <div id="checklist-modal-form-container" style="display:flex; flex-direction:column; gap:16px;"></div>
+                <div
+                    style="position:sticky; bottom:0; background:var(--bg-card); padding-top:12px; margin-top:16px; border-top:1px solid var(--border); z-index:10;">
+                    <button id="submit-checklist-btn" class="btn btn-primary" style="width:100%;">Save Checklist
+                        ✓</button>
+                </div>
+            </div>
+        </div>
 
         <!-- ═══ WORK PAGE ═══ -->
         <div id="page-work" class="page">
