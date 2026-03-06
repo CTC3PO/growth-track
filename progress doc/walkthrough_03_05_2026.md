@@ -127,3 +127,46 @@ Please visit `http://localhost:8080/` and verify the latest changes on the **Wor
 - [x] **Mixed Logic**: Verified that prompts now creatively bridge templates (e.g., Stoicism) with actual data (e.g., "Given your high work hours but low sleep this week, how can you apply Marcus Aurelius's focus on essentialism...?")
 - [x] **UI state**: Confirmed the "Mix" tab correctly triggers the `mode=mix` API call with random seed prompts.
 - [x] **Pattern Badges**: Confirmed badges appear only when backend pattern data is actually present.
+
+---
+
+# Phase 3 Walkthrough
+
+## Changes Made
+
+### 3A. Daily Log — Exercise & Meditation Inputs
+We expanded the check-in capabilities to better capture physical and mental wellness.
+*   **Backend (`main.py`, `schemas.py`)**: Added `exercises` (a list of activity types and durations) and `meditation_minutes` to the `DailyCheckIn` model. Updated the `PUT /api/checkins/{checkin_id}` endpoint to allow modification of these new fields.
+*   **Frontend (`index.html`, `app.js`)**:
+    *   Added a toggleable minutes input for Meditation on the daily check-in form.
+    *   Built an interactive **Other Exercises** UI (Walking, Biking, Strength Training, Yoga, Other) underneath Morning Planning, allowing users to log multiple physical activities and durations.
+
+### 3B. Daily Log — Aggregation Card
+Provides a unified view of the day's events by pulling data from multiple tabs.
+*   **Frontend (`index.html`, `app.js`)**:
+    *   Added a "Today's Summary" dashboard at the top of the Check-In page.
+    *   Implemented `loadDailySummary()`, which aggregates data across `runs`, `reading_progress`, `work`, `social`, and `travel/expenses` endpoints.
+*   **Backend (`main.py`)**:
+    *   Added a new `GET /api/reading_progress` endpoint to allow `app.js` to easily query today's pages read across all books.
+
+### 3C. Summary Tab — Year Progress Bar
+Replaced static placeholders with an actionable, cascading perspective of the year.
+*   **Frontend (`index.html`, `app.js`)**:
+    *   Completely reworked the `#page-review` tab to feature the **Year Progress** interactive layout.
+    *   Added the `renderYearProgress()` function to dynamically build the DOM hierarchy (Quarters → Months → Weeks), highlighting the current period in solid lime green while supporting view-all logic for past and future periods.
+    *   The "This Week/Month/Quarter" selector tabs from the old layout have been brought back to the top to control the Body/Mind/Spirit/Social/Financial scorecards.
+    *   The AI Insights and Review metrics remain functional below the progress bar.
+
+### 3D. Summary Tab — Checklist Forms
+Implemented the actionable part of the Weekly/Monthly/Quarterly Review workflow.
+*   **Frontend (`index.html`, `app.js`)**:
+    *   Built a floating `#checklist-modal` UI that can dynamically fetch and render checklists.
+    *   Wired the "Review" buttons across the cascading timescale to directly open this modal loaded with the relevant period context (e.g., Q1 Review, Weekly Review).
+    *   Wired the "Save Checklist" button to push completed items and notes to the pre-existing `POST /api/reviews/checklist` API endpoint.
+
+### 3E. Phase 3 Polish & Bug Fixes
+Refined the styling and resolved logic errors in the newly implemented features.
+*   **Summary Tab Layout**: Reordered the Summary page so that the Body, Mind, Spirit, Social, and Financial tally cards appear *above* the Year Progress section.
+*   **Aesthetic Improvements**: Updated the active "Current Week" highlight in the Year Progress bar to strictly use the app's standard `var(--accent)` (lime green). Also made the inner "Weekly Review" button transparent when active, ensuring a seamless visual blend.
+*   **Work Tab Enhancements**: Reduced the font size in the "Today's Plan" input fields for better mobile usability. Added `Daily Task`, `Social`, and `Fun` to the activity category dropdown, complete with designated emojis and both light/dark mode CSS color blocks.
+*   **Checklist Data Overlap Fix**: Resolved a bug in `backend/main.py` where opening any past weekly checklist loaded the *current* week's data. Updated the `get_checklist_template` endpoint to correctly parse the `date_str` argument so each specific week accesses its own isolated entry in the database.
