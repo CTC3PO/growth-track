@@ -97,144 +97,173 @@
         <!-- ═══ RUNNING PAGE ═══ -->
         <div id="page-running" class="page active">
 
-            <!-- Daily Log Card (moved from Check-In tab) -->
+            <!-- Top Row: Daily Log + Calendar side-by-side on desktop -->
+            <div class="run-top-grid">
+
+                <!-- Daily Log Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Daily Log</h3>
+                    </div>
+                    <form id="checkin-form">
+                        <input type="hidden" id="checkin-edit-id">
+
+
+                        <!-- Exercises & Run Section -->
+                        <div class="card"
+                            style="border-left: 4px solid var(--accent-blue); margin-bottom: 16px; padding: 16px;">
+                            <div class="card-header" style="margin-bottom: 12px;">
+                                <span class="icon">💪</span>
+                                <h3 style="font-size: 16px;">Exercises & Run</h3>
+                            </div>
+                            <!-- Run fields (merged from Log Run card) -->
+                            <div class="form-row" style="margin-bottom: 10px;">
+                                <div class="form-group">
+                                    <label>🏃 Distance (km)</label>
+                                    <input type="number" id="run-distance" step="0.1" min="0" placeholder="10.5">
+                                </div>
+                                <div class="form-group">
+                                    <label>Duration (min)</label>
+                                    <input type="number" id="run-duration" step="1" min="0" placeholder="55">
+                                </div>
+                                <div class="form-group">
+                                    <label>Type</label>
+                                    <select id="run-type">
+                                        <option value="">No run</option>
+                                        <option value="easy">Easy</option>
+                                        <option value="tempo">Tempo</option>
+                                        <option value="interval">Interval</option>
+                                        <option value="long">Long Run</option>
+                                        <option value="recovery">Recovery</option>
+                                        <option value="race">Race</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <!-- Other exercises -->
+                            <div id="exercises-container">
+                                <label
+                                    style="font-size: 13px; font-weight: 500; color: var(--text-secondary); display:block; margin-bottom:6px;">Other
+                                    Exercises</label>
+                                <div id="exercise-list"
+                                    style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
+                                <div style="display:flex; gap:6px;">
+                                    <select id="exercise-type" style="flex: 1;">
+                                        <option value="walking">Walking</option>
+                                        <option value="biking">Biking</option>
+                                        <option value="strength">Strength Training</option>
+                                        <option value="yoga">Yoga</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                    <input type="number" id="exercise-duration" placeholder="Min" style="width: 70px;">
+                                    <button type="button" id="add-exercise-btn" class="btn btn-secondary"
+                                        style="width:auto; padding:6px 12px; font-size:12px;">+ Add</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="checkin-date" name="checkin-date" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>😴 Sleep (hours)</label>
+                                <input type="number" id="checkin-sleep" step="0.5" min="0" max="24" placeholder="7.5">
+                            </div>
+                            <div class="form-group">
+                                <label>👟 Steps</label>
+                                <input type="number" id="checkin-steps" min="0" placeholder="9000">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>⚡ Energy (1-10)</label>
+                                <input type="range" id="checkin-energy" min="1" max="10" value="5">
+                                <span id="energy-val" style="font-size:12px;color:var(--text-secondary)">5</span>
+                            </div>
+                            <div class="form-group">
+                                <label>🎯 Alignment (1-10)</label>
+                                <input type="range" id="checkin-alignment" min="1" max="10" value="5">
+                                <span id="alignment-val" style="font-size:12px;color:var(--text-secondary)">5</span>
+                            </div>
+                        </div>
+                        <div class="form-row" style="align-items: center;">
+                            <div class="form-group toggle-group" style="margin-bottom: 0;">
+                                <input type="checkbox" id="checkin-meditation" class="toggle">
+                                <label for="checkin-meditation"
+                                    style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
+                                    🧘 Meditated today
+                                </label>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                                <input type="number" id="checkin-meditation-mins" min="0" placeholder="Duration (min)"
+                                    style="display: none;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea id="checkin-notes" rows="2" placeholder="How was your day?"></textarea>
+                        </div>
+                        <div style="display:flex; gap:8px; margin-top:8px;">
+                            <button type="submit" class="btn btn-primary" id="checkin-submit-btn" style="flex:1;">Save
+                                Log ✓</button>
+                            <button type="button" class="btn" id="checkin-delete-btn"
+                                style="display:none; background: #ef4444; color: white; padding: 0 16px;"
+                                title="Delete Check-In">🗑</button>
+                            <button type="button" class="btn btn-secondary" id="checkin-cancel-edit-btn"
+                                style="display:none; padding:8px 16px;">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Activity Calendar -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="icon">📅</span>
+                        <h3>Activity Calendar</h3>
+                    </div>
+                    <div id="run-calendar"></div>
+                </div>
+
+            </div><!-- /run-top-grid -->
+
+            <!-- Recent Daily Logs -->
             <div class="card">
                 <div class="card-header">
-                    <h3>Daily Check-In</h3>
+                    <h3>Recent Daily Logs</h3>
                 </div>
-                <form id="checkin-form">
-                    <input type="hidden" id="checkin-edit-id">
+                <div id="checkin-history"></div>
+            </div>
 
-                    <!-- Morning Planning Section -->
-                    <div class="card"
-                        style="border-left: 4px solid var(--accent-amber); margin-bottom: 16px; padding: 16px;">
-                        <div class="card-header" style="margin-bottom: 12px;">
-                            <span class="icon">🌅</span>
-                            <h3 style="font-size: 16px;">Morning Planning</h3>
-                        </div>
-                        <div class="form-group">
-                            <label>Today's Intention</label>
-                            <input type="text" id="checkin-intention" placeholder="What do I want to focus on today?">
-                        </div>
-                        <div id="morning-activities-container">
-                            <label
-                                style="font-size: 13px; font-weight: 500; color: var(--text-secondary); display:block; margin-bottom:8px;">Planned
-                                Activities</label>
-                            <div id="morning-activity-list"
-                                style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
-                            <div style="display:flex; gap:6px;">
-                                <input type="time" id="morning-activity-time" style="width:100px;">
-                                <input type="text" id="morning-activity-text" placeholder="Activity..." style="flex:1;">
-                                <button type="button" id="add-morning-activity-btn" class="btn btn-secondary"
-                                    style="width:auto; padding:6px 12px; font-size:12px;">+ Add</button>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Recent Runs -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Runs</h3>
+                </div>
+                <div id="run-history" class="history-list-container"></div>
+            </div>
 
-                    <!-- Exercises Section -->
-                    <div class="card"
-                        style="border-left: 4px solid var(--accent-blue); margin-bottom: 16px; padding: 16px;">
-                        <div class="card-header" style="margin-bottom: 12px;">
-                            <span class="icon">💪</span>
-                            <h3 style="font-size: 16px;">Other Exercises</h3>
-                        </div>
-                        <div id="exercises-container">
-                            <div id="exercise-list"
-                                style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
-                            <div style="display:flex; gap:6px;">
-                                <select id="exercise-type" style="flex: 1;">
-                                    <option value="walking">Walking</option>
-                                    <option value="biking">Biking</option>
-                                    <option value="strength">Strength Training</option>
-                                    <option value="yoga">Yoga</option>
-                                    <option value="other">Other</option>
-                                </select>
-                                <input type="number" id="exercise-duration" placeholder="Min" style="width: 70px;">
-                                <button type="button" id="add-exercise-btn" class="btn btn-secondary"
-                                    style="width:auto; padding:6px 12px; font-size:12px;">+ Add</button>
-                            </div>
-                        </div>
+            <!-- AI Training Plan -->
+            <div class="card" style="border-left: 4px solid var(--accent-amber);">
+                <div class="card-header" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="icon">✨</span>
+                        <h3>AI Training Plan</h3>
                     </div>
-
-                    <!-- Evening Check-In -->
-                    <div class="form-group">
-                        <label>Date</label>
-                        <input type="date" id="checkin-date" name="checkin-date" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Sleep (hours)</label>
-                            <input type="number" id="checkin-sleep" step="0.5" min="0" max="24" placeholder="7.5">
-                        </div>
-                        <div class="form-group">
-                            <label>Steps</label>
-                            <input type="number" id="checkin-steps" min="0" placeholder="9000">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 2;">
-                            <label>Work (Goal: 5hrs)</label>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="number" id="checkin-deepwork" step="0.5" min="0" placeholder="3"
-                                    style="width: 70px;">
-                                <select id="checkin-deepwork-category" style="flex: 1;">
-                                    <option value="school">School</option>
-                                    <option value="dsa">DSA</option>
-                                    <option value="courses">Courses</option>
-                                    <option value="job">Job</option>
-                                    <option value="others">Others</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Journal Words</label>
-                            <input type="number" id="checkin-journal-words" min="0" placeholder="500">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Energy (1-10)</label>
-                            <input type="range" id="checkin-energy" min="1" max="10" value="5">
-                            <span id="energy-val" style="font-size:12px;color:var(--text-secondary)">5</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Alignment (1-10)</label>
-                            <input type="range" id="checkin-alignment" min="1" max="10" value="5">
-                            <span id="alignment-val" style="font-size:12px;color:var(--text-secondary)">5</span>
-                        </div>
-                    </div>
-                    <div class="form-row" style="align-items: center;">
-                        <div class="form-group toggle-group" style="margin-bottom: 0;">
-                            <input type="checkbox" id="checkin-meditation" class="toggle">
-                            <label for="checkin-meditation"
-                                style="text-transform:none;margin:0;font-size:14px;color:var(--text-primary)">
-                                🧘 Meditated today
-                            </label>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0; flex: 1;">
-                            <input type="number" id="checkin-meditation-mins" min="0" placeholder="Duration (min)"
-                                style="display: none;">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Notes</label>
-                        <textarea id="checkin-notes" rows="2" placeholder="How was your day?"></textarea>
-                    </div>
-                    <div style="display:flex; gap:8px; margin-top:8px;">
-                        <button type="submit" class="btn btn-primary" id="checkin-submit-btn" style="flex:1;">Save
-                            Check-In ✓</button>
-                        <button type="button" class="btn" id="checkin-delete-btn"
-                            style="display:none; background: #ef4444; color: white; padding: 0 16px;"
-                            title="Delete Check-In">🗑</button>
-                        <button type="button" class="btn btn-secondary" id="checkin-cancel-edit-btn"
-                            style="display:none; padding:8px 16px;">Cancel</button>
-                    </div>
-                </form>
+                    <button class="btn btn-primary" id="get-coach-plan-btn"
+                        style="padding: 4px 8px; font-size: 12px; height: auto;">Adjust Plan</button>
+                </div>
+                <div id="ai-plan-container" style="padding: 10px 0;">
+                    <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks</p>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Connect Strava and
+                        click Adjust Plan to generate your AI coaching plan based on your recent runs.</p>
+                </div>
             </div>
 
             <!-- Strava Integration (Minimal) -->
             <div id="strava-connection-bar" class="card span-all"
-                style="padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--accent); flex-direction: row;">
+                style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--accent); flex-direction: row;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span class="icon" style="font-size: 16px;">🟧</span>
                     <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);"
@@ -264,96 +293,6 @@
                     style="width: 100%; margin-top: 12px; display: none;">See more runs</button>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <h3>Log Run</h3>
-                </div>
-                <form id="run-form">
-                    <input type="hidden" id="run-edit-id">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Date</label>
-                            <input type="date" id="run-date" name="run-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Distance (km)</label>
-                            <input type="number" id="run-distance" name="run-distance" step="0.1" min="0" required
-                                placeholder="10.5">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Duration (min)</label>
-                            <input type="number" id="run-duration" step="1" min="0" placeholder="55">
-                        </div>
-                        <div class="form-group">
-                            <label>Type</label>
-                            <select id="run-type">
-                                <option value="easy">Easy</option>
-                                <option value="tempo">Tempo</option>
-                                <option value="interval">Interval</option>
-                                <option value="long">Long Run</option>
-                                <option value="recovery">Recovery</option>
-                                <option value="race">Race</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>How did it feel?</label>
-                        <textarea id="run-notes" rows="2" placeholder="Post-run thoughts, pain, mood..."></textarea>
-                    </div>
-                    <div style="display:flex; gap:8px; margin-top:8px;">
-                        <button type="submit" class="btn btn-primary" id="run-submit-btn" style="flex:1;">Log Run
-                            🏃</button>
-                        <button type="button" class="btn" id="run-delete-btn"
-                            style="display:none; background: #ef4444; color: white; padding: 0 16px;"
-                            title="Delete Run">🗑</button>
-                        <button type="button" class="btn btn-secondary" id="run-cancel-edit-btn"
-                            style="display:none; padding:8px 16px;">Cancel</button>
-                    </div>
-                </form>
-            </div>
-            <!-- Run Calendar -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="icon">📅</span>
-                    <h3>Run Calendar</h3>
-                </div>
-                <div id="run-calendar"></div>
-            </div>
-
-
-            <!-- Mock AI Plan -->
-            <div class="card" style="border-left: 4px solid var(--accent-amber);">
-                <div class="card-header" style="justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="icon">✨</span>
-                        <h3>AI Training Plan</h3>
-                    </div>
-                    <button class="btn btn-primary" id="get-coach-plan-btn"
-                        style="padding: 4px 8px; font-size: 12px; height: auto;">Adjust Plan</button>
-                </div>
-                <div id="ai-plan-container" style="padding: 10px 0;">
-                    <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Goal: Half Marathon in 6 Weeks</p>
-                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Connect Strava and
-                        click Adjust Plan to generate your AI coaching plan based on your recent runs.</p>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h3>Recent Runs</h3>
-                </div>
-                <div id="run-history" class="history-list-container"></div>
-            </div>
-
-            <!-- Recent Daily Logs -->
-            <div class="card">
-                <div class="card-header">
-                    <h3>Recent Daily Logs</h3>
-                </div>
-                <div id="checkin-history"></div>
-            </div>
         </div>
 
         <!-- ═══ READING PAGE ═══ -->
@@ -1317,6 +1256,23 @@
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
             </button>
+            <!-- Reading -->
+            <button class="nav-item" data-page="reading" aria-label="Reading">
+                <svg class="icon-svg color-reading" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+            </button>
+            <!-- Work -->
+            <button class="nav-item" data-page="work" aria-label="Work">
+                <svg class="icon-svg" style="color: #8b5cf6;" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+            </button>
             <!-- Social (Connection) -->
             <button class="nav-item" data-page="social" aria-label="Social">
                 <svg class="icon-svg color-social" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1328,23 +1284,6 @@
                 </svg>
             </button>
             <!-- Check-in (Daily Log) — removed, merged into Run tab -->
-            <!-- Work -->
-            <button class="nav-item" data-page="work" aria-label="Work">
-                <svg class="icon-svg" style="color: #8b5cf6;" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                </svg>
-            </button>
-            <!-- Reading -->
-            <button class="nav-item" data-page="reading" aria-label="Reading">
-                <svg class="icon-svg color-reading" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                </svg>
-            </button>
             <!-- Expense (Travel) -->
             <button class="nav-item" data-page="travel" aria-label="Expense">
                 <svg class="icon-svg color-travel" viewBox="0 0 24 24" fill="none" stroke="currentColor"

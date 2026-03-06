@@ -739,6 +739,9 @@ if (checkinForm) {
             notes: document.getElementById('checkin-notes')?.value || null,
             morning_activities: morningActivities.length > 0 ? morningActivities : null,
             intention: document.getElementById('checkin-intention')?.value || null,
+            run_distance_km: parseFloat(document.getElementById('run-distance')?.value) || null,
+            run_duration_minutes: parseFloat(document.getElementById('run-duration')?.value) || null,
+            run_type: document.getElementById('run-type')?.value || null,
         };
 
         try {
@@ -994,40 +997,8 @@ async function loadDailySummary() {
 
 // ─── Running ───────────────────────────────────────────────────
 
-const runForm = document.getElementById('run-form');
-if (runForm) {
-    runForm.addEventListener('submit', async e => {
-        e.preventDefault();
-        const editId = document.getElementById('run-edit-id')?.value;
-        const data = {
-            date: document.getElementById('run-date')?.value,
-            distance_km: parseFloat(document.getElementById('run-distance')?.value),
-            duration_minutes: parseFloat(document.getElementById('run-duration')?.value) || null,
-            run_type: document.getElementById('run-type')?.value,
-            notes: document.getElementById('run-notes')?.value || null,
-        };
+// Note: Standalone run-form removed — run fields now part of the Daily Log checkin form.
 
-        try {
-            if (editId) {
-                await fetch(`${API}/api/runs/${editId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                showToast('✓ Run updated');
-            } else {
-                await apiPost('/api/runs', data);
-                showToast('✓ Run saved');
-            }
-
-            cancelRunEdit();
-            loadRunHistory();
-            loadCalendar('running');
-        } catch (err) {
-            showToast('Error: ' + err.message, 'error');
-        }
-    });
-}
 
 async function loadRunHistory() {
     try {
