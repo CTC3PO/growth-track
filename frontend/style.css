@@ -185,10 +185,23 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    align-self: stretch;
 }
 
 .run-right-col>.card {
     margin-bottom: 0;
+}
+
+.run-right-col>.card:last-child {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.run-right-col>.card:last-child #checkin-history {
+    flex: 1;
+    overflow-y: auto;
 }
 
 /* Fix nested card-within-card overlap */
