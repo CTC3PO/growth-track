@@ -170,3 +170,50 @@ Refined the styling and resolved logic errors in the newly implemented features.
 *   **Aesthetic Improvements**: Updated the active "Current Week" highlight in the Year Progress bar to strictly use the app's standard `var(--accent)` (lime green). Also made the inner "Weekly Review" button transparent when active, ensuring a seamless visual blend.
 *   **Work Tab Enhancements**: Reduced the font size in the "Today's Plan" input fields for better mobile usability. Added `Daily Task`, `Social`, and `Fun` to the activity category dropdown, complete with designated emojis and both light/dark mode CSS color blocks.
 *   **Checklist Data Overlap Fix**: Resolved a bug in `backend/main.py` where opening any past weekly checklist loaded the *current* week's data. Updated the `get_checklist_template` endpoint to correctly parse the `date_str` argument so each specific week accesses its own isolated entry in the database.
+
+---
+
+# Phase 5 — Run Tab Restructuring (March 6, 2026)
+
+## Changes Made
+
+### 5A. Daily Log Card Simplification
+- **Removed** Morning Planning section (intention, planned activities) from the Run tab form
+- **Removed** Work (Goal: 5hrs) and Journal Words fields — these are already tracked in their own tabs
+- **Renamed** "Daily Check-In" → "Daily Log"
+- **Reordered** form fields: Date → Sleep → Steps → Energy → Alignment → **Exercises & Run** → Meditation → Notes
+- **Merged** run fields (distance, duration, type) into the Daily Log form's "Exercises & Run" sub-section
+- **Removed** the standalone "Log Run" card entirely
+- **Updated** `app.js` checkin form submission to include `run_distance_km`, `run_duration_minutes`, and `run_type`
+
+### 5B. Navigation Tab Reorder
+- **New order**: Run → Journal → Read → Work → Social → Expense → Summary
+- **Removed** the Daily Log tab (its functionality now lives in the Run tab)
+- **Updated** `app.js` routing so checkin data loads on the Running page
+
+### 5C. Run Tab Layout — Desktop 2-Column Grid
+- Daily Log card (left) + Activity Calendar (right) — using the parent `.page.active` grid
+- Recent Daily Logs (left) + Strava Runs (right) — side-by-side below
+- AI Training Plan spans full width at the very bottom (`span-all`)
+- Mobile: all cards stack vertically in the same order
+
+### 5D. Strava Integration Consolidation
+- **Removed** the standalone Strava connection bar
+- **Merged** the "Connect Strava" button into the Strava Runs card header as a pill-style button
+- **Added** "✅ Connected" status pill that shows when Strava is linked
+- "Profile →" link appears alongside the pill when connected
+
+### 5E. AI Training Plan Update
+- Updated goal text: **Half Marathon — March 22, 2026**
+- Updated countdown: **~2 weeks until race day**
+- Moved card to the very bottom of the Run tab
+
+### 5F. Removed "Recent Runs" Card
+- Removed the duplicate "Recent Runs" section (run history from manual logging)
+- Strava Runs card now serves as the primary run history view
+
+## Files Modified
+- `frontend/index.html` — Run tab HTML restructuring, nav reorder
+- `frontend/app.js` — Removed run-form handler, added run fields to checkin submission, updated Strava UI logic
+- `frontend/style.css` — Added `run-top-grid` CSS (later removed when switching to parent grid)
+
