@@ -212,8 +212,14 @@ Refined the styling and resolved logic errors in the newly implemented features.
 - Removed the duplicate "Recent Runs" section (run history from manual logging)
 - Strava Runs card now serves as the primary run history view
 
-## Files Modified
-- `frontend/index.html` — Run tab HTML restructuring, nav reorder
-- `frontend/app.js` — Removed run-form handler, added run fields to checkin submission, updated Strava UI logic
-- `frontend/style.css` — Added `run-top-grid` CSS (later removed when switching to parent grid)
+### 5G. Desktop Layout Refinements
+- Wrapped Activity Calendar + Recent Daily Logs in a `.run-right-col` container for the right column
+- Desktop layout: **Row 1** = Daily Log (left) | Calendar + Recent Daily Logs stacked (right); **Row 2** = Strava Runs (left) | AI Training Plan (right)
+- Added `align-items: stretch` override for `#page-running` so the right column bottom-aligns with the Daily Log card
+- Recent Daily Logs content is scrollable (`overflow-y: auto`) within its fixed height
+- Card overflow fix: changed desktop `.card { height: 100% }` → `height: auto`
 
+## Files Modified
+- `frontend/index.html` — Run tab HTML restructuring, nav reorder, right-column wrapper
+- `frontend/app.js` — Removed run-form handler, added run fields to checkin submission, updated Strava UI logic
+- `frontend/style.css` — `.run-right-col` flex column, `align-items: stretch` for Run page, card overflow fix
