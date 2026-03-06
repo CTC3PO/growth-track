@@ -4580,14 +4580,15 @@ function renderYearProgress() {
                 if (w > 53) break; // edge case
 
                 const isCurrentW = w === currentWeek;
-                const wColor = isCurrentW ? 'var(--accent-amber)' : 'var(--text-secondary)';
-                const wBg = isCurrentW ? 'rgba(245, 158, 11, 0.1)' : 'transparent';
+                const wColor = isCurrentW ? '#000000' : 'var(--text-secondary)';
+                const wBg = isCurrentW ? '#84cc16' : 'transparent';
+                const fw = isCurrentW ? '600' : 'normal';
 
                 const formattedDate = weekStart.toISOString().split('T')[0];
 
-                html += `<div style="font-size: 12px; color: ${wColor}; background: ${wBg}; padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display:flex; justify-content:space-between; align-items:center;">
+                html += `<div style="font-size: 13px; font-weight: ${fw}; color: ${wColor}; background: ${wBg}; padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; display:flex; justify-content:space-between; align-items:center; transition: all 0.2s;">
                     <span>Week ${w} · ${formattedDate}</span>
-                    <button class="btn btn-secondary" style="padding:2px 8px; font-size:10px; height:auto;" onclick="openChecklistModal('weekly', '${formattedDate}')">Weekly Review</button>
+                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px; height:auto; background: ${isCurrentW ? 'rgba(0,0,0,0.1)' : ''}; border: ${isCurrentW ? 'none' : ''}; color: ${isCurrentW ? '#000' : ''}" onclick="openChecklistModal('weekly', '${formattedDate}')">Weekly Review</button>
                 </div>`;
 
                 weekStart.setDate(weekStart.getDate() + 7);
