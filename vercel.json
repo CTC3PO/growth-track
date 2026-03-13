@@ -28,6 +28,18 @@
             "dest": "frontend/$1"
         },
         {
+            "src": "/style.css",
+            "dest": "frontend/style.css"
+        },
+        {
+            "src": "/app.js",
+            "dest": "frontend/app.js"
+        },
+        {
+            "src": "/icon-512.png",
+            "dest": "frontend/icon-512.png"
+        },
+        {
             "src": "/(.*)",
             "dest": "frontend/index.html"
         }
