@@ -53,6 +53,12 @@ class WorkCategory(str, Enum):
     COURSES = "courses"
     JOB = "job"
     OTHERS = "others"
+    # Monolith match
+    PROJECTS = "projects"
+    ADMIN = "admin"
+    LEARNING = "learning"
+    MEETINGS = "meetings"
+    DAILY_LIFE = "daily_life"
 
 
 # ─── Daily Check-In ──────────────────────────────────────────────────

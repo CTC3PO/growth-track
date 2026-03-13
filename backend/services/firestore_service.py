@@ -176,6 +176,29 @@ def delete_document(collection: str, doc_id: str) -> bool:
         return True
 
 
+def get_document(collection: str, doc_id: str) -> dict:
+    """Get a single document by its ID."""
+    db = _get_firestore_client()
+    if db:
+        prefix = os.getenv("FIRESTORE_COLLECTION_PREFIX", "mindful_life")
+        full_collection = f"{prefix}_{collection}"
+        doc = db.collection(full_collection).document(doc_id).get()
+        if doc.exists:
+            return {"id": doc.id, **doc.to_dict()}
+        return None
+    else:
+        if os.getenv("VERCEL"):
+            return None
+            
+        file_path = _LOCAL_DATA_DIR / f"{collection}.json"
+        if file_path.exists():
+            data = json.loads(file_path.read_text())
+            for d in data:
+                if d.get("id") == doc_id:
+                    return d
+        return None
+
+
 def get_documents(collection: str, limit: int = 100) -> list[dict]:
     """Get all documents from a collection."""
     db = _get_firestore_client()

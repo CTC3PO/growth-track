@@ -7,7 +7,7 @@ const API = window.location.hostname === 'localhost' || window.location.hostname
 
 // ─── Navigation ────────────────────────────────────────────────
 
-async function navigateToPage(page) {
+function navigateToPage(page) {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
@@ -18,41 +18,14 @@ async function navigateToPage(page) {
     // Persist active tab
     localStorage.setItem('activeTab', page);
 
-    // Load data for each page on switch - Parallelize where possible
-    const tasks = [];
-    if (page === 'review') tasks.push(loadReviewData());
-    if (page === 'reading') { 
-        tasks.push(loadReadingStats()); 
-        tasks.push(loadBooks()); 
-        tasks.push(loadCalendar('reading')); 
-    }
-    if (page === 'journal') { 
-        tasks.push(loadJournalPrompt()); 
-        tasks.push(loadJournalHistory()); 
-        tasks.push(loadCalendar('journal')); 
-    }
-    if (page === 'running') { 
-        tasks.push(loadRunHistory()); 
-        tasks.push(loadCheckinHistory()); 
-        tasks.push(loadCalendar('running')); 
-    }
-    if (page === 'work') { 
-        tasks.push(loadWorkData()); 
-        tasks.push(loadCalendar('work'));
-        if (typeof loadWorkTasks === 'function') tasks.push(loadWorkTasks());
-        if (typeof setupActivityPlannerListeners === 'function') tasks.push(setupActivityPlannerListeners());
-    }
-    if (page === 'travel') { 
-        initCurrencySelectors(); 
-        tasks.push(loadExpenses()); 
-        tasks.push(loadCalendar('travel')); 
-    }
-    if (page === 'social') { 
-        tasks.push(loadSocialData()); 
-        tasks.push(loadCalendar('social')); 
-    }
-    
-    await Promise.allSettled(tasks);
+    // Load data for each page on switch
+    if (page === 'review') loadReviewData();
+    if (page === 'reading') { loadReadingStats(); loadBooks(); loadCalendar('reading'); }
+    if (page === 'journal') { loadJournalPrompt(); loadJournalHistory(); loadCalendar('journal'); }
+    if (page === 'running') { loadRunHistory(); loadCheckinHistory(); loadCalendar('running'); }
+    if (page === 'work') { loadWorkData(); loadCalendar('work'); }
+    if (page === 'travel') { initCurrencySelectors(); loadExpenses(); loadCalendar('travel'); }
+    if (page === 'social') { loadSocialData(); loadCalendar('social'); }
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
@@ -424,42 +397,31 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     // Theme initialization
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    const themeIcon = document.getElementById('theme-icon');
-    const themeLabel = document.getElementById('theme-label');
-    
-    const themes = [
-        { name: 'light', icon: '☀️', label: 'Light', class: '' },
-        { name: 'dark', icon: '🌙', label: 'Dark', class: 'dark-mode' },
-        { name: 'vintage', icon: '📜', label: 'Vintage', class: 'vintage' }
-    ];
+    const themeToggle = document.getElementById('theme-toggle');
+    const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
-    let currentThemeIndex = 0;
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    currentThemeIndex = themes.findIndex(t => t.name === savedTheme);
-    if (currentThemeIndex === -1) currentThemeIndex = 0;
-
-    function applyTheme(index) {
-        const theme = themes[index];
-        // Remove all theme classes
-        document.body.classList.remove('dark-mode', 'vintage');
-        if (theme.class) document.body.classList.add(theme.class);
-        
-        if (themeIcon) themeIcon.textContent = theme.icon;
-        if (themeLabel) themeLabel.textContent = theme.label;
-        
-        localStorage.setItem('theme', theme.name);
+    // Check localStorage or system preference
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme == 'dark') {
+        document.body.classList.toggle('dark-mode');
+        themeToggle.checked = true;
+    } else if (currentTheme == 'light') {
+        document.body.classList.remove('dark-mode');
+    } else if (prefersDarkScheme.matches) {
+        document.body.classList.toggle('dark-mode');
+        themeToggle.checked = true;
     }
 
-    // Initial apply
-    applyTheme(currentThemeIndex);
-
-    if (themeBtn) {
-        themeBtn.addEventListener('click', () => {
-            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
-            applyTheme(currentThemeIndex);
-        });
-    }
+    // Listen for toggle switch
+    themeToggle.addEventListener('change', function () {
+        if (this.checked) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+        }
+    });
 
     // Set default dates to today
     const checkinDate = document.getElementById('checkin-date');
@@ -597,9 +559,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 try {
                     stravaBtn.textContent = 'Connecting...';
                     stravaBtn.disabled = true;
-                    // Reset coaching plan UI
-                    const coachContainer = document.getElementById('coaching-plan-container');
-                    if (coachContainer) coachContainer.innerHTML = '<div class="loading-text">Connect Strava to generate plan.</div>';
+                    // Reset coach plan UI
+                    const aiContainer = document.getElementById('ai-plan-container');
+                    if (aiContainer) aiContainer.innerHTML = '<div class="loading-text">Connect Strava to generate plan.</div>';
 
                     const data = await apiGet('/api/strava/login');
                     if (data.url) {
@@ -1240,9 +1202,9 @@ if (runDeleteBtn) {
 const getCoachPlanBtn = document.getElementById('get-coach-plan-btn');
 if (getCoachPlanBtn) {
     getCoachPlanBtn.addEventListener('click', async () => {
-        const container = document.getElementById('coaching-plan-container');
+        const container = document.getElementById('ai-plan-container');
         if (!container) return;
-        container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your runs & generating plan...</div>';
+        container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your runs & generating AI plan...</div>';
 
         // Check localStorage. If missing, use mock_token to not catastrophically break
         const token = localStorage.getItem('strava_token') || 'mock_token';
@@ -1293,7 +1255,7 @@ if (getCoachPlanBtn) {
                 ` : ''}
 
                 <div style="background: linear-gradient(135deg, rgba(42,157,110,0.08), rgba(42,157,110,0.02)); padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--accent);">
-                    <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🎯 Performance Assessment</div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🤖 AI Coach Assessment</div>
                     <p style="font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5;">${response.assessment || "Taking your recent runs into account..."}</p>
                 </div>
 
@@ -2127,228 +2089,7 @@ const templatePrompts = [
     "Where did you find a moment of true peace and stillness today?",
     "How can you look deeply into the suffering of a person you encountered today to cultivate compassion?",
     "What is a beautiful, simple thing in the present moment that you might be overlooking?",
-    "How can you apply mindful awareness to a task you usually rush through?",
-
-    // ─── Stoicism & Virtue ───────────────────────────────────────
-    "What would a person of perfect self-control do in my current situation?",
-    "What am I clinging to that is actually outside of my control?",
-    "If I lost everything I have today, what would still remain that defines me?",
-    "Am I being harmed by the event itself, or by the story I'm telling myself about it?",
-    "How can I turn my current obstacle into an opportunity for growth?",
-    "If today was my last day, would I be proud of how I spent it?",
-    "What desire is making me a slave right now?",
-    "How can I better align my actions with reason today?",
-    "What is the most virtuous response to the person who frustrated me today?",
-    "Am I pursuing reputation or character?",
-    "What am I worrying about that won't matter in five years?",
-    "How can I practice voluntary discomfort today to strengthen my resilience?",
-    "What does 'living in accordance with nature' look like for me right now?",
-    "Whose opinion am I chasing, and why does it matter to me?",
-    "What is one thing I can stop doing to simplify my life?",
-    "Am I reacting to my impressions or to reality?",
-    "What would Marcus Aurelius say to me about my current stress?",
-    "How can I be a steady cliff against the waves of emotion today?",
-    "What is the difference between my needs and my wants right now?",
-    "What is the smallest step I can take toward self-mastery?",
-    "How did I fail to live up to my principles today, and what would I do differently?",
-    "What 'insignificant' thing am I blowing out of proportion today?",
-    "How can I find joy in the strictly necessary?",
-    "If I were to witness my life from a distance, what advice would I give myself?",
-    "Am I wasting time on things that don't satisfy my soul?",
-    "What part of my character needs the most honest work right now?",
-    "What am I taking for granted that I would desperately miss if it were gone?",
-    "Am I prepared for the worst-case scenario I'm fearing?",
-    "How can I turn anger into curiosity today?",
-    "The things that are 'not in my control' — can I truly release them, just for today?",
-    "What is a habit of weakness I keep returning to, and what virtue could replace it?",
-
-    // ─── Philosophy & Life Reflection ────────────────────────────
-    "If I could choose my parents, would I still choose mine? Why?",
-    "What is a truth about myself that I'm afraid to admit?",
-    "If I were to write my own eulogy, what would I want it to say?",
-    "What does 'home' feel like to me — is it a place, a person, or a feeling?",
-    "If I had to live this same life over and over forever, would I be at peace with it?",
-    "What is the 'good life' for me, personally, beyond the life society defined?",
-    "Am I the hero of my own story, or a side character in someone else's?",
-    "What is the most important lesson I've learned from a mistake?",
-    "How has my definition of 'success' changed since I was 20?",
-    "If I could change one thing about my past — knowing the trade-offs — would I?",
-    "What is the most courageous thing I've ever done?",
-    "What does it mean to be 'authentic' in a world of performance and social media?",
-    "If I were the last person on Earth, how would I spend my time?",
-    "What is a 'calling' I've been ignoring or delaying?",
-    "What is the value of silence in my life?",
-    "Am I listening to my intuition or my ego right now?",
-    "What is a part of myself — a 'shadow' — that I haven't integrated yet?",
-    "What does forgiveness look like for the person I haven't forgiven?",
-    "What is the relationship between my freedom and my responsibility?",
-    "If I could ask one question to a person who has passed away, what would it be?",
-    "Am I seeking comfort or growth right now?",
-    "What 'weight' am I carrying that isn't mine to carry?",
-    "What is a belief I held five years ago that now seems limiting?",
-    "What is the most selfless thing I've done recently?",
-    "Am I living for my 'resume virtues' or my 'eulogy virtues'?",
-    "What is the most 'alive' I've felt in the last month?",
-    "What is a secret I'm keeping from myself?",
-    "What is the most important conversation I need to have?",
-    "How do I define 'integrity' in my day-to-day choices?",
-    "What is the 'noise' in my life that I need to tune out?",
-    "What is the most meaningful gift — not a thing, but an act — I've ever received?",
-    "If there were no limits, what would I be doing with my one wild and precious life?",
-    "Am I building a life I believe in, or one that I'm expected to want?",
-    "What is the story I keep telling myself that might not be true?",
-    "What would I do today if I knew I was entirely loved and entirely free?",
-
-    // ─── Buddhism & Mindfulness ───────────────────────────────────
-    "What is arising in my field of awareness right now — thoughts, sensations, emotions?",
-    "How can I practice 'non-attachment' to my current problem?",
-    "What does 'interbeing' mean in the context of my closest relationships?",
-    "Can I find the humanity in the person I'm struggling with right now?",
-    "What is the 'second arrow' of suffering I'm shooting at myself?",
-    "How can I bring more 'Right Speech' into my conversations today?",
-    "What is a 'seed' of joy I can water today?",
-    "Can I sit with my discomfort without trying to immediately change or fix it?",
-    "What is the 'impermanence' of my current mood — how will it feel different tomorrow?",
-    "How can I practice 'beginner's mind' in a task I've done a thousand times?",
-    "How can I be more compassionate toward my own failures today?",
-    "What is the quiet 'noble silence' I can find in my busy day?",
-    "How am I contributing to the suffering of others, even unconsciously?",
-    "Can I find the beauty in something 'broken' or imperfect today?",
-    "What is 'enoughness' for me today?",
-    "How can I serve others without losing my sense of self?",
-    "What is the 'middle way' between the extremes I'm currently choosing between?",
-    "Am I 'arriving' in the present moment, or just passing through it?",
-    "What is the breath trying to tell me right now if I stop and listen?",
-    "How can I let go of the 'self' that is feeling criticized or diminished?",
-    "What suffering is behind the anger or behavior of the people around me?",
-    "Can I find gratitude in a moment of boredom today?",
-    "What is the 'work' I do daily that is also a form of meditation?",
-    "How can I walk through my world more gently, as if I belong to it?",
-    "What is the warmth I've held inside today that I haven't shared with anyone?",
-    "Can I let go of the need to be 'right' in a current disagreement?",
-    "What is the peace that exists beneath all my thoughts if I only look?",
-    "How can I practice 'equanimity' in the face of today's praise or blame?",
-    "What is the most compassionate thing I can do for myself tonight before sleep?",
-    "What would it feel like to be completely at home in the present moment?",
-
-    // ─── Camille Styles — Reflective ─────────────────────────────
-    "Name the top three emotions you are feeling at the moment. What are the emotions you want to feel today?",
-    "What is your body craving at the moment?",
-    "What are 10 questions you wish you had the answers to right now?",
-    "What do you know to be true today that you didn't know a year ago?",
-    "Write about someone you miss. What do you miss about them? How do they make you feel?",
-    "Picture someone you've had conflict with and try to drop into their perspective. What were they feeling? How can you express sympathy for their experience?",
-    "What areas of your life are causing you stress? What areas are bringing you joy?",
-    "If someone was to describe your life story back to you, which three events would you want them to highlight?",
-    "What has been the most transformative year in your life so far?",
-    "How has your relationship to self-love grown and strengthened over the past five years?",
-    "What have you learned to forgive yourself for?",
-    "When was the last time you felt truly at peace with yourself? What made that moment possible?",
-    "If you could change one thing about the way you show up in the world, what would it be, and why?",
-
-    // ─── Camille Styles — Goal-Setting ───────────────────────────
-    "In another life, who would you want to be? Write out this character, what they do for a living, their personality traits.",
-    "Reflect on your career and personal goals. Are there parallels between the two?",
-    "What habits and actions can you incorporate into your daily routine to help you prioritize your time?",
-    "What would it feel like to step out of your comfort zone more this year?",
-    "What talents or skills do you want to build and strengthen?",
-    "What's a commitment you can make to yourself every day to grow more this year?",
-    "What does success look like to you right now? How has your definition evolved over the years?",
-    "What are three specific goals you'd like to accomplish this year, and how can you break them into manageable steps?",
-    "What's one big dream you've been putting off? What's the first step you can take today?",
-
-    // ─── Camille Styles — Values-Based ───────────────────────────
-    "What do you want to invite more of into your life? What do you want to leave behind?",
-    "Who is someone you envy and why?",
-    "What distracts you from what's truly important each day?",
-    "If you decided right now that you had enough money, what would you do with your life?",
-    "How do you want to contribute your talents and passions to the world?",
-    "What are the core beliefs that guide your decisions? How do they shape your relationships and goals?",
-    "In what ways can you practice kindness, both toward yourself and others, more intentionally?",
-    "How do you define balance in your life, and what actions can you take to bring more of it into your routine?",
-
-    // ─── A Chronic Voice — New Beginnings ────────────────────────
-    "What is one thing you can commit to today, so that your future self will thank you for?",
-    "What do you hope to reinforce through this journaling practice?",
-    "What are you able and willing to let go of this week?",
-    "When do you feel most energised? How can you use that energy for yourself and the greater good?",
-    "Do you have a dream that is achievable yet unfulfilled? Write a few actionable steps toward it.",
-    "What will you do today that will benefit you tomorrow?",
-    "When you're in a bad mood, how do you turn things around?",
-    "Describe yourself in 10 words. Do you like what you see? If not, how can you change that?",
-    "What's your deepest secret desire? What stops you from revealing it to others?",
-    "What helps you stay focused when you feel your mind wandering off?",
-
-    // ─── A Chronic Voice — Loving Kindness ───────────────────────
-    "What does unconditional love mean to you? Would you like to give and receive more of that?",
-    "What do you love most about your body — your strength, your resilience, or even your scars?",
-    "What is one thing you can do to show love to someone who matters today?",
-    "What is your love language? How do you like to be shown love from others?",
-    "List 10 acts of kindness that someone has done for you.",
-    "Is there someone you've lost and miss? Write a letter in memory of them.",
-    "What is your most cherished possession, and what significance does it hold?",
-    "Who fully understands and 'gets you' as a person? Why do you think that is?",
-    "What are your pitfalls as a friend or partner? How can you work on improving these?",
-    "Which relationships drain you? Why? What characteristics feel unhealthy?",
-
-    // ─── A Chronic Voice — Transformation & Empowerment ──────────
-    "What gives you strength, especially when the going gets tough?",
-    "What was the moment where you showed the most courage in your entire life?",
-    "What negative thought patterns do you want to break, and how can you start doing so?",
-    "What is something you need to be truthful to yourself about?",
-    "Today I believe that I can…",
-    "What does having self-confidence mean to you?",
-    "What inspires you to take positive action?",
-    "What will you forgive yourself for today, so you can move forward with more freedom?",
-    "What do you envision in your future? Can you imagine a more empowered one?",
-    "What are your best qualities, and how can you use them to create a better life?",
-    "When did you last break a rule? How did you feel about it?",
-    "Which teacher or mentor had a real impact on your life? Was it good or bad? Why?",
-    "Write about a time you stepped out of your comfort zone. What did it bring you?",
-    "How can you brighten someone else's day today?",
-
-    // ─── A Chronic Voice — Imagination & Hope ────────────────────
-    "If you were to write a book about your life, what would the title be?",
-    "If a genie granted you five wishes right now, what would you wish for?",
-    "What is worrying you the most right now? Are these worries real or unfounded?",
-    "If you could travel backwards or forwards in time, what would you change or want to see?",
-    "Write about a time when everything you'd hoped would happen, actually did.",
-    "What do you miss most about being a kid?",
-    "Write a letter to your child self. What do you think is most important to convey?",
-    "If your body could send you a clear, direct message, what would it say with the most urgency?",
-
-    // ─── A Chronic Voice — Self-Acceptance ───────────────────────
-    "Write down one thing you can see, smell, hear, touch, and taste right here and now.",
-    "Discuss a time when you listened to your intuition. Was that helpful?",
-    "What is one small thing that can make your day or completely turn it around?",
-    "What has been your favourite memory of the year so far?",
-    "What is one small thing you can do every day that will have positive compounding effects?",
-    "What imperfections do you have? Which do you most value and why?",
-
-    // ─── A Chronic Voice — Maintaining Balance ───────────────────
-    "Think about a time you felt most balanced and aligned with your values. What was happening then?",
-    "What makes you most uncomfortable? What can you do during those moments to feel more at ease?",
-    "What are some toxic habits you need to give up? What would motivate you?",
-    "What would a better work-life balance look like to you?",
-    "How can you realistically add more mindfulness into your everyday life?",
-    "Name a big decision you've been weighing. How will it impact your life? What's the best possible outcome?",
-    "Are you good at communication? What are some ways you can be better at it?",
-    "How do you cope with being wrong? Do you admit it or argue against it?",
-    "Close your eyes and take 3 minutes of deep breaths. What thoughts came into your head?",
-    "What makes you feel most alive? How can you strive towards more of such moments?",
-    "List 10 things within your control that you can use to improve the quality of your life.",
-    "List 10 things you can't control yet worry you. Try to release them and focus on what's in your power.",
-
-    // ─── A Chronic Voice — Gratitude ─────────────────────────────
-    "How have you shown appreciation to someone recently?",
-    "What positive legacy do you want to leave in this world?",
-    "What's one change that would make the world a better place?",
-    "Write a short letter of gratitude to someone who means a lot to you.",
-    "What is something you can do to show more love to yourself today?",
-    "List 10 little things in life that make you smile.",
-    "What was the best day of your life so far?",
-    "How can you show your appreciation to service staff and strangers in your everyday life?",
-    "What are three things you can be more grateful for, despite your current circumstances?"
+    "How can you apply mindful awareness to a task you usually rush through?"
 ];
 
 let currentTradition = 'blended';
@@ -2938,6 +2679,17 @@ async function loadReviewData() {
         const catBooks = document.getElementById('cat-books');
         if (catBooks) catBooks.textContent = m.books_finished || 0;
 
+        // Reading pace (Guarded)
+        try {
+            const stats = await apiGet('/api/books/stats');
+            const catBooksPace = document.getElementById('cat-books-pace');
+            if (catBooksPace) catBooksPace.textContent = `${stats.books_finished}/${stats.yearly_goal}`;
+            setProgressBar('cat-books-bar', stats.books_finished, stats.yearly_goal);
+        } catch (e) {
+            const catBooksPace = document.getElementById('cat-books-pace');
+            if (catBooksPace) catBooksPace.textContent = '--';
+        }
+
         // Spirit category (Guarded)
         const catMedPct = document.getElementById('cat-meditation-pct');
         if (catMedPct) catMedPct.textContent = `${m.meditation_pct || 0}%`;
@@ -2957,41 +2709,36 @@ async function loadReviewData() {
             globalCheckinStreak.textContent = `${m.current_checkin_streak || 0} days`;
         }
 
-        // Parallelize sub-stats fetches
-        const subTasks = [
-            apiGet('/api/books/stats').then(stats => {
-                const catBooksPace = document.getElementById('cat-books-pace');
-                if (catBooksPace) catBooksPace.textContent = `${stats.books_finished}/${stats.yearly_goal}`;
-                setProgressBar('cat-books-bar', stats.books_finished, stats.yearly_goal);
-            }).catch(() => {
-                const catBooksPace = document.getElementById('cat-books-pace');
-                if (catBooksPace) catBooksPace.textContent = '--';
-            }),
-            apiGet('/api/social/stats').then(socialStats => {
-                const catSocialInteractions = document.getElementById('cat-social-interactions');
-                if (catSocialInteractions) catSocialInteractions.textContent = socialStats.total_interactions || 0;
-                const catSocialPeople = document.getElementById('cat-social-people');
-                if (catSocialPeople) catSocialPeople.textContent = socialStats.unique_people || 0;
-                const topCat = Object.entries(socialStats.by_category || {}).sort((a, b) => b[1] - a[1])[0];
-                const catSocialTop = document.getElementById('cat-social-top');
-                if (catSocialTop) catSocialTop.textContent = topCat ? topCat[0].replace('_', ' ') : '--';
-            }).catch(() => {}),
-            apiGet('/api/travel/expenses').then(expenseData => {
-                if (expenseData && expenseData.total_usd !== undefined) {
-                    const catFinancialSpend = document.getElementById('cat-financial-spend');
-                    if (catFinancialSpend) catFinancialSpend.textContent = `$${expenseData.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                    const totalVnd = (expenseData.expenses || []).reduce((sum, e) => sum + (e.amount_vnd || 0), 0);
-                    const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
-                    const catFinancialSpendVnd = document.getElementById('cat-financial-spend-vnd');
-                    if (catFinancialSpendVnd) catFinancialSpendVnd.textContent = `${formatVnd(totalVnd)} VND`;
-                    const topExpCat = Object.entries(expenseData.by_category || {}).sort((a, b) => b[1] - a[1])[0];
-                    const catFinancialTop = document.getElementById('cat-financial-top');
-                    if (catFinancialTop) catFinancialTop.textContent = topExpCat ? topExpCat[0] : '--';
-                }
-            }).catch(() => {})
-        ];
+        // Social category in review
+        try {
+            const socialStats = await apiGet('/api/social/stats');
+            const catSocialInteractions = document.getElementById('cat-social-interactions');
+            if (catSocialInteractions) catSocialInteractions.textContent = socialStats.total_interactions || 0;
+            const catSocialPeople = document.getElementById('cat-social-people');
+            if (catSocialPeople) catSocialPeople.textContent = socialStats.unique_people || 0;
+            const topCat = Object.entries(socialStats.by_category || {}).sort((a, b) => b[1] - a[1])[0];
+            const catSocialTop = document.getElementById('cat-social-top');
+            if (catSocialTop) catSocialTop.textContent = topCat ? topCat[0].replace('_', ' ') : '--';
+        } catch (e) { /* no social data yet */ }
 
-        await Promise.allSettled(subTasks);
+        // Financial category in review
+        try {
+            const expenseData = await apiGet('/api/travel/expenses');
+            if (expenseData && expenseData.total_usd !== undefined) {
+                const catFinancialSpend = document.getElementById('cat-financial-spend');
+                if (catFinancialSpend) catFinancialSpend.textContent = `$${expenseData.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                // VND total
+                const totalVnd = (expenseData.expenses || []).reduce((sum, e) => sum + (e.amount_vnd || 0), 0);
+                const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
+                const catFinancialSpendVnd = document.getElementById('cat-financial-spend-vnd');
+                if (catFinancialSpendVnd) catFinancialSpendVnd.textContent = `${formatVnd(totalVnd)} VND`;
+                const topExpCat = Object.entries(expenseData.by_category || {}).sort((a, b) => b[1] - a[1])[0];
+                const catFinancialTop = document.getElementById('cat-financial-top');
+                if (catFinancialTop) catFinancialTop.textContent = topExpCat ? topExpCat[0] : '--';
+            }
+        } catch (e) { /* no financial data yet */ }
+
+        // Five Non-Negotiables with bars (UI removed for now)
 
     } catch (err) {
         console.log('Could not load review data:', err);
@@ -3017,10 +2764,10 @@ function setNNWithBar(valueId, barId, value, suffix = '') {
 }
 
 async function loadReview(period) {
-    const bodyDiv = document.getElementById('insights-content');
+    const bodyDiv = document.getElementById('ai-insights-content');
     if (!bodyDiv) return;
 
-    bodyDiv.innerHTML = '<div class="loading-text"><div class="spinner" style="display:inline-block; border: 2px solid #ddd; border-top-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite;"></div> Analyzing your data and generating insights...</div>';
+    bodyDiv.innerHTML = '<div class="loading-text"><div class="spinner" style="display:inline-block; border: 2px solid #ddd; border-top-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite;"></div> Analyzing your data and generating AI insights...</div>';
 
     try {
         const review = await apiGet(`/api/review/${period}?generate=true`);
@@ -3388,21 +3135,19 @@ async function loadExpenses() {
             }
         }
 
-        // Recent expenses & Categories (Guarded)
+        // Recent expenses (Guarded)
         const historyDiv = document.getElementById('expense-history');
         if (historyDiv) {
             if (expenses.length === 0) {
                 historyDiv.innerHTML = '<div class="loading-text">No expenses logged yet</div>';
             } else {
-                const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
-                
-                // Top 5 Recent
-                const recentHtml = expenses.slice(0, 5).map(e => {
+                historyDiv.innerHTML = expenses.slice(0, 20).map(e => {
+                    const formatVnd = (v) => v >= 1000 ? `${Math.round(v / 1000)}K` : Math.round(v);
                     const vndDisplay = e.amount_vnd ? `<div class="item-meta">${formatVnd(e.amount_vnd)} VND</div>` : '';
                     return `
-                    <div class="history-item" style="position:relative;">
-                        <button class="expense-edit-btn" data-social-id="${e.id}" title="Edit"
-                            style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:opacity 0.2s;">✏️</button>
+                    <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.expense-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.expense-edit-btn').style.opacity='0'">
+                        <button class="expense-edit-btn" data-expense-id="${e.id}" title="Edit"
+                            style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
                         <div class="history-item-left" style="padding-right: 32px;">
                             <strong>${e.description || 'Expense'}</strong>
                             <div class="item-meta">${e.date} · ${e.category}</div>
@@ -3412,48 +3157,9 @@ async function loadExpenses() {
                             ${e.amount_usd ? `<div class="item-meta">≈ $${e.amount_usd.toFixed(2)}</div>` : ''}
                             ${vndDisplay}
                         </div>
-                    </div>`;
-                }).join('');
-
-                // Group by category
-                const expensesByCat = expenses.reduce((acc, e) => {
-                    const cat = e.category || 'other';
-                    if (!acc[cat]) acc[cat] = [];
-                    acc[cat].push(e);
-                    return acc;
-                }, {});
-
-                const categoriesHtml = Object.entries(expensesByCat).map(([cat, list]) => {
-                    const catTotalUsd = list.reduce((sum, e) => sum + (e.amount_usd || 0), 0);
-                    return `
-                    <div class="expense-cat-group" style="margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-                        <div onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'" 
-                             style="padding:10px 12px; background:var(--bg-input); cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-weight:600;">
-                            <span style="text-transform:capitalize;">📂 ${cat} (${list.length})</span>
-                            <span style="color:var(--accent-rose);">$${catTotalUsd.toFixed(2)}</span>
-                        </div>
-                        <div style="display:none; padding:8px; background:var(--bg-card);">
-                            ${list.map(e => `
-                                <div class="history-item" style="border-bottom:1px solid var(--border); margin-bottom:4px; padding-bottom:4px;">
-                                    <div class="history-item-left">
-                                        <div style="font-size:13px; font-weight:600;">${e.description || 'Expense'}</div>
-                                        <div class="item-meta">${e.date}</div>
-                                    </div>
-                                    <div class="history-item-right">
-                                        <div style="font-weight:700; color:var(--accent-rose); font-size:13px;">${e.amount} ${e.currency}</div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-                }).join('');
-
-                historyDiv.innerHTML = `
-                    <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">Top 5 Recent</div>
-                    ${recentHtml}
-                    <div style="margin-top:24px; font-size:13px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">By Category</div>
-                    ${categoriesHtml}
+                    </div>
                 `;
+                }).join('');
 
                 // Store data and add edit listeners
                 window._expenseData = {};
@@ -3461,8 +3167,7 @@ async function loadExpenses() {
                 historyDiv.querySelectorAll('.expense-edit-btn').forEach(btn => {
                     btn.addEventListener('click', (ev) => {
                         ev.stopPropagation();
-                        // Special case: the data-social-id was a typo in previous code or mine, let's use data-social-id if I kept it or fix it
-                        const expense = window._expenseData[btn.dataset.socialId || btn.dataset.expenseId];
+                        const expense = window._expenseData[btn.dataset.expenseId];
                         if (expense) openExpenseEdit(expense);
                     });
                 });
@@ -3742,9 +3447,29 @@ if (workDeleteBtn) {
     });
 }
 
+const btnWorkInsights = document.getElementById('btn-work-insights');
+if (btnWorkInsights) {
+    btnWorkInsights.addEventListener('click', async () => {
+        const contentDiv = document.getElementById('work-insights-content');
+        if (!contentDiv) return;
 
-// Work Insights logic removed (deprecated)
+        btnWorkInsights.textContent = 'Generating... ⏳';
+        btnWorkInsights.disabled = true;
+        contentDiv.style.display = 'none';
 
+        try {
+            const data = await apiGet('/api/work/insights');
+            contentDiv.innerHTML = data.insight ? data.insight.replace(/\n/g, '<br>') : 'No insights generated.';
+            contentDiv.style.display = 'block';
+        } catch (err) {
+            showToast('Failed to fetch insights', 'error');
+            console.error(err);
+        } finally {
+            btnWorkInsights.textContent = 'Generate Insights ✨';
+            btnWorkInsights.disabled = false;
+        }
+    });
+}
 
 
 // ─── Social ────────────────────────────────────────────────────
@@ -3831,14 +3556,14 @@ document.getElementById('social-category')?.addEventListener('change', (e) => {
 
 
 async function loadSocialData() {
-    // Social stats (Guarded)
-    const statsDiv = document.getElementById('social-stats');
-    const historyDiv = document.getElementById('social-history');
-
     try {
         const stats = await apiGet('/api/social/stats');
+        const connections = stats.connections || [];
+
+        // Social stats (Guarded)
+        const statsDiv = document.getElementById('social-stats');
         if (statsDiv) {
-            if (!stats || stats.total_interactions === 0) {
+            if (stats.total_interactions === 0) {
                 statsDiv.innerHTML = '<div class="loading-text">Log your first connection to see stats</div>';
             } else {
                 const cats = stats.by_category || {};
@@ -3854,67 +3579,53 @@ async function loadSocialData() {
                     </div>
                     ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([cat, count]) => `
                         <div class="stat-row">
-                            <span class="stat-label">${catIcons[cat] || '👤'} ${cat.replace(/_/g, ' ')}</span>
+                            <span class="stat-label">${catIcons[cat] || '👤'} ${cat.replace('_', ' ')}</span>
                             <span class="stat-value">${count}</span>
                         </div>
                     `).join('')}
                 `;
             }
         }
-    } catch (err) {
-        console.error("Failed to load social stats:", err);
-        if (statsDiv) statsDiv.innerHTML = '<div class="loading-text" style="color:red">Failed to load stats</div>';
-    }
 
-    try {
-        const connections = await apiGet('/api/social?limit=100');
+        // Recent connections
+        const historyDiv = document.getElementById('social-history');
         if (historyDiv) {
-            if (!connections || connections.length === 0) {
+            if (connections.length === 0) {
                 historyDiv.innerHTML = '<div class="loading-text">No connections logged yet</div>';
             } else {
-                historyDiv.innerHTML = (connections || []).slice(0, 100).map(c => {
+                historyDiv.innerHTML = connections.slice(0, 20).map(c => {
                     const emoji = SOCIAL_EMOJIS[c.category] || SOCIAL_EMOJIS['friend'];
-                    const durText = c.duration_minutes ? ` · ${c.duration_minutes}m` : '';
-                    const catLabel = (c.category || 'friend').replace(/_/g, ' ');
-                    const contextText = c.context ? ` · ${c.context}` : '';
+                    const durText = c.duration_minutes ? `&bull; ${c.duration_minutes}m` : '';
                     return `
-                    <div class="history-item" style="position:relative;">
+                    <div class="history-item" style="position:relative;" onmouseover="this.querySelector('.social-edit-btn').style.opacity='1'" onmouseout="this.querySelector('.social-edit-btn').style.opacity='0'">
                         <button class="social-edit-btn" data-social-id="${c.id}" title="Edit"
-                            style="position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); opacity:0;">✏️</button>
-                        <div style="padding-right: 36px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                                <strong style="font-size:14px;">${emoji} ${c.name}</strong>
-                                <span style="font-size:12px; color:var(--text-muted); flex-shrink:0;">${c.date || ''}</span>
+                            style="position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">✏️</button>
+                        <div class="history-item-left" style="padding-right: 32px;">
+                            <strong>${emoji} ${c.name}</strong>
+                            <div class="item-meta">
+                                ${c.category.replace('_', ' ')} &bull; ${formatDateDisplay(c.date)} ${durText}
                             </div>
-                            <div class="item-meta" style="margin-top:3px; font-size:12px; color:var(--text-secondary);">
-                                ${catLabel}${contextText}${durText}
-                            </div>
-                            ${c.follow_up ? `<div class="item-meta" style="margin-top:4px; color:var(--accent-amber); font-weight:600; font-size:12px;">↳ Follow up: ${c.follow_up}</div>` : ''}
+                            ${c.follow_up ? `<div class="item-meta" style="margin-top:4px;color:var(--text-primary)">↳ ${c.follow_up}</div>` : ''}
                         </div>
                     </div>
                 `;
                 }).join('');
 
-                // Store data and add edit listeners + hover reveal
+                // Store data and add edit listeners
                 window._socialData = {};
                 connections.forEach(c => { window._socialData[c.id] = c; });
-                historyDiv.querySelectorAll('.history-item').forEach(item => {
-                    const btn = item.querySelector('.social-edit-btn');
-                    if (btn) {
-                        item.addEventListener('mouseover', () => btn.style.opacity = '1');
-                        item.addEventListener('mouseout', () => btn.style.opacity = '0');
-                        btn.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            const c = window._socialData[btn.dataset.socialId];
-                            if (c) openSocialEdit(c);
-                        });
-                    }
+                historyDiv.querySelectorAll('.social-edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const c = window._socialData[btn.dataset.socialId];
+                        if (c) openSocialEdit(c);
+                    });
                 });
             }
         }
     } catch (err) {
-        console.error("Failed to load social history:", err);
-        if (historyDiv) historyDiv.innerHTML = '<div class="loading-text" style="color:red">Failed to load history</div>';
+        const historyDiv = document.getElementById('social-history');
+        if (historyDiv) historyDiv.innerHTML = '<div class="loading-text">Could not load social data</div>';
     }
 }
 
@@ -4008,7 +3719,7 @@ document.getElementById('generate-summary-btn')?.addEventListener('click', async
 
     btn.disabled = true;
     btn.textContent = 'Generating...';
-    container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your data and generating summary...</div>';
+    container.innerHTML = '<div class="loading-text"><div class="spinner"></div> Analyzing your data and generating AI summary...</div>';
 
     try {
         const result = await apiGet(`/api/summary?days=${days}&type=${type}`);
@@ -4101,7 +3812,7 @@ function createPolishButton() {
     btn.type = 'button';
     btn.className = 'btn btn-secondary ai-polish-btn';
     btn.style.display = 'none';
-    btn.innerHTML = '✨ Polish';
+    btn.innerHTML = '✨ AI Polish';
     btn.title = 'Clean up grammar, remove filler words (um, uh), fix punctuation';
     // Insert after word count
     const wc = document.getElementById('journal-wc');
@@ -4129,13 +3840,13 @@ function createPolishButton() {
                 textarea.value = response.response;
                 const wc2 = textarea.value.trim().split(/\s+/).filter(w => w).length;
                 document.getElementById('journal-wc').textContent = `${wc2} words`;
-                showToast('✨ Text polished');
+                showToast('✨ Text polished by AI');
             }
         } catch (err) {
             showToast('Could not polish text: ' + err.message, 'error');
         }
         btn.disabled = false;
-        btn.innerHTML = '✨ Polish';
+        btn.innerHTML = '✨ AI Polish';
     });
 
     return btn;
@@ -4163,12 +3874,7 @@ if (SpeechRecognition && voiceBtn) {
 
         // Append finalized text
         if (finalTranscript) {
-            let text = finalTranscript.trim();
-            // Fix: If continuing a sentence, don't capitalize the first word
-            if (baseTextBeforeRecording && !/[.!?]\s*$/.test(baseTextBeforeRecording.trim())) {
-                text = text.charAt(0).toLowerCase() + text.slice(1);
-            }
-            baseTextBeforeRecording += (baseTextBeforeRecording && !baseTextBeforeRecording.endsWith(' ') ? ' ' : '') + text + ' ';
+            baseTextBeforeRecording += (baseTextBeforeRecording && !baseTextBeforeRecording.endsWith(' ') ? ' ' : '') + finalTranscript.trim() + ' ';
         }
 
         // Show interim (in-progress) text in a lighter style
@@ -4215,33 +3921,6 @@ if (SpeechRecognition && voiceBtn) {
             startRecording();
         }
     });
-
-    // Fix: Sync baseTextBeforeRecording with manual edits while recording
-    voiceBtn.addEventListener('mousedown', () => {
-        if (isRecording) {
-            // Check if user edited the textarea and sync if so
-            const textarea = document.getElementById('journal-content');
-            if (textarea.value !== baseTextBeforeRecording + interimText) {
-                baseTextBeforeRecording = textarea.value.replace(interimText, '');
-            }
-        }
-    });
-
-    // Also sync on every onresult call to handle mid-speech manual edits
-    const originalOnResult = recognition.onresult;
-    recognition.onresult = (event) => {
-        const textarea = document.getElementById('journal-content');
-        // If textarea value differs from our expected buffer, user has likely manually edited it
-        const expectedValue = baseTextBeforeRecording + interimText;
-        if (textarea.value !== expectedValue && !isRecording) {
-             // If not recording, we don't care, it'll sync on startRecording
-        } else if (textarea.value !== expectedValue && isRecording) {
-             // User edited while recording! Try to preserve it.
-             // This is tricky, but let's update baseTextBeforeRecording to the current text minus interim
-             baseTextBeforeRecording = textarea.value.slice(0, textarea.value.length - interimText.length);
-        }
-        originalOnResult(event);
-    };
 } else if (voiceBtn) {
     // If SpeechRecognition is completely unavailable
     voiceBtn.addEventListener('click', () => {
@@ -4329,7 +4008,7 @@ function stopRecording() {
     const polishBtn = createPolishButton();
     if (textarea.value.trim().length > 20) {
         polishBtn.style.display = 'inline-flex';
-        showToast(`Recording stopped(${elapsed}s) — click ✨ Polish to clean up`);
+        showToast(`Recording stopped(${elapsed}s) — click ✨ AI Polish to clean up`);
     } else {
         polishBtn.style.display = 'none';
         showToast('Recording stopped');
@@ -4458,9 +4137,9 @@ async function loadWorkTasks() {
 }
 
 // Make sure these get called when opening Work tab
-document.querySelector('.nav-item[data-page="work"]')?.addEventListener('click', () => {
-    if (typeof loadWorkTasks === 'function') loadWorkTasks();
-    if (typeof setupActivityPlannerListeners === 'function') setupActivityPlannerListeners();
+document.querySelector('.nav-item[onclick="switchTab(\'work\')"]')?.addEventListener('click', () => {
+    loadWorkTasks();
+    setupActivityPlannerListeners();
 });
 // Also run on init in case Work is default
 document.addEventListener('DOMContentLoaded', () => {
@@ -4488,6 +4167,19 @@ function renderWorkTasks() {
         const item = document.createElement('div');
         item.className = `tiimo-task-item ${task.completed ? 'completed' : ''}`;
 
+        // Emoticon via category mapping reused roughly
+        let emoji = '📦';
+        let catBg = '#e5e7eb';
+        let catColor = '#4b5563';
+
+        if (task.category === 'school') { emoji = '🎓'; catBg = '#fef3c7'; catColor = '#d97706'; }
+        if (task.category === 'dsa') { emoji = '💻'; catBg = '#dbeafe'; catColor = '#2563eb'; }
+        if (task.category === 'courses') { emoji = '📚'; catBg = '#d1fae5'; catColor = '#059669'; }
+        if (task.category === 'job') { emoji = '💼'; catBg = '#ede9fe'; catColor = '#7c3aed'; }
+        if (task.category === 'daily_task') { emoji = '✅'; catBg = '#f1f5f9'; catColor = '#475569'; }
+        if (task.category === 'social') { emoji = '🤝'; catBg = '#fdf2f8'; catColor = '#db2777'; }
+        if (task.category === 'fun') { emoji = '🎉'; catBg = '#fff7ed'; catColor = '#ea580c'; }
+
         // Ensure no stray dots are rendered if no time slot is provided, but keep layout spacing
         let timeLabelHtml = `
             <div class="tiimo-task-time-col">
@@ -4495,30 +4187,44 @@ function renderWorkTasks() {
             </div>
         `;
 
+        // Added numeric input for logging Pomodoros explicitly
+        let actionButtons = '';
+        if (task.completed) {
+            actionButtons = ''; // Checkmark moved to left of title
+        } else {
+            actionButtons = `
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">🍅</span>
+                        <input type="number" id="pomo-input-${task.id}" min="1" max="20" placeholder="1" style="width:40px; height:24px; padding:0 4px; font-size:12px; border-radius:4px; border:1px solid #d1d5db; text-align:center;">
+                        <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; height: auto;" onclick="markTaskDone('${task.id}')">Mark as Done</button>
+                    </div>
+                    <div style="display:flex; gap: 6px;">
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; height: auto; width:100%;" onclick="openPomodoro('${task.id}')">▶ Focus Timer</button>
+                    </div>
+                </div>
+            `;
+        }
+
         item.innerHTML = `
             <div class="tiimo-task-row">
                 ${timeLabelHtml}
                 <div class="tiimo-task-card">
                     <div class="tiimo-task-left-bar ${catClass}"></div>
                     
-                    <div class="tiimo-task-content" style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:12px;">
-                        <div class="tiimo-task-text-group" style="margin-left: 0; display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-                            ${task.completed ? '<div style="font-size: 20px; font-weight: 800; color: #10b981; flex-shrink:0;">✓</div>' : ''}
-                            <div style="font-size:15px; font-weight:800; color:var(--text-primary); letter-spacing:-0.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${task.name}</div>
-                            
-                            <!-- Tools Row -->
-                            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                                <button onclick="editTask('${task.id}')" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:16px; padding:0; display:inline-flex; align-items:center;" title="Edit Task">✏️</button>
-                                <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleTaskDone('${task.id}')" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-blue);">
-                                
-                                <span style="font-size:11px; color:var(--text-secondary); opacity:0.6; margin-left:4px;">|</span>
-                                
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <input type="number" id="pomo-input-${task.id}" min="1" max="20" placeholder="Min" style="width:38px; height:24px; padding:0 4px; font-size:11px; border-radius:4px; border:1px solid var(--border); background:var(--bg-input); color:var(--text-primary); text-align:center;">
-                                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; height: 24px; width:auto; border-radius:6px; background:var(--bg-card); border:1px solid var(--border);" onclick="openPomodoro('${task.id}')">▶ ${task.pomodoros || 1}</button>
-                                </div>
+                    <div class="tiimo-task-content">
+                        <div class="tiimo-task-text-group" style="margin-left: 0;">
+                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                ${task.completed ? '<div style="font-size: 22px; font-weight: 800; color: #10b981; margin-right: 4px;">✓</div>' : ''}
+                                <div style="font-size:16px; font-weight:800; color:var(--text-primary); letter-spacing:-0.01em;">${task.name}</div>
+                                <button onclick="editTask('${task.id}')" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:14px; padding:0 4px; display:inline-flex; align-items:center; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-secondary)'" title="Edit Task">✏️</button>
+                                <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:${catBg}; color:${catColor}; text-transform:capitalize; white-space:nowrap;">${emoji} ${task.category}</span>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="tiimo-task-actions">
+                        ${actionButtons}
                     </div>
                 </div>
             </div>
@@ -4549,45 +4255,48 @@ window.editTask = function (taskId) {
     form.scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
 
-window.toggleTaskDone = async function (taskId) {
+window.markTaskDone = async function (taskId) {
     const task = workTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const newStatus = !task.completed;
-    task.completed = newStatus;
-    renderWorkTasks(); // Optimistic update
-
-    // Grab custom minutes count
+    // Grab custom Pomodoro count
     const pomoInput = document.getElementById(`pomo-input-${taskId}`);
-    let minutes = 25; // Default to 25m if not specified
+    let pomoCount = 1; // Default
     if (pomoInput && pomoInput.value) {
-        minutes = parseInt(pomoInput.value, 10);
-        if (isNaN(minutes) || minutes < 1) minutes = 25;
+        pomoCount = parseInt(pomoInput.value, 10);
+        if (isNaN(pomoCount) || pomoCount < 1) pomoCount = 1;
     }
 
+    // Optistic UI
+    task.completed = true;
+    renderWorkTasks();
+
     try {
-        await apiPut(`/api/work/tasks/${taskId}`, { completed: newStatus });
+        await apiPut(`/api/work/tasks/${taskId}`, { completed: true });
 
-        if (newStatus) {
-            // Auto-log to Work History
-            const sessionData = {
-                duration_minutes: minutes,
-                category: task.category,
-                date: task.date, 
-                notes: `Completed task: ${task.name} (${minutes}m)`
-            };
+        // Auto-log to Work History
+        const durationToLog = pomoCount * 25;
+        const sessionData = {
+            duration_minutes: durationToLog,
+            category: task.category,
+            date: task.date, // defaults to today
+            notes: `Completed task: ${task.name} (${pomoCount} pomodoros)`
+        };
 
-            await apiPost('/api/work', sessionData);
-            showToast(`Task done & logged (${minutes}m) ✨`);
+        await apiPost('/api/work', sessionData);
+        showToast(`Task marked done & logged (${durationToLog}m)`);
 
-            if (typeof loadWorkData === 'function') loadWorkData();
-            if (typeof loadCalendar === 'function') loadCalendar('work');
-        } else {
-            showToast('Task marked incomplete');
+        // If the work tab has calendar/stats loaded, we should refresh them
+        if (typeof loadWorkData === 'function') {
+            loadWorkData();
         }
+        if (typeof loadCalendar === 'function') {
+            loadCalendar('work');
+        }
+
     } catch (err) {
         console.error(err);
-        task.completed = !newStatus; // revert
+        task.completed = false; // revert
         renderWorkTasks();
         showToast('Failed to update task', 'error');
     }

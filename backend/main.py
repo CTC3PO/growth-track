@@ -54,7 +54,12 @@ from fastapi.responses import JSONResponse
 
 # CORS for frontend
 allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
-allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")] if allowed_origins_str else ["http://localhost:8080", "http://127.0.0.1:8080"]
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")] if allowed_origins_str else [
+    "http://localhost:8080", 
+    "http://127.0.0.1:8080",
+    "http://localhost:3000",
+    "http://localhost:3001"
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -92,11 +97,7 @@ async def create_checkin(checkin: DailyCheckIn):
 @app.get("/api/checkin/{date_str}")
 async def get_checkin_by_date(date_str: str):
     """Get a check-in by its date string (YYYY-MM-DD)."""
-    checkins = get_documents("checkins", limit=1000)
-    for c in checkins:
-        if c.get("date") == date_str:
-            return c
-    return None
+    return get_document("checkins", f"checkin_{date_str}")
 
 
 @app.get("/api/checkins")
@@ -108,18 +109,17 @@ async def get_checkins(limit: int = 30):
 @app.put("/api/checkins/{checkin_id}")
 async def update_checkin(checkin_id: str, updates: dict):
     """Update a check-in entry."""
-    checkins = get_documents("checkins", limit=1000)
-    for c in checkins:
-        if c.get("id") == checkin_id:
-            for key in ["date", "sleep_time", "wake_time", "sleep_hours", "steps",
-                        "meditation", "meditation_minutes", "journal_words",
-                        "deep_work_hours", "energy", "alignment", "notes",
-                        "morning_activities", "intention", "exercises"]:
-                if key in updates:
-                    c[key] = updates[key]
-            cid = c.pop("id", checkin_id)
-            save_document("checkins", c, doc_id=cid)
-            return {"status": "updated", "id": cid}
+    c = get_document("checkins", checkin_id)
+    if c:
+        for key in ["date", "sleep_time", "wake_time", "sleep_hours", "steps",
+                    "meditation", "meditation_minutes", "journal_words",
+                    "deep_work_hours", "energy", "alignment", "notes",
+                    "morning_activities", "intention", "exercises"]:
+            if key in updates:
+                c[key] = updates[key]
+        cid = c.pop("id", checkin_id)
+        save_document("checkins", c, doc_id=cid)
+        return {"status": "updated", "id": cid}
     raise HTTPException(status_code=404, detail="Check-in not found")
 
 
@@ -141,15 +141,14 @@ async def log_run(run: RunLog):
 
 @app.put("/api/runs/{run_id}")
 async def update_run(run_id: str, updates: dict):
-    runs = get_documents("runs", limit=1000)
-    for r in runs:
-        if r.get("id") == run_id:
-            for key in ["date", "distance_km", "duration_minutes", "run_type", "notes"]:
-                if key in updates:
-                    r[key] = updates[key]
-            rid = r.pop("id", run_id)
-            save_document("runs", r, doc_id=rid)
-            return {"status": "updated", "id": rid}
+    r = get_document("runs", run_id)
+    if r:
+        for key in ["date", "distance_km", "duration_minutes", "run_type", "notes"]:
+            if key in updates:
+                r[key] = updates[key]
+        rid = r.pop("id", run_id)
+        save_document("runs", r, doc_id=rid)
+        return {"status": "updated", "id": rid}
     raise HTTPException(status_code=404, detail="Run not found")
 
 @app.delete("/api/runs/{run_id}")
@@ -186,15 +185,14 @@ async def log_work_session(session: WorkSession):
 
 @app.put("/api/work/{work_id}")
 async def update_work_session(work_id: str, updates: dict):
-    sessions = get_documents("work", limit=1000)
-    for s in sessions:
-        if s.get("id") == work_id:
-            for key in ["date", "duration_minutes", "category", "notes"]:
-                if key in updates:
-                    s[key] = updates[key]
-            sid = s.pop("id", work_id)
-            save_document("work", s, doc_id=sid)
-            return {"status": "updated", "id": sid}
+    s = get_document("work", work_id)
+    if s:
+        for key in ["date", "duration_minutes", "category", "notes"]:
+            if key in updates:
+                s[key] = updates[key]
+        sid = s.pop("id", work_id)
+        save_document("work", s, doc_id=sid)
+        return {"status": "updated", "id": sid}
     raise HTTPException(status_code=404, detail="Session not found")
 
 @app.delete("/api/work/{work_id}")
@@ -245,15 +243,14 @@ async def get_work_tasks(date_str: str = None, limit: int = 50):
 @app.put("/api/work/tasks/{task_id}")
 async def update_work_task(task_id: str, updates: dict):
     """Update a work task (toggle completion, edit fields)."""
-    tasks = get_documents("work_tasks", limit=1000)
-    for t in tasks:
-        if t.get("id") == task_id:
-            for key in ["name", "time_slot", "category", "completed", "duration_minutes", "order", "date"]:
-                if key in updates:
-                    t[key] = updates[key]
-            tid = t.pop("id", task_id)
-            save_document("work_tasks", t, doc_id=tid)
-            return {"status": "updated", "id": tid}
+    t = get_document("work_tasks", task_id)
+    if t:
+        for key in ["name", "time_slot", "category", "completed", "duration_minutes", "order", "date"]:
+            if key in updates:
+                t[key] = updates[key]
+        tid = t.pop("id", task_id)
+        save_document("work_tasks", t, doc_id=tid)
+        return {"status": "updated", "id": tid}
     raise HTTPException(status_code=404, detail="Task not found")
 
 
@@ -290,15 +287,14 @@ async def add_book(book: BookEntry):
 @app.put("/api/books/{book_id}")
 async def update_book(book_id: str, updates: dict):
     """Update a book entry (status, is_finished, etc)."""
-    books = get_documents("books", limit=1000)
-    for b in books:
-        if b.get("id") == book_id:
-            for key in ["title", "author", "genre", "status", "is_finished", "rating", "reaction", "cover_url", "pages", "pages_read", "date_started", "date_finished"]:
-                if key in updates:
-                    b[key] = updates[key]
-            bid = b.pop("id", book_id)
-            save_document("books", b, doc_id=bid)
-            return {"status": "updated", "id": bid}
+    b = get_document("books", book_id)
+    if b:
+        for key in ["title", "author", "genre", "status", "is_finished", "rating", "reaction", "cover_url", "pages", "pages_read", "date_started", "date_finished"]:
+            if key in updates:
+                b[key] = updates[key]
+        bid = b.pop("id", book_id)
+        save_document("books", b, doc_id=bid)
+        return {"status": "updated", "id": bid}
     raise HTTPException(status_code=404, detail="Book not found")
 
 @app.delete("/api/books/{book_id}")
@@ -331,16 +327,7 @@ async def search_books(q: str):
 @app.get("/api/books")
 async def get_books(limit: int = 50):
     """Get book entries."""
-    books = get_documents("books", limit=limit)
-    # Enrich with total pages read from progress log
-    for b in books:
-        book_id = b.get("id")
-        if book_id:
-            progress = get_documents("reading_progress", limit=1000)
-            total = sum(p.get("pages_read", 0) for p in progress if p.get("book_id") == book_id)
-            if total > 0:
-                b["pages_read"] = total
-    return books
+    return get_documents("books", limit=limit)
 
 
 @app.post("/api/books/{book_id}/progress")
@@ -349,15 +336,15 @@ async def add_reading_progress(book_id: str, entry: ReadingProgressEntry):
     data = entry.model_dump()
     data["book_id"] = book_id
     doc_id = save_document("reading_progress", data)
-    # Also update the book's pages_read total
-    books = get_documents("books", limit=1000)
-    for b in books:
-        if b.get("id") == book_id:
-            current = b.get("pages_read", 0) or 0
-            b["pages_read"] = current + entry.pages_read
-            bid = b.pop("id", book_id)
-            save_document("books", b, doc_id=bid)
-            break
+    
+    # Efficiently update the book's pages_read total
+    b = get_document("books", book_id)
+    if b:
+        current = b.get("pages_read", 0) or 0
+        b["pages_read"] = current + entry.pages_read
+        bid = b.pop("id", book_id)
+        save_document("books", b, doc_id=bid)
+        
     return {"status": "saved", "id": doc_id, "message": f"+{entry.pages_read} pages logged 📖"}
 
 
@@ -550,10 +537,10 @@ async def get_journal_prompt(tradition: str = "blended", mode: str = "daily", se
             if book_title:
                 context["books_reading"] = book_title
 
-        recent_social = get_documents("social_connections", limit=5)
+        recent_social = get_documents("social", limit=15)
         if recent_social:
             latest = recent_social[0]
-            context["recent_social_connection"] = latest.get("person", "")
+            context["recent_social_connection"] = latest.get("name", "")
             context["recent_social_activity"] = latest.get("activity", "")
             
         recent_work = get_documents("work", limit=5)
@@ -567,7 +554,7 @@ async def get_journal_prompt(tradition: str = "blended", mode: str = "daily", se
             # Aggregate weekly context
             weekly_checkins = get_documents("checkins", limit=7)
             weekly_runs = get_documents("runs", limit=10)
-            weekly_social = get_documents("social_connections", limit=15)
+            weekly_social = get_documents("social", limit=15)
             weekly_work = get_documents("work", limit=20)
             
             context["weekly_stats"] = {

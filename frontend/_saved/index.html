@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
-    <title>Mindful Life — Personal Life Integration</title>
-    <meta name="description" content="Track your running, reading, journaling, and life goals">
+    <title>Mindful Life AI — Personal Life Integration</title>
+    <meta name="description" content="Track your running, reading, journaling, and life goals with AI-powered insights">
 
     <!-- PWA -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#2a9d6e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="apple-touch-icon" href="/static/icon-512.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
@@ -42,11 +42,12 @@
                     onmouseover="this.style.textDecoration='underline'"
                     onmouseout="this.style.textDecoration='none'">Login / Sign Up</span>
             </div>
-            <button id="theme-toggle-btn" 
-                style="background: var(--bg-card); padding: 6px 16px; border-radius: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); transition: var(--transition);">
-                <span id="theme-icon">☀️</span>
-                <span id="theme-label" style="font-weight: 500;">Light</span>
-            </button>
+            <div class="toggle-group"
+                style="background: var(--bg-card); padding: 4px 12px; border-radius: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);">
+                <span style="font-size: 14px;">☀️</span>
+                <input type="checkbox" id="theme-toggle" class="toggle" style="width: 36px; height: 20px;">
+                <span style="font-size: 14px;">🌙</span>
+            </div>
         </div>
 
         <!-- ═══ AUTH PAGE (LOGIN/SIGNUP) ═══ -->
@@ -55,7 +56,7 @@
                 <div class="auth-header" style="text-align: center; margin-bottom: 32px;">
                     <h2
                         style="font-size: 28px; font-weight: 900; letter-spacing: -0.04em; margin-bottom: 6px; color: var(--text-primary);">
-                        Mindful Life</h2>
+                        Mindful Life AI</h2>
                     <p id="auth-subtitle" style="color: var(--text-secondary); font-size: 14px;">Welcome back. Please
                         log in to continue.</p>
                 </div>
@@ -230,16 +231,6 @@
                 </div>
             </div>
 
-            <!-- Insights -->
-            <div class="card" style="border-left: 4px solid var(--accent-blue);">
-                <div class="card-header" style="justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="icon">💡</span>
-                        <h3 id="insights-title">Insights</h3>
-                    </div>
-                </div>
-            </div>
-
             <!-- Strava Runs Card -->
             <div id="strava-runs-card" class="card" style="border-left: 4px solid #fc4c02;">
                 <div class="card-header" style="justify-content: space-between;">
@@ -267,21 +258,21 @@
                     style="width: 100%; margin-top: 12px; display: none;">See more runs</button>
             </div>
 
-            <!-- Training Plan -->
+            <!-- AI Training Plan -->
             <div class="card" style="border-left: 4px solid var(--accent-amber);">
                 <div class="card-header" style="justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="icon">✨</span>
-                        <h3>Training Plan</h3>
+                        <h3>AI Training Plan</h3>
                     </div>
                     <button class="btn btn-primary" id="get-coach-plan-btn"
                         style="padding: 4px 8px; font-size: 12px; height: auto;">Adjust Plan</button>
                 </div>
-                <div id="coaching-plan-container" style="padding: 10px 0;">
+                <div id="ai-plan-container" style="padding: 10px 0;">
                     <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">🏁 Goal: Half Marathon — March 22,
                         2026</p>
                     <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">~2 weeks until race
-                        day. Connect Strava and click Adjust Plan to generate your coaching plan based on your recent
+                        day. Connect Strava and click Adjust Plan to generate your AI coaching plan based on your recent
                         runs.</p>
                 </div>
             </div>
@@ -320,17 +311,14 @@
                         <div class="form-group">
                             <label>Genre</label>
                             <select id="book-genre">
-                                <option value="literary_fiction">Literary Fiction</option>
-                                <option value="sci_fi">Science Fiction</option>
-                                <option value="fantasy">Fantasy</option>
-                                <option value="mystery_thriller">Mystery & Thriller</option>
-                                <option value="romance">Romance</option>
-                                <option value="nonfiction">Nonfiction</option>
-                                <option value="history_biography">History & Biography</option>
-                                <option value="self_help">Self Help</option>
-                                <option value="science_tech">Science & Tech</option>
-                                <option value="poetry">Poetry</option>
-                                <option value="philosophy_mindfulness">Philosophy & Mindfulness</option>
+                                <option value="mindfulness">Mindfulness</option>
+                                <option value="stoicism">Stoicism</option>
+                                <option value="philosophy">Philosophy</option>
+                                <option value="fiction">Fiction</option>
+                                <option value="science">Science</option>
+                                <option value="biography">Biography</option>
+                                <option value="self_development">Self Development</option>
+                                <option value="history">History</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
@@ -432,9 +420,10 @@
 
             <!-- Journal Tool Tabs -->
             <div class="review-period-tabs span-all" style="margin-bottom: 16px;">
-                <button class="period-tab j-tab active" data-jtab="gratitude">🙏 Gratitude</button>
-                <button class="period-tab j-tab" data-jtab="random-prompt">🎲 Random</button>
-                <button class="period-tab j-tab" data-jtab="ai-prompt">✨ Daily Prompt</button>
+                <button class="period-tab j-tab active" data-jtab="random-prompt">🎲 Random</button>
+                <button class="period-tab j-tab" data-jtab="gratitude">🙏 Gratitude</button>
+                <button class="period-tab j-tab" data-jtab="ai-prompt">✨ Daily AI</button>
+                <button class="period-tab j-tab" data-jtab="mix">🌀 Mix</button>
                 <button class="period-tab j-tab" data-jtab="prompt-list">📜 All Prompts</button>
             </div>
 
@@ -444,13 +433,13 @@
                 <!-- LEFT: Prompt Sections -->
                 <div class="journal-col-prompt">
 
-                    <!-- Daily Prompt -->
+                    <!-- AI Prompt -->
                     <div id="j-sec-ai-prompt" class="j-section" style="display: none;">
                         <div class="card" style="border-left: 4px solid var(--accent-teal);">
                             <div class="card-header" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="icon">✨</span>
-                                    <h3>Daily Prompt</h3>
+                                    <h3>Daily AI Prompt</h3>
                                 </div>
                                 <button class="btn btn-secondary" id="new-prompt-btn"
                                     style="padding: 4px 8px; font-size: 12px; height: auto;">Refresh</button>
@@ -480,6 +469,24 @@
                         </div>
                     </div>
 
+                    <!-- Mix & Reflect -->
+                    <div id="j-sec-mix" class="j-section" style="display: none;">
+                        <div class="card" style="border-left: 4px solid #8b5cf6;">
+                            <div class="card-header" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="icon">🌀</span>
+                                    <h3>Mix & Reflect</h3>
+                                </div>
+                                <button class="btn btn-secondary" id="new-mix-btn"
+                                    style="padding: 4px 8px; font-size: 12px; height: auto;">Remix</button>
+                            </div>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Blending
+                                classic prompts with your weekly activity patterns for deeper creative insights.</p>
+                            <div id="mix-prompt-area" style="min-height: 80px;">
+                                <div class="loading-text">Click 'Remix' to start...</div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Gratitude Bucket -->
                     <div id="j-sec-gratitude" class="j-section" style="display: none;">
@@ -656,15 +663,15 @@
                         style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="icon">✨</span>
-                            <h3 style="font-size: 16px;">Summary & Insights</h3>
+                            <h3 style="font-size: 16px;">AI Summary & Insights</h3>
                         </div>
                         <button id="generate-insights-btn" class="btn btn-primary"
                             style="padding: 6px 12px; font-size: 12px; width: auto; height: auto;">Generate
                             Insights</button>
                     </div>
-                    <div id="insights-content"
+                    <div id="ai-insights-content"
                         style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
-                        Click generate to analyze your tracking data and receive actionable insights.
+                        Click generate to analyze your tracking data and receive actionable insights from the AI.
                     </div>
                 </div>
             </div>
@@ -863,11 +870,13 @@
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <select id="task-category"
                             style="flex: 1; font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary);">
-                            <option value="projects">🚀 Projects</option>
-                            <option value="admin">⚙️ Admin</option>
-                            <option value="learning">🧠 Learning/Deep Work</option>
-                            <option value="meetings">👥 Meetings</option>
-                            <option value="daily_life">🏠 Daily Life</option>
+                            <option value="school">🎓 School</option>
+                            <option value="dsa">💻 DSA</option>
+                            <option value="courses">📚 Courses</option>
+                            <option value="job">💼 Job</option>
+                            <option value="daily_task">✅ Daily Task</option>
+                            <option value="social">🤝 Social</option>
+                            <option value="fun">🎉 Fun</option>
                             <option value="others">📦 Others</option>
                         </select>
                         <button type="submit" class="btn btn-primary"
@@ -940,6 +949,16 @@
                 </div>
             </div>
 
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <span class="icon">✨</span>
+                    <h3>Work Insights</h3>
+                </div>
+                <button id="btn-work-insights" class="btn-primary" style="margin-bottom: 16px; width: 100%;">Generate
+                    Insights ✨</button>
+                <div id="work-insights-content" class="entry-card"
+                    style="display: none; white-space: pre-wrap; margin-top: 16px;"></div>
+            </div>
 
             <!-- Work history -->
             <div class="card">
@@ -961,11 +980,10 @@
                         <div class="form-group" style="flex: 1;">
                             <label>Category</label>
                             <select id="work-category">
-                                <option value="projects">🚀 Projects</option>
-                                <option value="admin">⚙️ Admin</option>
-                                <option value="learning">🧠 Learning/Deep Work</option>
-                                <option value="meetings">👥 Meetings</option>
-                                <option value="daily_life">🏠 Daily Life</option>
+                                <option value="school">🎓 School</option>
+                                <option value="dsa">💻 DSA</option>
+                                <option value="courses">📚 Courses</option>
+                                <option value="job">💼 Job</option>
                                 <option value="others">📦 Others</option>
                             </select>
                         </div>
@@ -1159,35 +1177,8 @@
                 <div id="expense-calendar"></div>
             </div>
 
-            <!-- Spending Summary + Expense History side-by-side -->
-            <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:24px; align-items:start; width:100%;">
-
-                <!-- Spending Summary -->
-                <div class="card" style="margin-bottom:0;">
-                    <div class="card-header">
-                        <span class="icon">📊</span>
-                        <h3 id="expense-summary-title">Summary (USD)</h3>
-                    </div>
-                    <div class="category-stats" id="expense-summary">
-                        <div class="loading-text">Loading summary...</div>
-                    </div>
-                </div>
-
-                <!-- Expense History -->
-                <div class="card" style="margin-bottom:0;">
-                    <div class="card-header">
-                        <span class="icon">📋</span>
-                        <h3>Recent Expenses</h3>
-                    </div>
-                    <div id="expense-history" class="history-list-container">
-                        <div class="loading-text">No recent expenses</div>
-                    </div>
-                </div>
-
-            </div>
-
             <!-- Currency converter -->
-            <div class="card span-all">
+            <div class="card">
                 <div class="card-header">
                     <span class="icon">💱</span>
                     <h3>Currency Converter</h3>
@@ -1206,20 +1197,39 @@
                 <div id="convert-rate" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:6px">
                 </div>
             </div>
+
+            <!-- Spending Summary -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    <h3 id="expense-summary-title">Summary (USD)</h3>
+                </div>
+                <div class="category-stats" id="expense-summary">
+                    <div class="loading-text">Loading summary...</div>
+                </div>
+            </div>
+
+            <!-- Expense History -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📋</span>
+                    <h3>Recent Expenses</h3>
+                </div>
+                <div id="expense-history" class="history-list-container">
+                    <div class="loading-text">No recent expenses</div>
+                </div>
+            </div>
         </div> <!-- ═══ END TRAVEL PAGE ═══ -->
 
 
 
         <!-- Navigation -->
         <nav class="nav">
-            <!-- Social (Connection) - People -->
-            <button class="nav-item" data-page="social" aria-label="Social">
-                <svg class="icon-svg color-social" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            <!-- Running -->
+            <button class="nav-item" data-page="running" aria-label="Running">
+                <svg class="icon-svg color-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
                 </svg>
             </button>
             <!-- Journal (Write) -->
@@ -1228,6 +1238,14 @@
                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </button>
+            <!-- Reading -->
+            <button class="nav-item" data-page="reading" aria-label="Reading">
+                <svg class="icon-svg color-reading" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
             </button>
             <!-- Work -->
@@ -1239,27 +1257,23 @@
                     <line x1="12" y1="17" x2="12" y2="21"></line>
                 </svg>
             </button>
-            <!-- Running (Daily Log) -->
-            <button class="nav-item" data-page="running" aria-label="Running">
-                <svg class="icon-svg color-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            <!-- Social (Connection) -->
+            <button class="nav-item" data-page="social" aria-label="Social">
+                <svg class="icon-svg color-social" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
             </button>
-            <!-- Expense (Travel) - Money -->
+            <!-- Check-in (Daily Log) — removed, merged into Run tab -->
+            <!-- Expense (Travel) -->
             <button class="nav-item" data-page="travel" aria-label="Expense">
                 <svg class="icon-svg color-travel" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                </svg>
-            </button>
-            <!-- Reading -->
-            <button class="nav-item" data-page="reading" aria-label="Reading">
-                <svg class="icon-svg color-reading" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
             </button>
             <!-- Summary (Review) -->
@@ -1273,7 +1287,7 @@
             </button>
         </nav>
 
-        <script src="app.js"></script>
+        <script src="/static/app.js"></script>
 </body>
 
 </html>

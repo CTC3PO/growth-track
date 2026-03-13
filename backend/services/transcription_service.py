@@ -10,21 +10,14 @@ from google.genai import types
 
 def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") -> dict:
     """
-    Transcribe audio using Gemini multimodal.
-
-    Args:
-        audio_bytes: Raw audio bytes from the uploaded file
-        mime_type: MIME type of the audio (e.g. audio/webm, audio/wav, audio/mp3)
-
-    Returns:
-        dict with 'transcription' (raw text) and 'enhanced' (cleaned up version)
+    Transcribe and enhance audio in a single pass using Gemini multimodal.
     """
     client = get_client()
 
     # Encode audio as base64 for inline data
     audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
 
-    # Build multimodal content: audio + text instruction
+    # Build multimodal content: audio + combined instruction
     contents = [
         types.Content(
             parts=[
@@ -35,17 +28,16 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") -> dict:
                     )
                 ),
                 types.Part(
-                    text="Transcribe this audio recording exactly as spoken. "
-                         "Include proper punctuation and capitalization. "
-                         "If the audio is unclear or silent, return an empty string. "
-                         "Return ONLY the transcribed text, nothing else."
+                    text="Transcribe this audio recording. Clean up the speech as you go: "
+                         "fix grammar, remove filler words (um, uh, like), add proper punctuation "
+                         "and paragraph breaks. Return ONLY the cleaned transcribed text, nothing else."
                 ),
             ]
         )
     ]
 
     config = types.GenerateContentConfig(
-        temperature=0.1,  # Low temp for accurate transcription
+        temperature=0.1,
         max_output_tokens=4096,
     )
 
@@ -55,14 +47,11 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") -> dict:
             contents=contents,
             config=config,
         )
-        raw_text = response.text.strip()
-
-        # Generate an enhanced/cleaned version
-        enhanced_text = _enhance_transcription(client, raw_text)
+        text = response.text.strip()
 
         return {
-            "transcription": raw_text,
-            "enhanced": enhanced_text,
+            "transcription": text,
+            "enhanced": text, # Same text now as it's done in one pass
             "success": True,
         }
     except Exception as e:
@@ -74,32 +63,4 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") -> dict:
         }
 
 
-def _enhance_transcription(client, raw_text: str) -> str:
-    """
-    Use Gemini to clean up/enhance a raw transcription:
-    fix grammar, add punctuation, remove filler words.
-    """
-    if not raw_text or len(raw_text.strip()) < 10:
-        return raw_text
 
-    try:
-        config = types.GenerateContentConfig(
-            temperature=0.3,
-            max_output_tokens=4096,
-            system_instruction=(
-                "You are a text editor. Clean up the following transcribed speech: "
-                "fix grammar, remove filler words (um, uh, like), add proper punctuation "
-                "and paragraph breaks where appropriate. Keep the original meaning and "
-                "tone intact. Do NOT add any commentary — return ONLY the cleaned text."
-            ),
-        )
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=raw_text,
-            config=config,
-        )
-        return response.text.strip()
-    except Exception:
-        # If enhancement fails, just return the raw text
-        return raw_text

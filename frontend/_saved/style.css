@@ -53,27 +53,6 @@ body.dark-mode {
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
 }
 
-body.vintage {
-    --bg-primary: #f4f1ea;
-    --bg-secondary: #e8e3d9;
-    --bg-card: #faf9f6;
-    --bg-input: #f0ede5;
-    --accent: #7d6754;
-    --accent-light: #efece5;
-    --accent-dark: #5d4d3f;
-    --accent-amber: #c5a880;
-    --accent-rose: #b47d7d;
-    --accent-blue: #7d96b4;
-    --accent-teal: #7db4a2;
-    --text-primary: #3a322b;
-    --text-secondary: #6d635b;
-    --text-muted: #a09890;
-    --border: #dcd8cf;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
-}
-
 /* ─── Dark-mode component overrides ───────────────────────────── */
 body.dark-mode .nav {
     background: rgba(17, 24, 39, 0.92);
